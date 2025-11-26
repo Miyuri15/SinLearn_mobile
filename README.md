@@ -260,8 +260,5 @@ For questions or clarifications, contact the **SinLearn development team lead**.
 
 # ⭐ **Thank You for Contributing to SinLearn!**
 
-This repository is maintained as part of the final-year project
-**“SinLearn – Sinhala Educational Assistant.”**
-
 ---
 
