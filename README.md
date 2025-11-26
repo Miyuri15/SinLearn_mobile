@@ -1,17 +1,23 @@
-**📱 SinLearn Mobile – Flutter Frontend
-
-Sinhala Educational Assistant (Mobile + Web)**
+📱 SinLearn Mobile – Flutter Frontend
+Sinhala Educational Assistant (Mobile + Web)
 
 SinLearn is a conversational Sinhala educational assistant built with Flutter.
 This repository contains the Frontend application, supporting both Mobile (Android/iOS) and Web, with features such as:
 
 Sinhala + English UI
+
 Chat-based learning mode
+
 Answer evaluation mode
+
 Voice input support
+
 File uploads (PDF, images)
+
 Dark/Light themes
+
 Offline mode
+
 Mobile + Web adaptive layouts
 
 This project is the official frontend foundation used by the SinLearn development team.
@@ -20,38 +26,54 @@ This project is the official frontend foundation used by the SinLearn developmen
 ✔ Learning Mode
 
 Ask questions in Sinhala (text or voice)
+
 Upload documents or images for context
+
 Receive summaries + explanations + Q & A
-Age-level responses (Grade levels)
+
+Age-level response generation (Grade levels)
 
 ✔ Answer Evaluation Mode
 
-Upload answer sheets, questions
+Upload answer sheets and questions
+
 Select or upload marking rubrics
+
 Automated feedback: coverage, accuracy, clarity
+
 Sinhala feedback + scoring
+
 Structured evaluation card blocks
 
 ✔ Core UI Features
 
 Chat interface (user/system bubbles)
+
 Summary cards
+
 Evaluation cards
+
 Prompt bar (text, upload, microphone)
+
 Chat history
+
 Sharing support
 
 ✔ Technical Features
 
 Sinhala + English localization
+
 Light & Dark themes
+
 Offline mode detection
+
 Mobile/Web responsive layouts
+
 Clean modular folder structure
 
 📦 Project Structure
 
-The project uses a professional Flutter architecture with clean module separation.
+This project uses a clean, modular Flutter architecture.
 
 lib/
  ├─ layouts/
@@ -113,17 +135,15 @@ Localization files are stored in:
 assets/languages/en.json
 assets/languages/si.json
 
-
 Use translated text in widgets:
-
 Text(tr("send"))
 
 🎨 Themes (Light + Dark)
 
-Theme switching is handled in SinLearnApp through:
+Theme switching is handled through:
 
-theme: ThemeData.light()
-darkTheme: ThemeData.dark()
+theme: ThemeData.light(),
+darkTheme: ThemeData.dark(),
 
 
 Custom theme files will be added as the design system evolves.
@@ -135,27 +155,34 @@ API calls will be handled inside:
 lib/services/api_service.dart
 
 
-Features supported by backend:
+Backend will support:
 
 Learning mode query
+
 Evaluation request
+
 File upload
+
 Voice transcription
+
 Chat history
 
 🌩 Offline Mode
-The app uses connectivity_plus to detect online/offline state.
+
+The app uses connectivity_plus to detect online/offline states.
 
 When offline:
-Banner appears
-Send/upload/voice features disabled
+
+Offline banner appears
+
+Send, upload, and voice features are disabled
 
 Old chats remain visible
 
 🤝 Contribution Workflow
 Branch Strategy
-main  → Stable production-ready code
-dev   → Development staging branch
+main    → Stable production-ready code
+dev     → Development staging branch
 feature/<feature-name> → Individual feature branches
 
 Creating a new feature branch
@@ -171,9 +198,13 @@ git push origin feature/chat-ui
 📄 Coding Standards
 
 No hardcoded Sinhala or English text. Use localization keys only.
+
 Follow folder structure strictly.
-Reuse widgets from /widgets instead of creating duplicates.
+
+Reuse widgets from /widgets instead of duplicating.
+
 Keep logic in /providers and /services, not inside widgets.
+
 Write clean, readable commits.
 
 📌 Current Status
@@ -195,4 +226,5 @@ For questions or clarifications, contact the SinLearn development team lead.
 
 ⭐ Thank You for Contributing to SinLearn!
 
-This repository is maintained as part of the final-year project “SinLearn – Sinhala Educational Assistant.”
+This repository is maintained as part of the final-year project
+“SinLearn – Sinhala Educational Assistant.”
