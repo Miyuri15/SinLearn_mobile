@@ -1,74 +1,52 @@
-📱 SinLearn Mobile – Flutter Frontend
+**📱 SinLearn Mobile – Flutter Frontend**
 Sinhala Educational Assistant (Mobile + Web)
 
 SinLearn is a conversational Sinhala educational assistant built with Flutter.
 This repository contains the Frontend application, supporting both Mobile (Android/iOS) and Web, with features such as:
 
 Sinhala + English UI
-
 Chat-based learning mode
-
 Answer evaluation mode
-
 Voice input support
-
 File uploads (PDF, images)
-
 Dark/Light themes
-
 Offline mode
-
 Mobile + Web adaptive layouts
 
 This project is the official frontend foundation used by the SinLearn development team.
 
 🚀 Features
+
 ✔ Learning Mode
 
 Ask questions in Sinhala (text or voice)
-
 Upload documents or images for context
-
 Receive summaries + explanations + Q & A
-
 Age-level response generation (Grade levels)
 
 ✔ Answer Evaluation Mode
 
 Upload answer sheets and questions
-
 Select or upload marking rubrics
-
 Automated feedback: coverage, accuracy, clarity
-
 Sinhala feedback + scoring
-
 Structured evaluation card blocks
 
 ✔ Core UI Features
 
 Chat interface (user/system bubbles)
-
 Summary cards
-
 Evaluation cards
-
 Prompt bar (text, upload, microphone)
-
 Chat history
-
 Sharing support
 
 ✔ Technical Features
 
 Sinhala + English localization
-
 Light & Dark themes
-
 Offline mode detection
-
 Mobile/Web responsive layouts
-
 Clean modular folder structure
 
 📦 Project Structure
@@ -151,32 +129,21 @@ Custom theme files will be added as the design system evolves.
 📡 API Integration
 
 API calls will be handled inside:
-
 lib/services/api_service.dart
 
-
 Backend will support:
-
 Learning mode query
-
 Evaluation request
-
 File upload
-
 Voice transcription
-
 Chat history
 
 🌩 Offline Mode
-
 The app uses connectivity_plus to detect online/offline states.
 
 When offline:
-
 Offline banner appears
-
 Send, upload, and voice features are disabled
-
 Old chats remain visible
 
 🤝 Contribution Workflow
@@ -198,13 +165,9 @@ git push origin feature/chat-ui
 📄 Coding Standards
 
 No hardcoded Sinhala or English text. Use localization keys only.
-
 Follow folder structure strictly.
-
 Reuse widgets from /widgets instead of duplicating.
-
 Keep logic in /providers and /services, not inside widgets.
-
 Write clean, readable commits.
 
 📌 Current Status
