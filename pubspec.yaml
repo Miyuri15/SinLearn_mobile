@@ -1,0 +1,54 @@
+name: sinlearn_mobile
+description: "SinLearn - Sinhala Educational Assistant (Mobile + Web)"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.5.3
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Localization support (English + Sinhala)
+  easy_localization: ^3.0.1
+
+  # State management (recommended for clean architecture)
+  flutter_riverpod: ^2.5.1
+
+  # Connectivity for detecting online/offline mode
+  connectivity_plus: ^6.0.3
+
+  # File picker for selecting PDF/images later
+  file_picker: ^8.0.0
+
+  # For HTTP API integration
+  http: ^1.1.0
+
+  # For voice recording (future use)
+  record: ^5.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+
+  uses-material-design: true
+
+  # Asset folders for localization, fonts, images, icons
+  assets:
+      - assets/languages/
+      - assets/fonts/
+      - assets/icons/
+      - assets/images/
+
+  # Sinhala + English fonts (add actual font files later)
+  fonts:
+    - family: SinhalaFont
+      fonts:
+        - asset: assets/fonts/NotoSansSinhala-Regular.ttf
