@@ -89,16 +89,15 @@ assets/
 
 # 🛠 **Technologies Used**
 
-| Component         | Technology        |
-| ----------------- | ----------------- |
-| Framework         | Flutter 3.24+     |
-| Localization      | easy_localization |
-| State Management  | Riverpod          |
-| HTTP Client       | http              |
-| Voice Recording   | record            |
-| Offline Detection | connectivity_plus |
-| File Uploads      | file_picker       |
-
+| Component         | Technology             |
+| ----------------- | -----------------      |
+| Framework         | Flutter 3.24+          |
+| Localization      | easy_localization      |
+| State Management  | Riverpod               |
+| HTTP Client       | http                   |
+| Voice Recording   | audio_waveforms: ^1.2.0|
+| Offline Detection | connectivity_plus      |
+| File Uploads      | file_picker            |
 ---
 
 # 📥 **How to Run This Project**
