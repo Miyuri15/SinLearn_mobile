@@ -29,7 +29,8 @@ dependencies:
   http: ^1.1.0
 
   # For voice recording (future use)
-  record: ^5.0.5
+  audio_waveforms: ^1.2.0
+
 
 dev_dependencies:
   flutter_test:
