@@ -1,3 +1,19 @@
 {
   "app_name": "SinLearn"
+  ,"ai_subtitle": "AI-Powered Sinhala Educational Assistant",
+  "sign_in": "Sign In",
+  "sign_up": "Sign Up",
+  "email": "Email",
+  "name": "Name",
+  "name_hint": "Your name",
+  "email_hint": "example@email.com",
+  "password": "Password",
+  "password_hint": "••••••••",
+  "user_type": "User Type",
+  "student": "Student",
+  "teacher": "Teacher",
+  "signin_pressed": "Sign in pressed",
+  "forgot_password": "Forgot password?",
+  "si_name": "සිංහල",
+  "en_name": "English"
 }

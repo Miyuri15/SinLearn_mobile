@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'layouts/mobile/sign_in_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,11 +32,15 @@ class SinLearnApp extends StatelessWidget {
       locale: context.locale,
       theme: ThemeData(
         brightness: Brightness.light,
+        fontFamily: 'Roboto',
+        primaryColor: const Color(0xFF1E63FF),
       ),
       darkTheme: ThemeData(
         brightness: Brightness.dark,
+        fontFamily: 'Roboto',
+        primaryColor: const Color(0xFF1E63FF),
       ),
-      home: const PlaceholderHome(),
+      home: const SignInPage(),
     );
   }
 }
@@ -51,3 +56,5 @@ class PlaceholderHome extends StatelessWidget {
     );
   }
 }
+
+// placeholder home kept for reference (not currently used)
