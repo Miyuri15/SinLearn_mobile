@@ -1,3 +1,18 @@
 {
-  "app_name": "සිංලර්න්"
+  "select_rubric": "රුබ්රික් තෝරන්න",
+  "standard_rubrics": "සම්මත රුබ්රික්",
+  "choose_a_rubric": "රුබ්රික් එකක් තෝරන්න",
+  "select_a_rubric": "රුබ්රික් තෝරන්න",
+  "or_upload_custom": "හෝ අභිරුචි රුබ්රික් එකක් උඩුගත කරන්න",
+  "pdf_docx_excel": "PDF, DOCX, හෝ Excel",
+  "upload": "උඩුගත කරන්න",
+  "rubric_description": "අපගේ පෙරනිමි විනිශ්චය රුබ්රික් වලින් තෝරන්න",
+  "upload_message": "උඩුගත කිරීමේ ක්‍රියාකාරකම් ක්‍රියාත්මක කරනු ලැබේ",
+  "close": "වසන්න",
+  "sinlearn_home": "සින්ලර්න් නිවස",
+  "select_rubric_tooltip": "රුබ්රික් තෝරන්න",
+  "welcome_sinlearn": "සින්ලර්න් වෙත සාදරයෙන් පිළිගනිමු",
+  "tap_rubric_instruction": "විනිශ්චය මානදණ්ඩ තෝරා ගැනීම සඳහා රුබ්රික් අයිකොනය ටැප් කරන්න",
+  "theme": "තේමාව",
+  "language": "භාෂාව"
 }

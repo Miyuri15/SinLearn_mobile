@@ -1,3 +1,18 @@
 {
-  "app_name": "SinLearn"
+  "select_rubric": "Select Rubric",
+  "standard_rubrics": "Standard Rubrics",
+  "choose_a_rubric": "Choose a Rubric",
+  "select_a_rubric": "Select a rubric",
+  "or_upload_custom": "or upload a custom Rubric",
+  "pdf_docx_excel": "PDF, DOCX, or Excel",
+  "upload": "Upload",
+  "rubric_description": "Select from our pre-defined evaluation rubrics",
+  "upload_message": "Upload functionality will be implemented",
+  "close": "Close",
+  "sinlearn_home": "SinLearn Home",
+  "select_rubric_tooltip": "Select Rubric",
+  "welcome_sinlearn": "Welcome to SinLearn",
+  "tap_rubric_instruction": "Tap the rubric icon to select evaluation criteria",
+  "theme": "Theme",
+  "language": "Language"
 }
