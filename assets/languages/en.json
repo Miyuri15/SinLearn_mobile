@@ -1,3 +1,43 @@
 {
-  "app_name": "SinLearn"
+  "app_name": "SinLearn",
+
+  "settings": "Settings",
+  "manage_preferences": "Manage your preferences",
+  "language": "Language",
+  "select_interface_language": "Select interface language",
+  "ai_note": "All AI responses and evaluations are always in Sinhala. Language setting only changes the UI.",
+
+  "appearance": "Appearance",
+  "customize_theme": "Customize theme and display preferences",
+  "dark_mode": "Dark Mode",
+  "enable_dark_mode": "Enable dark color scheme",
+
+  "profile": "Profile",
+  "your_account_information": "Your account information",
+  "user_type": "User Type",
+  "name": "Name",
+  "email": "Email",
+
+  "notifications": "Notifications",
+  "manage_notifications_preferences": "Manage notification preferences",
+  "message_notifications": "Message Notifications",
+  "message_notifications_desc": "Notify for new messages",
+  "evaluation_notifications": "Evaluation Notifications",
+  "evaluation_notifications_complete": "Notify when evaluations are complete",
+
+  "privacy_security": "Privacy & Security",
+  "data_and_privacy_settings": "Data and privacy settings",
+  "save_chat_history": "Save Chat History",
+  "save_chat_history_desc": "Save conversations locally",
+  "data_collection": "Data Collection",
+  "data_collection_desc": "For improving experience",
+  "delete_all_chats": "Delete All Chats",
+
+  "about": "About",
+  "version": "Version",
+  "license": "License",
+  "terms_conditions": "Terms and Conditions",
+  "privacy_policy": "Privacy Policy"
+
+
 }

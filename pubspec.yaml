@@ -16,6 +16,9 @@ dependencies:
   # Localization support (English + Sinhala)
   easy_localization: ^3.0.1
 
+  #create to route path
+  go_router: ^14.2.1
+
   # State management (recommended for clean architecture)
   flutter_riverpod: ^2.5.1
 
