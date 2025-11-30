@@ -14,5 +14,33 @@
   "welcome_sinlearn": "සින්ලර්න් වෙත සාදරයෙන් පිළිගනිමු",
   "tap_rubric_instruction": "විනිශ්චය මානදණ්ඩ තෝරා ගැනීම සඳහා රුබ්රික් අයිකොනය ටැප් කරන්න",
   "theme": "තේමාව",
-  "language": "භාෂාව"
+  "language": "භාෂාව",
+"teacher_rubrics": "ගුරු රූබ්‍රික්",
+  "teacher_rubric_description": "පෙරනිමි ගුරු විනිශ්චය රූබ්‍රික් තෝරන්න",
+  "choose_teacher_rubric": "ගුරු රූබ්‍රික් තෝරා ගන්න",
+  "select_teacher_rubric": "ගුරු රූබ්‍රික් තෝරා ගන්න",
+
+ "balanced_evaluation": "සමබර විනිශ්චය (නිර්දේශිත)",
+  "balanced_semantic": "අර්ථ සම්පූර්ණතාව",
+  "balanced_coverage": "විෂය ආවරණය",
+  "balanced_relevance": "අදාළත්වය",
+
+  "understanding_focused": "තේරුම් පදනම් විනිශ්චය",
+  "understanding_semantic": "අර්ථ තේරුම්",
+  "understanding_coverage": "මූලික පද/විෂය ආවරණය",
+  "understanding_relevance": "අදාළත්වය",
+
+  "content_focused": "අන්තර්ගත පදනම් විනිශ්චය",
+  "content_semantic": "අර්ථ සම්පූර්ණතාව",
+  "content_coverage": "අන්තර්ගත ආවරණය",
+  "content_relevance": "අදාළත්වය",
+
+  "marks_40": "40%",
+  "marks_30": "30%",
+  "marks_20": "20%",
+  "marks_50": "50%",
+  "marks_60": "60%",
+  "marks_100": "100%",
+
+  "total": "මුළු එකතුව"
 }

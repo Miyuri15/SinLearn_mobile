@@ -53,6 +53,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                         Text(
                           'choose_a_rubric'.tr(),
                           style: theme.textTheme.titleLarge?.copyWith(
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
                           ),
@@ -61,6 +62,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                         Text(
                           'Standard rubrics'.tr(),
                           style: theme.textTheme.bodyMedium?.copyWith(
+                            fontSize: 12,
                             color: theme.colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
@@ -87,6 +89,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                         Text(
                           'or_upload_custom'.tr(),
                           style: theme.textTheme.titleLarge?.copyWith(
+                            fontSize: 15,
                             fontWeight: FontWeight.bold,
                             color: theme.colorScheme.onSurface,
                           ),
@@ -95,6 +98,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                         Text(
                           'pdf_docx_excel'.tr(),
                           style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 12,
                             color: theme.colorScheme.onSurface.withOpacity(0.6),
                             fontStyle: FontStyle.italic,
                           ),
@@ -119,7 +123,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                             child: Text(
                               'upload'.tr(),
                               style: const TextStyle(
-                                fontSize: 14,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
@@ -157,6 +161,7 @@ Widget _buildHeader(ThemeData theme) {
               child: Text(
                 'select_rubric'.tr(),
                 style: theme.textTheme.headlineSmall?.copyWith(
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: theme.colorScheme.onSurface,
                 ),
@@ -173,6 +178,7 @@ Widget _buildHeader(ThemeData theme) {
         Text(
           'standard_rubrics'.tr(),
           style: theme.textTheme.bodyMedium?.copyWith(
+            fontSize: 12,
             fontWeight: FontWeight.w400,
             color: theme.colorScheme.onSurface.withOpacity(0.7),
           ),
@@ -189,6 +195,10 @@ Widget _buildHeader(ThemeData theme) {
       value: _selectedRubric,
       decoration: InputDecoration(
         labelText: 'select_a_rubric'.tr(),
+        labelStyle: TextStyle(
+          fontSize: 10, // Custom label size
+          color: theme.colorScheme.onSurface.withOpacity(0.6),
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),

@@ -14,5 +14,36 @@
   "welcome_sinlearn": "Welcome to SinLearn",
   "tap_rubric_instruction": "Tap the rubric icon to select evaluation criteria",
   "theme": "Theme",
-  "language": "Language"
+  "language": "Language",
+  "teacher_rubrics": "Teacher Rubrics",
+  "teacher_rubric_description": "Select a predefined evaluation rubric",
+  "choose_teacher_rubric": "Choose a Teacher Rubric",
+  "select_teacher_rubric": "Select a teacher rubric",
+
+  "research_evaluation": "Research Evaluation Rubric",
+  "practical_assignment_evaluation": "Practical Assignment Evaluation",
+
+  "balanced_evaluation": "Balanced Evaluation (Recommended)",
+  "balanced_semantic": "Semantic",
+  "balanced_coverage": "Coverage",
+  "balanced_relevance": "Relevance",
+
+  "understanding_focused": "Understanding Focused",
+  "understanding_semantic": "Semantic",
+  "understanding_coverage": "Coverage",
+  "understanding_relevance": "Coverage",
+
+  "content_focused": "Content Focused",
+  "content_semantic": "Semantic",
+  "content_coverage": "Coverage",
+  "content_relevance": "Relevance",
+
+  "marks_40": "40%",
+  "marks_30": "30%",
+  "marks_20": "20%",
+  "marks_50": "50%",
+  "marks_60": "60%",
+  "marks_100": "100%",
+
+  "total": "Total"
 }
