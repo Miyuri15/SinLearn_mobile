@@ -1,3 +1,23 @@
 {
-  "app_name": "SinLearn"
+  "app_name": "SinLearn",
+  "syllabus": {
+    "header": "Syllabus",
+    "intro": "Upload & select your syllabus. AI will provide answers based on your curriculum.",
+    "upload_title": "Upload Syllabus",
+    "upload_subtitle": "PDF, DOC, or DOCX files only",
+    "click_to_upload": "Click to upload",
+    "uploaded_section_title": "Uploaded Syllabi",
+    "uploaded_section_subtitle": "Select a syllabus for your chat",
+    "uploaded": "Uploaded",
+    "cancel": "Cancel",
+    "select_file_cancelled": "File selection cancelled",
+    "upload_success": "Uploaded: {0}",
+    "upload_error": "Failed to pick file",
+    "delete_title": "Delete Syllabus",
+    "delete_confirm": "Are you sure you want to delete \"{0}\"? This cannot be undone.",
+    "delete": "Delete",
+    "deleted": "Deleted: {0}",
+    "file_subject_default": "Uploaded File",
+    "tags": "Tags"
+  }
 }
