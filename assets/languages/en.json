@@ -45,5 +45,8 @@
   "marks_60": "60%",
   "marks_100": "100%",
 
-  "total": "Total"
+  "total": "Total",
+  "submit": "Submit",
+  "total_value_note": "The entered value total should be 100%",
+  "total_error": "Total should be 100%"
 }

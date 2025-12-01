@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'rubric_upload_form.dart';
 
 class TeachersRubricSidebar extends StatefulWidget {
   const TeachersRubricSidebar({super.key});
@@ -220,9 +221,10 @@ Widget _buildRubricCard(
     );
   }
 
-  void _handleUpload() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('upload_message'.tr())),
-    );
-  }
+ void _handleUpload() {
+  showDialog(
+    context: context,
+    builder: (context) => const RubricUploadForm(),
+  );
+}
 }
