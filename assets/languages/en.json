@@ -19,5 +19,20 @@
     "deleted": "Deleted: {0}",
     "file_subject_default": "Uploaded File",
     "tags": "Tags"
+  },
+  "recent_chats": {
+    "header": "Recent Chats",
+    "search_hint": "Search chats...",
+    "new_learning": "New Learning Chat",
+    "new_evaluation": "New Evaluation Chat",
+    "messages_zero": "0 messages",
+    "messages": "{0} messages",
+    "less_minute": "less than a minute ago",
+    "minute_ago": "1 minute ago",
+    "minutes_ago": "{0} minutes ago",
+    "hour_ago": "1 hour ago",
+    "hours_ago": "{0} hours ago",
+    "settings": "Settings",
+    "logout": "Logout"
   }
 }

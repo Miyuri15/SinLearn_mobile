@@ -5,7 +5,7 @@
     "intro": "ඔබගේ විෂය නිර්දේශය උඩුගත කර තෝරන්න. AI ඔබගේ ප්‍රශ්න සඳහා ඔබේ විෂය නිර්දේශයට අනුව පිළිතුරු ලබා දේ.",
     "upload_title": "පාඨමාලාව උඩුගත කරන්න",
     "upload_subtitle": "PDF, DOC, හෝ DOCX ගොනු පමණක්",
-    "click_to_upload": "උඩුගත කිරීමට ක්ලික් කරන්න",
+    "click_to_upload": "උඩුගත ක්ලික් කරන්න",
     "uploaded_section_title": "උඩුගත් පාඨමාලා",
     "uploaded_section_subtitle": "ඔබේ චැට් සඳහා පාඨමාලාවක් තෝරන්න",
     "uploaded": "උඩුගත්",
@@ -16,8 +16,23 @@
     "delete_title": "පාඨමාලාව මකන්න",
     "delete_confirm": "ඔබට \"{0}\" මකන්න යන්නට අවශ්‍යද? මෙය ආපසු ලබාගත නොහැක.",
     "delete": "මකන්න",
-    "deleted": "මකıldı: {0}",
+    "deleted": "මැකුවා: {0}",
     "file_subject_default": "උඩුගත් ගොනුව",
     "tags": "ටැග්"
+  },
+  "recent_chats": {
+    "header": "මෑත චැට්",
+    "search_hint": "චැට් සොයන්න...",
+    "new_learning": "නව ඉගෙනීමේ චැට්",
+    "new_evaluation": "නව ඇගයීම් චැට්",
+    "messages_zero": "0 පණිවිඩ",
+    "messages": "{0} පණිවිඩ",
+    "less_minute": "මිනිත්තුවකටත් අඩු වේලාවකට පෙර",
+    "minute_ago": "මිනිත්තුවකට පෙර",
+    "minutes_ago": "මිනිත්තු {0} කට පෙර",
+    "hour_ago": "පැය 1 කට පෙර",
+    "hours_ago": "පැය {0} කට පෙර",
+    "settings": "සැකසුම්",
+    "logout": "පිටවන්න"
   }
 }
