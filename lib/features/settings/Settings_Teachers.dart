@@ -1,5 +1,14 @@
+
+// features/settings/Settings_Teachers.dart
+
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart'; // ✅ Provider ආනයනය කරන්න
+
+// 💡 main.dart එකෙන් ThemeSettings Class එක ආනයනය කළ යුතුය
+// ඔබගේ ගොනු ව්‍යුහය අනුව මාර්ගය වෙනස් විය හැක.
+import '../../main.dart';
 
 class SettingTeachers extends StatefulWidget {
   const SettingTeachers({super.key});
@@ -9,52 +18,47 @@ class SettingTeachers extends StatefulWidget {
 }
 
 class _SettingTeachersState extends State<SettingTeachers> {
-
-  bool isDark = false;
   // State variables for toggles
   bool messagesOn = true;
   bool evaluationsOn = true;
   bool chatHistoryOn = true;
   bool dataCollectionOn = true;
 
-  IconData get _appearanceIcon {
-    return isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined;
-  }
-
   // --- FIGMA COLORS ---
   final Color primaryBlue = const Color(0xFF2563EB); // Primary Blue
-  // Dark Theme specific input background color (For Language Dropdown)
   final Color darkInputBackground = const Color(0xFF2A2B32);
-  // Dark Theme specific profile input background color (As requested: Blue for Profile)
-  final Color darkProfileInputBackground = const Color(0xFF2563EB).withOpacity(0.1); // Slightly transparent blue
+  final Color darkProfileInputBackground = const Color(0xFF2563EB).withOpacity(0.1);
 
   @override
   Widget build(BuildContext context) {
-    // Color scheme definitions
+    // 💡 Provider  isDark watch
+    final themeSettings = context.watch<ThemeSettings>();
+    final isDark = themeSettings.isDark;
+
+    // 💡 Dark theme colors
     final background = isDark ? const Color(0xFF000000) : const Color(0xFFF3F4F6); // Main Scaffold Background
     final card = isDark ? const Color(0xFF1E1F20) : Colors.white; // Card Background
     final text = isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827); // Primary Text Color
     final subText = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280); // Secondary Text Color
 
-    // Input/Dropdown Background color for LANGUAGE (Dynamic based on isDark)
     final languageInputBg = isDark ? darkInputBackground : background;
-
-    // Input/Read-only Box Background color for PROFILE (Dynamic based on isDark/request)
     final profileInputBg = isDark ? darkProfileInputBackground : background;
 
-    // Info Box Colors
     final infoBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF);
     final infoBorder = isDark ? const Color(0xFF2563EB) : const Color(0xFFBFDBFE);
     final infoText = isDark ? const Color(0xFF93C5FD) : const Color(0xFF374151);
 
-    // Header background (using card color for consistency)
     final headerBg = card;
+
+    // 💡 Icon
+    final IconData appearanceIcon =
+    isDark ? Icons.dark_mode_outlined : Icons.light_mode_outlined;
+
 
     return Scaffold(
       backgroundColor: background,
       body: SafeArea(
         child: SingleChildScrollView(
-          // --- HEADER & BODY WRAPPED IN A COLUMN WITH HEADER BACKGROUND ---
           child: Column(
             children: [
               // ---------------- HEADER ----------------
@@ -67,7 +71,13 @@ class _SettingTeachersState extends State<SettingTeachers> {
                 child: Row(
                   children: [
                     IconButton(
-                      onPressed: () => Navigator.pop(context),
+                      onPressed: () {
+                        if (context.canPop()) {
+                          context.pop();
+                        } else {
+                          context.go('/');
+                        }
+                      },
                       icon: Icon(Icons.arrow_back, color: text),
                     ),
                     const SizedBox(width: 8),
@@ -85,9 +95,9 @@ class _SettingTeachersState extends State<SettingTeachers> {
                 ),
               ),
 
-              const SizedBox(height: 16), // Gap between header and first card
+              const SizedBox(height: 16),
 
-              // ---------------- LANGUAGE ----------------
+              // ---------------- LANGUAGE (Global via EasyLocalization) ----------------
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
@@ -118,7 +128,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         value: context.locale,
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: languageInputBg, // Uses languageInputBg (0xFF2A2B32 in Dark Mode)
+                          fillColor: languageInputBg,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                           border: OutlineInputBorder(
                             borderSide: BorderSide(color: isDark ? subText.withOpacity(0.3) : Colors.grey.shade300),
@@ -129,7 +139,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: primaryBlue), // Focus border color
+                            borderSide: BorderSide(color: primaryBlue),
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
@@ -179,7 +189,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
 
               const SizedBox(height: 16),
 
-              // ---------------- APPEARANCE ----------------
+              // ---------------- APPEARANCE (Theme Toggle) ----------------
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
@@ -191,7 +201,8 @@ class _SettingTeachersState extends State<SettingTeachers> {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(_appearanceIcon, color: text, size: 26),
+                          // 💡 use Icons
+                          Icon(appearanceIcon, color: text, size: 26),
                           const SizedBox(width: 8),
 
                           Expanded(
@@ -235,11 +246,11 @@ class _SettingTeachersState extends State<SettingTeachers> {
                             ],
                           ),
                           Switch(
+                            // 💡 getIsdark in provider
                             value: isDark,
                             onChanged: (v) {
-                              setState(() {
-                                isDark = v;
-                              });
+                              // 💡 context.read call provider method
+                              context.read<ThemeSettings>().toggleTheme(v);
                             },
                             // Requested Switch Style
                             activeColor: Colors.white,
@@ -247,7 +258,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
                             activeTrackColor: primaryBlue,
                             inactiveTrackColor: Colors.grey.shade400,
                           )
-
                         ],
                       ),
                     ],
@@ -265,11 +275,9 @@ class _SettingTeachersState extends State<SettingTeachers> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-
                           Icon(Icons.person_outline, color: text, size: 26),
                           const SizedBox(width: 8),
 
@@ -299,16 +307,15 @@ class _SettingTeachersState extends State<SettingTeachers> {
                       const SizedBox(height: 16),
                       _label("user_type".tr(), subText),
 
-                      // Read-only Box (Uses profileInputBg for blue background in Dark Mode)
                       _readonlyBox("teacher".tr(), profileInputBg, text, isDark),
 
                       const SizedBox(height: 12),
                       _label("name".tr(), subText),
-                      _inputBox("User Name", profileInputBg, text, isDark), // Corrected: Uses profileInputBg
+                      _inputBox("User Name", profileInputBg, text, isDark),
 
                       const SizedBox(height: 12),
                       _label("email".tr(), subText),
-                      _inputBox("user@example.com", profileInputBg, text, isDark), // Corrected: Uses profileInputBg
+                      _inputBox("user@example.com", profileInputBg, text, isDark),
                     ],
                   ),
                 ),
@@ -361,13 +368,11 @@ class _SettingTeachersState extends State<SettingTeachers> {
 
                       const SizedBox(height: 16),
 
-                      // Toggle 1 (Switch Style applied)
                       _toggleItem(
                         title: "message_notifications".tr(),
                         subtitle: "message_notifications_desc".tr(),
                         value: messagesOn,
                         onChanged: (v) => setState(() => messagesOn = v),
-                        // Using custom style for all toggles
                         activeColor: Colors.white,
                         inactiveThumbColor: Colors.white,
                         activeTrackColor: primaryBlue,
@@ -376,13 +381,11 @@ class _SettingTeachersState extends State<SettingTeachers> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Toggle 2 (Switch Style applied)
                       _toggleItem(
                         title: "evaluation_notifications".tr(),
                         subtitle: "evaluation_notifications_complete".tr(),
                         value: evaluationsOn,
                         onChanged: (v) => setState(() => evaluationsOn = v),
-                        // Using custom style for all toggles
                         activeColor: Colors.white,
                         inactiveThumbColor: Colors.white,
                         activeTrackColor: primaryBlue,
@@ -443,13 +446,11 @@ class _SettingTeachersState extends State<SettingTeachers> {
 
                       const SizedBox(height: 16),
 
-                      // Toggle 3 (Switch Style applied)
                       _toggleItem(
                         title: "save_chat_history".tr(),
                         subtitle: "save_chat_history_desc".tr(),
                         value: chatHistoryOn,
                         onChanged: (v) => setState(() => chatHistoryOn = v),
-                        // Using custom style for all toggles
                         activeColor: Colors.white,
                         inactiveThumbColor: Colors.white,
                         activeTrackColor: primaryBlue,
@@ -458,13 +459,11 @@ class _SettingTeachersState extends State<SettingTeachers> {
                       ),
                       const SizedBox(height: 12),
 
-                      // Toggle 4 (Switch Style applied)
                       _toggleItem(
                         title: "data_collection".tr(),
                         subtitle: "data_collection_desc".tr(),
                         value: dataCollectionOn,
                         onChanged: (v) => setState(() => dataCollectionOn = v),
-                        // Using custom style for all toggles
                         activeColor: Colors.white,
                         inactiveThumbColor: Colors.white,
                         activeTrackColor: primaryBlue,
@@ -567,9 +566,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
     );
   }
 
-  // Bg color parameter now uses the specific inputBg color
   Widget _readonlyBox(String value, Color bg, Color text, bool isDark) {
-    // Border should be lighter for the profile blue input background
     final borderColor = isDark ? text.withOpacity(0.1) : Colors.grey.shade300;
 
     return Container(
@@ -583,7 +580,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
     );
   }
 
-  // Bg color parameter now uses the specific inputBg color
   Widget _inputBox(String value, Color bg, Color text, bool isDark) {
     final borderColor = isDark ? text.withOpacity(0.1) : Colors.grey.shade300;
     final primaryBlue = const Color(0xFF2563EB);
@@ -596,7 +592,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
         hintText: value,
         hintStyle: TextStyle(color: text.withOpacity(0.5)),
         contentPadding: const EdgeInsets.all(12),
-        // Dark theme needs a subtle border, especially with blue background
         border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: borderColor)),
@@ -611,7 +606,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
     );
   }
 
-  // Toggle switch functionality and colors fixed
   Widget _toggleItem({
     required String title,
     required String subtitle,
@@ -636,24 +630,16 @@ class _SettingTeachersState extends State<SettingTeachers> {
           ]),
         ),
         Switch(
-            value: value,
-            activeColor: activeColor, // White dot when active
-            inactiveThumbColor: inactiveThumbColor, // White dot when inactive
-            activeTrackColor: activeTrackColor, // Blue track when active
-            inactiveTrackColor: inactiveTrackColor, // Gray track when inactive
-            onChanged: onChanged,
+          value: value,
+          activeColor: activeColor,
+          inactiveThumbColor: inactiveThumbColor,
+          activeTrackColor: activeTrackColor,
+          inactiveTrackColor: inactiveTrackColor,
+          onChanged: onChanged,
         ),
       ],
     );
   }
 }
-
-
-
-
-
-
-
-
 
 
