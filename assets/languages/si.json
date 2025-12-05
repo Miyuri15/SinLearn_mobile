@@ -34,5 +34,21 @@
     "hours_ago": "පැය {0} කට පෙර",
     "settings": "සැකසුම්",
     "logout": "පිටවන්න"
+  },
+  "question_paper": {
+    "header": "ප්‍රශ්නා පත්‍රය",
+    "intro": "PDF හෝ DOCX ගොනුවක් උඩුගත කරන්න",
+    "upload_title": "ප්‍රශ්නා පත්‍රය උඩුගත කරන්න",
+    "upload_subtitle": "PDF, DOC, හෝ DOCX ගොනු පමණක්",
+    "click_to_upload": "උඩුගත කිරීමට ක්ලික් කරන්න",
+    "replace_file": "ගොනුව ප්‍රතිස්ථාපනය කරන්න",
+    "uploaded_section_title": "උඩුගත කළ ප්‍රශ්නා පත්‍රය",
+    "uploaded_section_subtitle": "එකින් තනි ගොනුවක් පමණක් තබා ගත හැක",
+    "no_file": "ගොනුවක් උඩුගත කර නැත",
+    "cancel": "අවලංගු කරන්න",
+    "select_file_cancelled": "ගොනු තේරීම අවලංගු කරන ලදි",
+    "upload_success": "උඩුගත්: {0}",
+    "upload_error": "ගොනුව තෝරා ගැනීමට බැරි විය",
+    "deleted": "මැකුවා: {0}"
   }
 }

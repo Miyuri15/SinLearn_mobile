@@ -167,16 +167,22 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                     color: isDark ? Color(0xFF222222) : Colors.white,
                   ),
                   child: Center(
-                    child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      // restore previous cloud upload icon, neutral color (not blue)
-                      Icon(
-                        Icons.cloud_upload_outlined,
-                        size: 48,
-                        color: isDark ? Color(0xFFAAAAAA) : Color(0xFF6B7A95),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(tr('syllabus.click_to_upload'), style: TextStyle(fontSize: 15, color: isDark ? Color(0xFFAAAAAA) : Color(0xFF6B7A95))),
-                    ]),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // use main app's upload icon
+                        Icon(
+                          Icons.file_upload_outlined,
+                          size: 48,
+                          color: isDark ? Color(0xFFAAAAAA) : Color(0xFF6B7A95),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          tr('syllabus.click_to_upload'),
+                          style: TextStyle(fontSize: 15, color: isDark ? Color(0xFFAAAAAA) : Color(0xFF6B7A95)),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
