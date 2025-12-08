@@ -141,53 +141,53 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
     );
   }
 
-Widget _buildHeader(ThemeData theme) {
-  return DecoratedBox(
-    decoration: BoxDecoration(
-      border: Border(
-        bottom: BorderSide(
-          color: theme.colorScheme.outline.withOpacity(0.3),
-          width: 1.0,
-        ),
-      ),
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Flexible(
-              child: Text(
-                'select_rubric'.tr(),
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.of(context).pop(),
-              tooltip: 'close'.tr(),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'standard_rubrics'.tr(),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontSize: 12,
-            fontWeight: FontWeight.w400,
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
+  Widget _buildHeader(ThemeData theme) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outline.withOpacity(0.3),
+            width: 1.0,
           ),
         ),
-        const SizedBox(height: 16), // Add bottom padding for the border
-      ],
-    ),
-  );
-}
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Flexible(
+                child: Text(
+                  'select_rubric'.tr(),
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'close'.tr(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'standard_rubrics'.tr(),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+              color: theme.colorScheme.onSurface.withOpacity(0.7),
+            ),
+          ),
+          const SizedBox(height: 16), // Add bottom padding for the border
+        ],
+      ),
+    );
+  }
 
   Widget _buildRubricsDropdown(ThemeData theme) {
     return DropdownButtonFormField<String>(
@@ -237,3 +237,38 @@ Widget _buildHeader(ThemeData theme) {
     );
   }
 }
+
+void showRubricSelectionSidebar(BuildContext context) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black45,
+    transitionDuration: const Duration(milliseconds: 200),
+    pageBuilder: (BuildContext buildContext, Animation<double> animation,
+        Animation<double> secondaryAnimation) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.zero, // 🚫 Remove all corner radius
+          child: SizedBox(
+            width: 304,
+            height: double.infinity,
+            child: const RubricSelectionSidebar(),
+          ),
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(1.0, 0.0),
+          end: Offset.zero,
+        ).animate(animation),
+        child: child,
+      );
+    },
+  );
+}
+

@@ -32,25 +32,34 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 _buildRubricCard(
                   theme,
                   'balanced_evaluation'.tr(),
-                  'balanced_semantic'.tr(), 'marks_40'.tr(),
-                  'balanced_coverage'.tr(), 'marks_30'.tr(),
-                  'balanced_relevance'.tr(), 'marks_30'.tr(),
+                  'balanced_semantic'.tr(),
+                  'marks_40'.tr(),
+                  'balanced_coverage'.tr(),
+                  'marks_30'.tr(),
+                  'balanced_relevance'.tr(),
+                  'marks_30'.tr(),
                 ),
                 const SizedBox(height: 24),
                 _buildRubricCard(
                   theme,
                   'understanding_focused'.tr(),
-                  'understanding_semantic'.tr(), 'marks_60'.tr(),
-                  'understanding_coverage'.tr(), 'marks_20'.tr(),
-                  'understanding_relevance'.tr(), 'marks_20'.tr(),
+                  'understanding_semantic'.tr(),
+                  'marks_60'.tr(),
+                  'understanding_coverage'.tr(),
+                  'marks_20'.tr(),
+                  'understanding_relevance'.tr(),
+                  'marks_20'.tr(),
                 ),
                 const SizedBox(height: 24),
                 _buildRubricCard(
                   theme,
                   'content_focused'.tr(),
-                  'content_semantic'.tr(), 'marks_30'.tr(),
-                  'content_coverage'.tr(), 'marks_50'.tr(),
-                  'content_relevance'.tr(), 'marks_20'.tr(),
+                  'content_semantic'.tr(),
+                  'marks_30'.tr(),
+                  'content_coverage'.tr(),
+                  'marks_50'.tr(),
+                  'content_relevance'.tr(),
+                  'marks_20'.tr(),
                 ),
               ],
             ),
@@ -112,7 +121,6 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
   Widget _buildUploadCard(ThemeData theme) {
     return Card(
       elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -148,52 +156,55 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
   }
 
   // ---------------------- Rubric Card -------------------------
-Widget _buildRubricCard(
-  ThemeData theme,
-  String rubricTitle,
-  String semanticLabel, String semanticMark,
-  String coverageLabel, String coverageMark,
-  String relevanceLabel, String relevanceMark,
-) {
-  return Card(
-    elevation: 2,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Paper icon added to title for ALL cards
-          Row(
-            children: [
-              Icon(
-                Icons.description,
-                size: 20,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  rubricTitle, 
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontSize: 15, // Custom size
-                    fontWeight: FontWeight.w600,
+  Widget _buildRubricCard(
+    ThemeData theme,
+    String rubricTitle,
+    String semanticLabel,
+    String semanticMark,
+    String coverageLabel,
+    String coverageMark,
+    String relevanceLabel,
+    String relevanceMark,
+  ) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Paper icon added to title for ALL cards
+            Row(
+              children: [
+                Icon(
+                  Icons.description,
+                  size: 20,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    rubricTitle,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontSize: 15, // Custom size
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _item(semanticLabel, semanticMark),
-          _item(coverageLabel, coverageMark),
-          _item(relevanceLabel, relevanceMark),
-          const Divider(),
-          _item('total'.tr(), 'marks_100'.tr()),
-        ],
+              ],
+            ),
+            const SizedBox(height: 12),
+            _item(semanticLabel, semanticMark),
+            _item(coverageLabel, coverageMark),
+            _item(relevanceLabel, relevanceMark),
+            const Divider(),
+            _item('total'.tr(), 'marks_100'.tr()),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   // ---------------------- Helper -------------------------
   Widget _item(String label, String value) {
@@ -203,28 +214,61 @@ Widget _buildRubricCard(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-          label,
-          style: const TextStyle(
-            fontSize: 12, // Custom size for labels
-            fontWeight: FontWeight.w400,
+            label,
+            style: const TextStyle(
+              fontSize: 12, // Custom size for labels
+              fontWeight: FontWeight.w400,
+            ),
           ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 12, // Custom size for values
-            fontWeight: FontWeight.w500,
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12, // Custom size for values
+              fontWeight: FontWeight.w500,
+            ),
           ),
-        ),
         ],
       ),
     );
   }
 
- void _handleUpload() {
-  showDialog(
-    context: context,
-    builder: (context) => const RubricUploadForm(),
-  );
+  void _handleUpload() {
+    showDialog(
+      context: context,
+      builder: (context) => const RubricUploadForm(),
+    );
+  }
 }
+
+void showTeachersRubricSidebar(BuildContext context) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black45,
+    transitionDuration: const Duration(milliseconds: 200),
+    pageBuilder: (BuildContext buildContext, Animation<double> animation,
+        Animation<double> secondaryAnimation) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Material(
+          borderRadius: BorderRadius.zero, // Remove rounded corners
+          child: SizedBox(
+            width: 304,
+            height: double.infinity,
+            child: const TeachersRubricSidebar(),
+          ),
+        ),
+      );
+    },
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(1.0, 0.0),
+          end: Offset.zero,
+        ).animate(animation),
+        child: child,
+      );
+    },
+  );
 }
