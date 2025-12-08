@@ -120,6 +120,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
   // ---------------------- Upload Card -------------------------
   Widget _buildUploadCard(ThemeData theme) {
     return Card(
+      color: Colors.white,
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -167,6 +168,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     String relevanceMark,
   ) {
     return Card(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -180,7 +182,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 Icon(
                   Icons.description,
                   size: 20,
-                  color: theme.colorScheme.primary,
+                  color: Colors.blue,
                 ),
                 const SizedBox(width: 8),
                 Expanded(

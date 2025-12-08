@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'sign_up_page.dart';
+import '../evaluation/evaluation_text.dart';
 
 class SignInPage extends StatelessWidget {
   const SignInPage({super.key});
@@ -64,7 +65,8 @@ class SignInPage extends StatelessWidget {
                                 shape: BoxShape.circle,
                               ),
                               alignment: Alignment.center,
-                              child: const Icon(Icons.school, size: 44, color: Colors.white),
+                              child: const Icon(Icons.school,
+                                  size: 44, color: Colors.white),
                             ),
 
                             const SizedBox(height: 24),
@@ -101,7 +103,8 @@ class SignInPage extends StatelessWidget {
                                       blurRadius: 12,
                                       offset: const Offset(0, 8))
                                 ],
-                                border: Border.all(color: Colors.grey.withOpacity(0.06)),
+                                border: Border.all(
+                                    color: Colors.grey.withOpacity(0.06)),
                               ),
                               child: Row(
                                 children: [
@@ -113,7 +116,8 @@ class SignInPage extends StatelessWidget {
                                         borderRadius: BorderRadius.circular(18),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(0.08),
+                                            color:
+                                                Colors.black.withOpacity(0.08),
                                             blurRadius: 10,
                                             offset: const Offset(0, 8),
                                           )
@@ -134,7 +138,10 @@ class SignInPage extends StatelessWidget {
                                   Expanded(
                                     child: InkWell(
                                       borderRadius: BorderRadius.circular(18),
-                                      onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SignUpPage())),
+                                      onTap: () => Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                              builder: (_) =>
+                                                  const SignUpPage())),
                                       child: Container(
                                         alignment: Alignment.center,
                                         child: Text(
@@ -179,13 +186,13 @@ class _LanguageToggle extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-          color: Colors.white,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8),
         ],
       ),
-        child: Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.language, size: 20, color: Colors.grey),
@@ -264,53 +271,69 @@ class _AuthFormState extends State<_AuthForm> {
         // Email label above input (placeholder inside) per design
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('email'.tr(), style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[800])),
+          child: Text('email'.tr(),
+              style: TextStyle(
+                  fontWeight: FontWeight.w600, color: Colors.grey[800])),
         ),
         const SizedBox(height: 6),
-          // boxed input with soft lift + light blue border
-          Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF6F9FF),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE0E4F0)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2))],
-            ),
-            child: TextFormField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              decoration: InputDecoration(
-                hintText: 'email_hint'.tr(),
-                hintStyle: const TextStyle(color: Color(0xFFA9B0C3)),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              ),
+        // boxed input with soft lift + light blue border
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF6F9FF),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE0E4F0)),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2))
+            ],
+          ),
+          child: TextFormField(
+            controller: _emailCtrl,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              hintText: 'email_hint'.tr(),
+              hintStyle: const TextStyle(color: Color(0xFFA9B0C3)),
+              border: InputBorder.none,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             ),
           ),
+        ),
         const SizedBox(height: 12),
         // Password label above input
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('password'.tr(), style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[800])),
+          child: Text('password'.tr(),
+              style: TextStyle(
+                  fontWeight: FontWeight.w600, color: Colors.grey[800])),
         ),
         const SizedBox(height: 6),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFFE0E4F0)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2))],
-            ),
-            child: TextFormField(
-              controller: _pwdCtrl,
-              obscureText: true, // keep hidden; no visibility toggle per design
-              decoration: InputDecoration(
-                hintText: 'password_hint'.tr(),
-                hintStyle: const TextStyle(color: Color(0xFFA9B0C3)),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-              ),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFE0E4F0)),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withOpacity(0.03),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2))
+            ],
+          ),
+          child: TextFormField(
+            controller: _pwdCtrl,
+            obscureText: true, // keep hidden; no visibility toggle per design
+            decoration: InputDecoration(
+              hintText: 'password_hint'.tr(),
+              hintStyle: const TextStyle(color: Color(0xFFA9B0C3)),
+              border: InputBorder.none,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             ),
           ),
+        ),
         const SizedBox(height: 18),
         SizedBox(
           width: double.infinity,
@@ -322,13 +345,17 @@ class _AuthFormState extends State<_AuthForm> {
               backgroundColor: const Color(0xFF1E7EFF),
             ),
             onPressed: () {
-              // Placeholder: handle sign-in
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text('signin_pressed'.tr())));
+              // Navigate to EvaluationTextPage
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const EvaluationTextPage()),
+              );
             },
             child: Text(
               'sign_in'.tr(),
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: Colors.white),
             ),
           ),
         ),

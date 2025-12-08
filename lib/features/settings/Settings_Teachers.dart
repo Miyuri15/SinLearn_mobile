@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
@@ -18,7 +17,6 @@ class SettingTeachers extends StatefulWidget {
 }
 
 class _SettingTeachersState extends State<SettingTeachers> {
-
   bool get isDark => widget.isDark;
 
   // State variables for toggles
@@ -34,7 +32,8 @@ class _SettingTeachersState extends State<SettingTeachers> {
   // --- FIGMA COLORS (Now defined via Theme or used locally for specific elements) ---
   final Color primaryBlue = const Color(0xFF2563EB); // Primary Blue
   // Dark Theme specific profile input background color (As requested: Blue for Profile)
-  final Color darkProfileInputBackground = const Color(0xFF2563EB).withOpacity(0.1);
+  final Color darkProfileInputBackground =
+      const Color(0xFF2563EB).withOpacity(0.1);
 
   @override
   Widget build(BuildContext context) {
@@ -45,18 +44,22 @@ class _SettingTeachersState extends State<SettingTeachers> {
     final colorScheme = theme.colorScheme;
 
     //  Theme API colors
-    final background = theme.scaffoldBackgroundColor; // Main Scaffold Background
+    final background =
+        theme.scaffoldBackgroundColor; // Main Scaffold Background
     final card = theme.cardColor; // Card Background
     final text = colorScheme.onBackground; // Primary Text Color
     final subText = colorScheme.secondary; // Secondary Text Color (SubText)
-    final languageInputBg = colorScheme.surface; // Input Background (from ColorScheme)
+    final languageInputBg =
+        colorScheme.surface; // Input Background (from ColorScheme)
 
     // Input/Read-only Box Background color for PROFILE (Custom rule kept)
-    final profileInputBg = isDark ? darkProfileInputBackground : colorScheme.surface;
+    final profileInputBg =
+        isDark ? darkProfileInputBackground : colorScheme.surface;
 
     // Info Box Colors (Local hardcoded colors kept for precise control)
     final infoBg = isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF);
-    final infoBorder = isDark ? const Color(0xFF2563EB) : const Color(0xFFBFDBFE);
+    final infoBorder =
+        isDark ? const Color(0xFF2563EB) : const Color(0xFFBFDBFE);
     final infoText = isDark ? const Color(0xFF93C5FD) : const Color(0xFF374151);
 
     // Header background (using card color for consistency)
@@ -80,11 +83,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
                   children: [
                     IconButton(
                       onPressed: () {
-                        if (context.canPop()) {
-                          context.pop();
-                        } else {
-                          context.go('/');
-                        }
+                        Navigator.of(context).pop();
                       },
                       icon: Icon(Icons.arrow_back, color: text),
                     ),
@@ -95,7 +94,9 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         // Localization Key
                         Text("settings.header".tr(),
                             style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold, color: text)),
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: text)),
                         // Localization Key
                         Text("settings.manage_preferences".tr(),
                             style: TextStyle(fontSize: 13, color: subText)),
@@ -125,10 +126,12 @@ class _SettingTeachersState extends State<SettingTeachers> {
                               //  Localization Key
                               Text("settings.language".tr(),
                                   style: TextStyle(
-                                      fontWeight: FontWeight.w600, color: text)),
+                                      fontWeight: FontWeight.w600,
+                                      color: text)),
                               //  Localization Key
                               Text("settings.select_interface_language".tr(),
-                                  style: TextStyle(fontSize: 13, color: subText)),
+                                  style:
+                                      TextStyle(fontSize: 13, color: subText)),
                             ],
                           ),
                         ],
@@ -141,17 +144,25 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: languageInputBg, //  Theme API
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 12),
                           border: OutlineInputBorder(
-                            borderSide: BorderSide(color: isDark ? subText.withOpacity(0.3) : Colors.grey.shade300),
+                            borderSide: BorderSide(
+                                color: isDark
+                                    ? subText.withOpacity(0.3)
+                                    : Colors.grey.shade300),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           enabledBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: isDark ? subText.withOpacity(0.3) : Colors.grey.shade300),
+                            borderSide: BorderSide(
+                                color: isDark
+                                    ? subText.withOpacity(0.3)
+                                    : Colors.grey.shade300),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           focusedBorder: OutlineInputBorder(
-                            borderSide: BorderSide(color: primaryBlue), // Focus border color
+                            borderSide: BorderSide(
+                                color: primaryBlue), // Focus border color
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
@@ -159,9 +170,13 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         dropdownColor: card,
                         items: [
                           DropdownMenuItem(
-                              value: const Locale('en'), child: Text("English", style: TextStyle(color: text))),
+                              value: const Locale('en'),
+                              child: Text("English",
+                                  style: TextStyle(color: text))),
                           DropdownMenuItem(
-                              value: const Locale('si'), child: Text("සිංහල", style: TextStyle(color: text))),
+                              value: const Locale('si'),
+                              child:
+                                  Text("සිංහල", style: TextStyle(color: text))),
                         ],
                         onChanged: (newLocale) {
                           if (newLocale != null) {
@@ -217,7 +232,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         children: [
                           Icon(_appearanceIcon, color: text, size: 26),
                           const SizedBox(width: 8),
-
                           Expanded(
                             child: Text(
                               //  Localization Key
@@ -256,10 +270,12 @@ class _SettingTeachersState extends State<SettingTeachers> {
                               // Localization Key
                               Text("settings.dark_mode".tr(),
                                   style: TextStyle(
-                                      fontWeight: FontWeight.w500, color: text)),
+                                      fontWeight: FontWeight.w500,
+                                      color: text)),
                               //  Localization Key
                               Text("settings.enable_dark_mode".tr(),
-                                  style: TextStyle(fontSize: 12, color: subText)),
+                                  style:
+                                      TextStyle(fontSize: 12, color: subText)),
                             ],
                           ),
                           Switch(
@@ -274,7 +290,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
                             activeTrackColor: primaryBlue,
                             inactiveTrackColor: Colors.grey.shade400,
                           )
-
                         ],
                       ),
                     ],
@@ -292,17 +307,13 @@ class _SettingTeachersState extends State<SettingTeachers> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-
                           Icon(Icons.person_outline, color: text, size: 26),
                           const SizedBox(width: 8),
-
                           Expanded(
                             child: Text(
-
                               "settings.profile".tr(),
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
@@ -330,24 +341,26 @@ class _SettingTeachersState extends State<SettingTeachers> {
                       _label("settings.user_type".tr(), subText),
 
                       // Read-only Box (Uses profileInputBg for blue background in Dark Mode)
-                      _readonlyBox("teacher".tr(), profileInputBg, text, isDark),
+                      _readonlyBox(
+                          "teacher".tr(), profileInputBg, text, isDark),
 
                       const SizedBox(height: 12),
                       // Localization Key
                       _label("settings.name".tr(), subText),
-                      _inputBox("User Name", profileInputBg, text, isDark), // Corrected: Uses profileInputBg
+                      _inputBox("User Name", profileInputBg, text,
+                          isDark), // Corrected: Uses profileInputBg
 
                       const SizedBox(height: 12),
                       // ✅ Localization Key සංශෝධනය කර ඇත
                       _label("settings.email".tr(), subText),
-                      _inputBox("user@example.com", profileInputBg, text, isDark), // Corrected: Uses profileInputBg
+                      _inputBox("user@example.com", profileInputBg, text,
+                          isDark), // Corrected: Uses profileInputBg
                     ],
                   ),
                 ),
               ),
 
               const SizedBox(height: 16),
-
 
               // ---------------- NOTIFICATIONS ----------------
 
@@ -358,14 +371,11 @@ class _SettingTeachersState extends State<SettingTeachers> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(Icons.notifications_none, color: text, size: 26),
-
                           const SizedBox(width: 8),
-
                           Expanded(
                             child: Text(
                               // Localization Key
@@ -380,7 +390,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         ],
                       ),
 
-
                       const SizedBox(height: 4),
 
                       Text(
@@ -391,7 +400,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
                           color: subText,
                         ),
                       ),
-
 
                       const SizedBox(height: 16),
 
@@ -417,7 +425,8 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         //  Localization Key
                         title: "settings.evaluation_notifications".tr(),
                         //  Localization Key
-                        subtitle: "settings.evaluation_notifications_complete".tr(),
+                        subtitle:
+                            "settings.evaluation_notifications_complete".tr(),
                         value: evaluationsOn,
                         onChanged: (v) => setState(() => evaluationsOn = v),
                         // Using custom style for all toggles
@@ -427,15 +436,12 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         inactiveTrackColor: Colors.grey.shade400,
                         isDark: isDark,
                       ),
-
                     ],
                   ),
                 ),
               ),
 
-
               const SizedBox(height: 20),
-
 
               // ---------------- Privacy ----------------
 
@@ -446,14 +452,11 @@ class _SettingTeachersState extends State<SettingTeachers> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(Icons.shield_outlined, color: text, size: 26),
-
                           const SizedBox(width: 8),
-
                           Expanded(
                             child: Text(
                               //  Localization Key
@@ -468,7 +471,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         ],
                       ),
 
-
                       const SizedBox(height: 4),
 
                       Text(
@@ -479,7 +481,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
                           color: subText,
                         ),
                       ),
-
 
                       const SizedBox(height: 16),
 
@@ -502,7 +503,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
 
                       // Toggle 4 (Switch Style applied)
                       _toggleItem(
-
                         title: "settings.data_collection".tr(),
 
                         subtitle: "settings.data_collection_desc".tr(),
@@ -515,12 +515,10 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         inactiveTrackColor: Colors.grey.shade400,
                         isDark: isDark,
                       ),
-
                     ],
                   ),
                 ),
               ),
-
 
               const SizedBox(height: 20),
 
@@ -536,7 +534,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         children: [
                           Icon(Icons.info_outline, color: text),
                           const SizedBox(width: 12),
-
                           Text("settings.about".tr(),
                               style: TextStyle(
                                   fontSize: 18,
@@ -544,28 +541,23 @@ class _SettingTeachersState extends State<SettingTeachers> {
                                   color: text)),
                         ],
                       ),
-
                       const SizedBox(height: 20),
-
-                      _infoItem("settings.version".tr(), "1.0.0", text, subText),
+                      _infoItem(
+                          "settings.version".tr(), "1.0.0", text, subText),
                       const SizedBox(height: 10),
-
                       _infoItem("settings.license".tr(), "MIT", text, subText),
-
                       const SizedBox(height: 20),
-                      Divider(color: isDark ? Colors.grey : Colors.grey.shade300),
+                      Divider(
+                          color: isDark ? Colors.grey : Colors.grey.shade300),
                       const SizedBox(height: 16),
-
                       Center(
                         child: Column(
                           children: [
-
                             Text("settings.terms_conditions".tr(),
                                 style: TextStyle(
                                     color: primaryBlue,
                                     fontWeight: FontWeight.w500)),
                             const SizedBox(height: 10),
-
                             Text("settings.privacy_policy".tr(),
                                 style: TextStyle(
                                     color: primaryBlue,
@@ -626,9 +618,9 @@ class _SettingTeachersState extends State<SettingTeachers> {
       decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: borderColor, width: 1.0)
-      ),
-      child: Text(value, style: TextStyle(color: text, fontWeight: FontWeight.w500)),
+          border: Border.all(color: borderColor, width: 1.0)),
+      child: Text(value,
+          style: TextStyle(color: text, fontWeight: FontWeight.w500)),
     );
   }
 
@@ -672,16 +664,22 @@ class _SettingTeachersState extends State<SettingTeachers> {
     required Color inactiveTrackColor,
     required bool isDark,
   }) {
-    final currentText = isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
-    final currentSubText = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final currentText =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final currentSubText =
+        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(title, style: TextStyle(fontWeight: FontWeight.w500, color: currentText)),
-            Text(subtitle, style: TextStyle(fontSize: 12, color: currentSubText)),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title,
+                style:
+                    TextStyle(fontWeight: FontWeight.w500, color: currentText)),
+            Text(subtitle,
+                style: TextStyle(fontSize: 12, color: currentSubText)),
           ]),
         ),
         Switch(
