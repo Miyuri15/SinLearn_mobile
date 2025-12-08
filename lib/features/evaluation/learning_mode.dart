@@ -14,6 +14,23 @@ class _LearningModePageState extends State<LearningModePage> {
   String _responseLevel = 'Grades 9-11';
   final TextEditingController _inputController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  bool _isRecording = false;
+  List<Map<String, dynamic>> _chatList = [
+    {'title': 'New Learning Chat', 'subtitle': '0 messages • less than a minute ago', 'icon': Icons.menu_book_outlined, 'type': 'learning'},
+    {'title': 'New Evaluation Chat', 'subtitle': '1 messages • 33 minutes ago', 'icon': Icons.assignment_turned_in_outlined, 'type': 'evaluation'},
+    {'title': 'New Learning Chat', 'subtitle': '0 messages • about 1 hour ago', 'icon': Icons.menu_book_outlined, 'type': 'learning'},
+  ];
+
+  void _addNewChat(String type) {
+    setState(() {
+      _chatList.insert(0, {
+        'title': type == 'learning' ? 'New Learning Chat' : 'New Evaluation Chat',
+        'subtitle': '0 messages • just now',
+        'icon': type == 'learning' ? Icons.menu_book_outlined : Icons.assignment_turned_in_outlined,
+        'type': type,
+      });
+    });
+  }
 
   @override
   void dispose() {
@@ -30,82 +47,122 @@ class _LearningModePageState extends State<LearningModePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: isWide ? null : AppBar(title: const Text('Learning')),
-      body: Row(
+      body: Stack(
         children: [
-          if (isWide) _Sidebar(theme: theme, searchController: _searchController),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(24),
-                          border: Border.all(color: theme.dividerColor),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _SegmentButton(
-                              selected: _modeIndex == 0,
-                              label: 'Learning Mode',
-                              onTap: () => setState(() => _modeIndex = 0),
+          Row(
+            children: [
+              if (isWide) _Sidebar(
+                theme: theme,
+                searchController: _searchController,
+                chatList: _chatList,
+                onNewLearning: () => _addNewChat('learning'),
+                onNewEvaluation: () => _addNewChat('evaluation'),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: theme.colorScheme.surface,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: theme.dividerColor),
                             ),
-                            _SegmentButton(
-                              selected: _modeIndex == 1,
-                              label: 'Evaluation Mode',
-                              onTap: () {
-                                // Navigate to the Evaluation (text) page
-                                Navigator.of(context).pushReplacement(
-                                  MaterialPageRoute(
-                                    builder: (_) => const EvaluationTextPage(),
-                                  ),
-                                );
-                              },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                _SegmentButton(
+                                  selected: _modeIndex == 0,
+                                  icon: Icons.menu_book_outlined,
+                                  label: 'Learning Mode',
+                                  onTap: () => setState(() => _modeIndex = 0),
+                                ),
+                                _SegmentButton(
+                                  selected: _modeIndex == 1,
+                                  icon: Icons.assignment_turned_in_outlined,
+                                  label: 'Evaluation Mode',
+                                  onTap: () {
+                                    // Navigate to the Evaluation (text) page
+                                    Navigator.of(context).pushReplacement(
+                                      MaterialPageRoute(
+                                        builder: (_) => const EvaluationTextPage(),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      OutlinedButton(onPressed: () {}, child: const Text('Syllabus')),
-                      const SizedBox(width: 8),
-                      PopupMenuButton<String>(
-                        tooltip: 'New',
-                        icon: const Icon(Icons.add_circle_outline),
-                        onSelected: (value) {
-                          if (value == 'question') {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Question Paper selected')),
-                            );
-                          } else if (value == 'rubric') {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Rubric selected')),
-                            );
-                          }
-                        },
-                        itemBuilder: (context) => const [
-                          PopupMenuItem(value: 'question', child: Text('Question Paper')),
-                          PopupMenuItem(value: 'rubric', child: Text('Rubric')),
+                          ),
+                          const Spacer(),
+                          ElevatedButton.icon(
+                            onPressed: () {},
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            icon: const Icon(Icons.book_outlined, size: 18),
+                            label: const Text('Syllabus'),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            onPressed: () {
+                              showMenu(
+                                context: context,
+                                position: RelativeRect.fromLTRB(1000, 80, 0, 0),
+                                items: const [
+                                  PopupMenuItem(value: 'question', child: Text('Question Paper')),
+                                  PopupMenuItem(value: 'rubric', child: Text('Rubric')),
+                                ],
+                              ).then((value) {
+                                if (value == 'question') {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Question Paper selected')),
+                                  );
+                                } else if (value == 'rubric') {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Rubric selected')),
+                                  );
+                                }
+                              });
+                            },
+                            tooltip: 'New',
+                            icon: const Icon(Icons.add, color: Colors.black, size: 24),
+                          ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const Divider(height: 1),
+                    const Expanded(child: _EmptyChatView()),
+                    const Divider(height: 1),
+                    _InputBar(
+                      controller: _inputController,
+                      responseLevel: _responseLevel,
+                      onResponseLevelChanged: (v) => setState(() => _responseLevel = v),
+                      onVoicePressed: () => setState(() => _isRecording = true),
+                    ),
+                  ],
                 ),
-                const Divider(height: 1),
-                const Expanded(child: _EmptyChatView()),
-                const Divider(height: 1),
-                _InputBar(
-                  controller: _inputController,
-                  responseLevel: _responseLevel,
-                  onResponseLevelChanged: (v) => setState(() => _responseLevel = v),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
+          if (_isRecording)
+            RecordingOverlay(
+              onCancel: () => setState(() => _isRecording = false),
+              onStop: () {
+                setState(() => _isRecording = false);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Recording stopped')),
+                );
+              },
+            ),
         ],
       ),
     );
@@ -113,31 +170,42 @@ class _LearningModePageState extends State<LearningModePage> {
 }
 
 class _SegmentButton extends StatelessWidget {
-  const _SegmentButton({required this.selected, required this.label, required this.onTap});
+  const _SegmentButton({required this.selected, required this.label, required this.onTap, this.icon});
   final bool selected;
   final String label;
   final VoidCallback onTap;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Determine colors based on which mode this button represents
+    final isLearningMode = icon == Icons.menu_book_outlined;
+    final selectedColor = isLearningMode ? Colors.green[700] : Colors.green[700];
+    final backgroundColor = isLearningMode 
+        ? Colors.green.withOpacity(0.10) 
+        : Colors.green.withOpacity(0.10);
+    
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? Colors.green.withOpacity(0.10) : Colors.transparent,
+          color: selected ? backgroundColor : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(selected ? Icons.menu_book : Icons.menu_book_outlined, size: 16, color: selected ? Colors.green : theme.iconTheme.color),
-            const SizedBox(width: 6),
+            if (icon != null) ...[
+              Icon(icon, size: 16, color: selected ? selectedColor : theme.iconTheme.color),
+              const SizedBox(width: 6),
+            ],
             Text(
               label,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: selected ? Colors.green : theme.textTheme.bodyMedium?.color,
+                color: selected ? selectedColor : theme.textTheme.bodyMedium?.color,
                 fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
               ),
             ),
@@ -149,42 +217,59 @@ class _SegmentButton extends StatelessWidget {
 }
 
 class _Sidebar extends StatelessWidget {
-  const _Sidebar({required this.theme, required this.searchController});
+  const _Sidebar({
+    required this.theme,
+    required this.searchController,
+    required this.chatList,
+    required this.onNewLearning,
+    required this.onNewEvaluation,
+  });
   final ThemeData theme;
   final TextEditingController searchController;
+  final List<Map<String, dynamic>> chatList;
+  final VoidCallback onNewLearning;
+  final VoidCallback onNewEvaluation;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 320,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        border: Border(right: BorderSide(color: theme.dividerColor)),
+        color: Colors.white,
+        border: Border(right: BorderSide(color: Colors.grey[200]!)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const EvaluationHeader(),
+          EvaluationHeader(
+            onNewLearning: onNewLearning,
+            onNewEvaluation: onNewEvaluation,
+          ),
           Expanded(
-            child: ListView(
-              children: const [
-                _ChatListItem(title: 'New Learning Chat', subtitle: '0 messages • less than a minute ago', icon: Icons.menu_book_outlined),
-                _ChatListItem(title: 'New Evaluation Chat', subtitle: '1 messages • 33 minutes ago', icon: Icons.assignment_turned_in_outlined),
-                _ChatListItem(title: 'New Learning Chat', subtitle: '0 messages • about 1 hour ago', icon: Icons.menu_book_outlined),
-              ],
+            child: Container(
+              color: Colors.white,
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                children: chatList.map((chat) => _ChatListItem(
+                  title: chat['title'],
+                  subtitle: chat['subtitle'],
+                  icon: chat['icon'],
+                )).toList(),
+              ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               children: [
-                const Icon(Icons.settings, size: 18),
+                Icon(Icons.settings, size: 20, color: Colors.grey[700]),
                 const SizedBox(width: 8),
-                Text('Settings', style: theme.textTheme.bodyMedium),
+                Text('Settings', style: TextStyle(color: Colors.grey[700], fontSize: 14)),
                 const Spacer(),
-                const Icon(Icons.logout, size: 18),
+                Icon(Icons.logout, size: 20, color: Colors.grey[700]),
                 const SizedBox(width: 8),
-                Text('Logout', style: theme.textTheme.bodyMedium),
+                Text('Logout', style: TextStyle(color: Colors.grey[700], fontSize: 14)),
               ],
             ),
           ),
@@ -202,17 +287,17 @@ class _ChatListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: Text(subtitle),
+        leading: Icon(icon, color: Colors.grey[700], size: 20),
+        title: Text(title, style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500)),
+        subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         onTap: () {},
         selected: title.contains('Learning'),
-        selectedTileColor: Colors.green.withOpacity(0.08),
+        selectedTileColor: Colors.blue.withOpacity(0.08),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
     );
   }
@@ -238,10 +323,11 @@ class _EmptyChatView extends StatelessWidget {
 }
 
 class _InputBar extends StatelessWidget {
-  const _InputBar({required this.controller, required this.responseLevel, required this.onResponseLevelChanged});
+  const _InputBar({required this.controller, required this.responseLevel, required this.onResponseLevelChanged, this.onVoicePressed});
   final TextEditingController controller;
   final String responseLevel;
   final ValueChanged<String> onResponseLevelChanged;
+  final VoidCallback? onVoicePressed;
 
   @override
   Widget build(BuildContext context) {
@@ -249,22 +335,25 @@ class _InputBar extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: Row(
           children: [
+            // response level pill
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: theme.dividerColor),
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey[300]!),
               ),
               child: Row(
                 children: [
-                  Text('Response Level', style: theme.textTheme.bodySmall),
+                  Text('Response Level', style: theme.textTheme.bodySmall?.copyWith(color: Colors.black87, fontWeight: FontWeight.w500)),
                   const SizedBox(width: 8),
                   DropdownButton<String>(
                     value: responseLevel,
+                    underline: const SizedBox(),
+                    style: theme.textTheme.bodyMedium?.copyWith(color: Colors.black87, fontWeight: FontWeight.w600),
                     items: const [
                       DropdownMenuItem(value: 'Grades 6-8', child: Text('Grades 6-8')),
                       DropdownMenuItem(value: 'Grades 9-11', child: Text('Grades 9-11')),
@@ -279,37 +368,58 @@ class _InputBar extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Ask a question...',
-                  prefixIcon: IconButton(
-                    tooltip: 'Attach file',
-                    onPressed: () {},
-                    icon: const Icon(Icons.attach_file),
-                  ),
-                  suffixIcon: IconButton(
-                    tooltip: 'Voice input',
-                    onPressed: () {},
-                    icon: const Icon(Icons.mic_none),
-                  ),
-                  border: const OutlineInputBorder(),
+              child: Container(
+                height: 56,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: Colors.grey[300]!),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        minLines: 1,
+                        maxLines: 4,
+                        style: const TextStyle(color: Colors.black87),
+                        decoration: const InputDecoration(
+                          hintText: 'Ask a question...',
+                          hintStyle: TextStyle(color: Colors.black45),
+                          border: InputBorder.none,
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Attach file',
+                      onPressed: () {},
+                      icon: const Icon(Icons.attach_file, color: Colors.black54),
+                    ),
+                    IconButton(
+                      tooltip: 'Voice input',
+                      onPressed: onVoicePressed ?? () {},
+                      icon: const Icon(Icons.mic_none, color: Colors.black54),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            Tooltip(
-              message: 'Send',
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 52,
+              height: 52,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(14),
-                  shape: const CircleBorder(),
-                  backgroundColor: theme.colorScheme.primary,
-                ),
                 onPressed: () {},
-                child: const Icon(Icons.send_rounded),
+                style: ElevatedButton.styleFrom(
+                  shape: const CircleBorder(),
+                  padding: EdgeInsets.zero,
+                  backgroundColor: Colors.green[700],
+                  foregroundColor: Colors.white,
+                ),
+                child: const Icon(Icons.send_rounded, size: 22),
               ),
             ),
           ],
