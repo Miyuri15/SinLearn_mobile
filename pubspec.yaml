@@ -11,10 +11,16 @@ dependencies:
   flutter:
     sdk: flutter
 
+  #provider to other pages
+  provider: ^6.1.1
+
   cupertino_icons: ^1.0.8
 
   # Localization support (English + Sinhala)
   easy_localization: ^3.0.1
+
+  #create to route path
+  go_router: ^14.2.1
 
   # State management (recommended for clean architecture)
   flutter_riverpod: ^2.5.1
