@@ -1,31 +1,31 @@
 
-// main.dart
 
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart'; //  Provider
+import 'package:provider/provider.dart'; // provider
 
-// 💡 folder path
+// 💡folder path
 import 'features/settings/Settings_Teachers.dart';
+import 'features/recent_chat/recent_chats_page.dart';
 
 // ---------------------------
-//  1. THEME SETTINGS (CHANGE NOTIFIER)
+//  THEME SETTINGS (CHANGE NOTIFIER)
 // ---------------------------
-// manage theme color
+
 class ThemeSettings extends ChangeNotifier {
-  // Dark Mode  Default status
+  // Dark Mode  Default
   bool _isDark = false;
 
   bool get isDark => _isDark;
 
-  // toggle
+  // toggle procss
   void toggleTheme(bool value) {
     _isDark = value;
     notifyListeners();
   }
 
-  // still theme
+  // theme
   ThemeData get currentTheme =>
       _isDark
           ? ThemeData(brightness: Brightness.dark, useMaterial3: true)
@@ -34,20 +34,20 @@ class ThemeSettings extends ChangeNotifier {
 
 
 // ---------------------------
-// MAIN FUNCTION (ENTRY POINT)
+//  MAIN FUNCTION (ENTRY POINT)
 // ---------------------------
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
 
-  // 💡 support provider
+  //  Provider
   runApp(
     ChangeNotifierProvider(
       create: (context) => ThemeSettings(), // ThemeSettings instance
       child: EasyLocalization(
         supportedLocales: const [
           Locale('en'),
-          Locale('si'), // sinhala
+          Locale('si'), // සිංහල
         ],
         path: 'assets/languages',
         fallbackLocale: const Locale('en'),
@@ -58,30 +58,46 @@ void main() async {
 }
 
 class SinLearnApp extends StatelessWidget {
+
   SinLearnApp({super.key});
 
   // ---------------------------
   // ROUTER SETUP (GoRouter)
   // ---------------------------
-  final GoRouter _router = GoRouter(
+  // _router  GoRouter constructor
+  late final GoRouter _router = GoRouter(
     routes: [
-      // 1. Home Page / Main Page
       GoRoute(
         path: '/',
-        builder: (context, state) => const PlaceholderHome(),
+        builder: (context, state) => const PlaceholderHome(), // const
       ),
-      // 2. Settings Page
       GoRoute(
         path: '/settings_teachers',
-        builder: (context, state) => const SettingTeachers(),
+        builder: (context, state) {
+          // ⭐️ Provider value
+          final themeSettings = context.watch<ThemeSettings>();
+
+
+          return SettingTeachers(
+            isDark: themeSettings.isDark,
+            toggleTheme: themeSettings.toggleTheme,
+          );
+        },
+      ),
+
+      GoRoute(
+        path: '/recent_chats_page',
+        //  RecentChatsPag
+        builder: (context, state) => const RecentChatsDrawer(), // const
       ),
     ],
   );
 
   @override
   Widget build(BuildContext context) {
-    // 💡 Provider
+    //  Provider  ThemeSettings  (watch)
     final themeSettings = context.watch<ThemeSettings>();
+    final isDark = themeSettings.isDark;
 
     return MaterialApp.router(
       title: "SinLearn",
@@ -93,9 +109,33 @@ class SinLearnApp extends StatelessWidget {
       locale: context.locale,
 
       // Themes (Light/Dark mode )
-      theme: themeSettings.currentTheme,
-      darkTheme: themeSettings.currentTheme,
-      themeMode: themeSettings.isDark ? ThemeMode.dark : ThemeMode.light,
+      theme: ThemeData(
+        brightness: Brightness.light,
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF3F4F6),
+        cardColor: Colors.white,
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF2563EB), // Primary Blue
+          onBackground: Color(0xFF111827), // Primary Text
+          secondary: Color(0xFF6B7280), // Secondary Text (SubText)
+          surface: Colors.white, // Default Input/Surface Background
+          background: Color(0xFFF3F4F6),
+        ),
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFF000000),
+        cardColor: const Color(0xFF1E1F20),
+        colorScheme: const ColorScheme.dark(
+          primary: Color(0xFF2563EB), // Primary Blue
+          onBackground: Color(0xFFF9FAFB), // Primary Text
+          secondary: Color(0xFF9CA3AF), // Secondary Text (SubText)
+          surface: Color(0xFF2A2B32), // Input Background
+          background: Color(0xFF000000),
+        ),
+      ),
+      themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
 
       // Router connect
       routerConfig: _router,
@@ -111,29 +151,37 @@ class PlaceholderHome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 💡 context.watch
+    // 💡 context.watch මඟින් තේමා වෙනස්වීම් වලට සවන් දෙයි
     final isDark = context.watch<ThemeSettings>().isDark;
+    final theme = Theme.of(context);
+    final textColor = theme.colorScheme.onBackground;
 
     return Scaffold(
       appBar: AppBar(
-          title: const Text("SinLearn Home").tr(),
-          backgroundColor: isDark
-              ? const Color(0xFF1E1F20)
-              : Colors.blue
+        title: Text("SinLearn Home", style: TextStyle(color: textColor)).tr(),
+        backgroundColor: theme.cardColor,
+        elevation: 1,
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text("This is the Main Page.").tr(),
-            Text("Current Theme: ${isDark ? 'Dark' : 'Light'}"), // show theme
+            Text("This is the Main Page.", style: TextStyle(color: textColor)).tr(),
+            Text("Current Theme: ${isDark ? 'Dark' : 'Light'}", style: TextStyle(color: textColor)),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
                 context.go('/settings_teachers');
               },
-              // 💡 Localization key
-              child: const Text("go_to_settings_teachers").tr(),
+              child: const Text("settings.header").tr(), // Localization key
+            ),
+            const SizedBox(height: 10),
+            //  Recent Chats Button
+            ElevatedButton(
+              onPressed: () {
+                context.go('/recent_chats_page'); //  Route
+              },
+              child: const Text("recent_chats.header").tr(),
             ),
           ],
         ),
@@ -141,8 +189,6 @@ class PlaceholderHome extends StatelessWidget {
     );
   }
 }
-
-
 
 
 

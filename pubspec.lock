@@ -285,6 +285,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.17.0"
+
   nested:
     dependency: transitive
     description:
@@ -293,6 +294,7 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+
   nm:
     dependency: transitive
     description:
