@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:go_router/go_router.dart';
+import 'package:go_router/go_router.dart'; //  GoRouter
 
 // Model
 class ChatEntry {
@@ -22,32 +22,23 @@ class ChatEntry {
 
 enum ChatType { learning, evaluation }
 
-// new wrapper Class: Material Context
+//  Wrapper Class
 class RecentChatsPage extends StatelessWidget {
   const RecentChatsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    //  Scaffold  Material Context provider
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor, // Background color for the entire page
-      appBar: AppBar(
-        title: Text('recent_chats.header'.tr(), style: TextStyle(color: theme.colorScheme.onBackground)),
-        backgroundColor: theme.cardColor,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: theme.colorScheme.onBackground),
-          onPressed: () => context.pop(),
-          tooltip: 'back',
-        ),
+      backgroundColor: theme.scaffoldBackgroundColor, // Theme background
+      // AppBar
+      body: SafeArea(
+        child: const RecentChatsDrawer(), // Drawer
       ),
-
-      body: RecentChatsDrawer(),
     );
   }
 }
-
 
 
 class RecentChatsDrawer extends StatefulWidget {
@@ -130,117 +121,137 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
 
   @override
   Widget build(BuildContext context) {
+    //  Theme Context
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final cardColor = theme.cardColor;
     final textColor = theme.colorScheme.onBackground;
-    final subTextColor = theme.colorScheme.secondary; // Subtext color
+    final subTextColor = theme.colorScheme.secondary;
+    final primaryColor = theme.colorScheme.primary;
 
 
-    return Material( // Material widget  wrap
+    return Material(
       color: theme.scaffoldBackgroundColor,
-      child: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            // Search
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: TextField(
-                controller: _search,
-                style: TextStyle(color: textColor),
-                decoration: InputDecoration(
-                  fillColor: cardColor, // Input background
-                  filled: true,
-                  hintText: 'recent_chats.search_hint'.tr(),
-                  hintStyle: TextStyle(color: subTextColor),
-                  prefixIcon: Icon(Icons.search, color: subTextColor),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            color: cardColor, // Theme card color
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'recent_chats.header'.tr(),
+                    style: theme.textTheme.titleMedium!.copyWith(color: textColor),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide(color: theme.colorScheme.primary, width: 2),
-                  ),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+                ),
+                IconButton(
+                  icon: Icon(Icons.close, color: textColor), // Theme text color
+                  onPressed: () => context.pop(), //  go_router
+                  tooltip: 'close',
+                ),
+              ],
+            ),
+          ),
+          Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
+          // Search
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              controller: _search,
+              style: TextStyle(color: textColor),
+              decoration: InputDecoration(
+                fillColor: cardColor, // Input background
+                filled: true,
+                hintText: 'recent_chats.search_hint'.tr(),
+                hintStyle: TextStyle(color: subTextColor),
+                prefixIcon: Icon(Icons.search, color: subTextColor),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: isDark ? Colors.white12 : Colors.black12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: primaryColor, width: 2),
+                ),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+              ),
+            ),
+          ),
+          // Actions
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              children: [
+                _ActionButton(
+                  icon: Icons.menu_book_outlined,
+                  label: 'recent_chats.new_learning'.tr(),
+                  onTap: () => _create(ChatType.learning),
+                ),
+                const SizedBox(height: 8),
+                _ActionButton(
+                  icon: Icons.assignment_turned_in_outlined,
+                  label: 'recent_chats.new_evaluation'.tr(),
+                  onTap: () => _create(ChatType.evaluation),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // List
+          Expanded(
+            child: ListView.builder(
+              itemCount: _filtered.length,
+              padding: const EdgeInsets.only(bottom: 8),
+              itemBuilder: (ctx, i) {
+                final item = _filtered[i];
+                final active = item.id == _activeId;
+                return _RecentItem(
+                  key: ValueKey(item.id), // stable key
+                  entry: item,
+                  timeLabel: _relative(item.createdAt),
+                  active: active,
+                  onTap: () => setState(() => _activeId = item.id),
+                  isDark: isDark,
+                );
+              },
+            ),
+          ),
+          // Footer
+          Container(
+            decoration: BoxDecoration(
+              color: cardColor, // Footer background
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.white12 : Colors.black12,
                 ),
               ),
             ),
-            // Actions
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  _ActionButton(
-                    icon: Icons.menu_book_outlined,
-                    label: 'recent_chats.new_learning'.tr(),
-                    onTap: () => _create(ChatType.learning),
-                  ),
-                  const SizedBox(height: 8),
-                  _ActionButton(
-                    icon: Icons.assignment_turned_in_outlined,
-                    label: 'recent_chats.new_evaluation'.tr(),
-                    onTap: () => _create(ChatType.evaluation),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            // List
-            Expanded(
-              child: ListView.builder(
-                itemCount: _filtered.length,
-                padding: const EdgeInsets.only(bottom: 8),
-                itemBuilder: (ctx, i) {
-                  final item = _filtered[i];
-                  final active = item.id == _activeId;
-                  return _RecentItem(
-                    key: ValueKey(item.id), // stable key
-                    entry: item,
-                    timeLabel: _relative(item.createdAt),
-                    active: active,
-                    onTap: () => setState(() => _activeId = item.id),
-                    isDark: isDark,
-                  );
-                },
-              ),
-            ),
-            // Footer
-            Container(
-              decoration: BoxDecoration(
-                color: cardColor, // Footer background
-                border: Border(
-                  top: BorderSide(
-                    color: isDark ? Colors.white12 : Colors.black12,
-                  ),
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
+            child: Row(
+              children: [
+                _FooterButton(
+                  icon: Icons.settings,
+                  label: 'recent_chats.settings'.tr(),
+                  //  Settings page
+                  onTap: () => context.go('/settings_teachers'),
                 ),
-              ),
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 10),
-              child: Row(
-                children: [
-                  _FooterButton(
-                    icon: Icons.settings,
-                    label: 'recent_chats.settings'.tr(),
-                    // Settings page
-                    onTap: () => context.go('/settings_teachers'),
-                  ),
-                  const Spacer(),
-                  _FooterButton(
-                    icon: Icons.logout,
-                    label: 'recent_chats.logout'.tr(),
-                    onTap: () {},
-                  ),
-                ],
-              ),
+                const Spacer(),
+                _FooterButton(
+                  icon: Icons.logout,
+                  label: 'recent_chats.logout'.tr(),
+                  onTap: () {},
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -387,6 +398,7 @@ class _FooterButton extends StatelessWidget {
   }
 }
 
+//*********************************************************************
 
 /*
 import 'package:flutter/material.dart';
@@ -737,3 +749,10 @@ class _FooterButton extends StatelessWidget {
   }
 }
 */
+
+
+
+
+
+
+

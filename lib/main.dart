@@ -5,7 +5,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart'; // provider
 
-// 💡folder path
+// folder path
 import 'features/settings/Settings_Teachers.dart';
 import 'features/recent_chat/recent_chats_page.dart';
 
@@ -74,7 +74,7 @@ class SinLearnApp extends StatelessWidget {
       GoRoute(
         path: '/settings_teachers',
         builder: (context, state) {
-          // ⭐️ Provider value
+          // Provider value
           final themeSettings = context.watch<ThemeSettings>();
 
 
@@ -151,7 +151,7 @@ class PlaceholderHome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 💡 context.watch මඟින් තේමා වෙනස්වීම් වලට සවන් දෙයි
+    // context wtch
     final isDark = context.watch<ThemeSettings>().isDark;
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onBackground;
@@ -189,63 +189,3 @@ class PlaceholderHome extends StatelessWidget {
     );
   }
 }
-
-
-
-//*************************************************************
-/*
-import 'package:flutter/material.dart';
-import 'package:easy_localization/easy_localization.dart';
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await EasyLocalization.ensureInitialized();
-
-  runApp(
-    EasyLocalization(
-      supportedLocales: [
-        Locale('en'),
-        Locale('si'),
-      ],
-      path: 'assets/languages',
-      fallbackLocale: Locale('en'),
-      child: const SinLearnApp(),
-    ),
-  );
-}
-
-class SinLearnApp extends StatelessWidget {
-  const SinLearnApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: "SinLearn",
-      debugShowCheckedModeBanner: false,
-      localizationsDelegates: context.localizationDelegates,
-      supportedLocales: context.supportedLocales,
-      locale: context.locale,
-      theme: ThemeData(
-        brightness: Brightness.light,
-      ),
-      darkTheme: ThemeData(
-        brightness: Brightness.dark,
-      ),
-      home: const PlaceholderHome(),
-    );
-  }
-}
-
-class PlaceholderHome extends StatelessWidget {
-  const PlaceholderHome({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("SinLearn Home")),
-      body: Center(child: Text("Project Structure Ready")),
-      // org.gradle.java.home=C:/Program Files/Java/jdk-17
-    );
-  }
-}
-*/
