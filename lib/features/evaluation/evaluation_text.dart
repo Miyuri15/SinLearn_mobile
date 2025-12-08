@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'learning_mode.dart';
 
 class EvaluationTextPage extends StatefulWidget {
   const EvaluationTextPage({super.key});
@@ -84,7 +85,12 @@ class _Header extends StatelessWidget {
                 _SegmentButton(
                   selected: modeIndex == 0,
                   label: 'Learning Mode',
-                  onTap: () => onModeChanged(0),
+                  onTap: () {
+                    // navigate back to Learning Mode page
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(builder: (_) => const LearningModePage()),
+                    );
+                  },
                 ),
                 _SegmentButton(
                   selected: modeIndex == 1,
@@ -99,10 +105,24 @@ class _Header extends StatelessWidget {
           const SizedBox(width: 8),
           OutlinedButton(onPressed: () {}, child: const Text('Syllabus')),
           const SizedBox(width: 8),
-          IconButton(
+          PopupMenuButton<String>(
             tooltip: 'New',
-            onPressed: () {},
             icon: const Icon(Icons.add_circle_outline),
+            onSelected: (value) {
+              if (value == 'question') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Question Paper selected')),
+                );
+              } else if (value == 'rubric') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Rubric selected')),
+                );
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'question', child: Text('Question Paper')),
+              PopupMenuItem(value: 'rubric', child: Text('Rubric')),
+            ],
           ),
         ],
       ),

@@ -14,7 +14,24 @@ class EvaluationResponsePage extends StatelessWidget {
           const SizedBox(width: 8),
           TextButton(onPressed: () {}, child: const Text('Syllabus')),
           const SizedBox(width: 8),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.add)),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.add),
+            onSelected: (value) {
+              if (value == 'question') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Question Paper selected')),
+                );
+              } else if (value == 'rubric') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Rubric selected')),
+                );
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'question', child: Text('Question Paper')),
+              PopupMenuItem(value: 'rubric', child: Text('Rubric')),
+            ],
+          ),
           const SizedBox(width: 8),
         ],
       ),
