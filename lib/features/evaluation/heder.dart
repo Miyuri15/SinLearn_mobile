@@ -26,9 +26,7 @@ class EvaluationHeader extends StatelessWidget implements PreferredSizeWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // -------------------------
-            // TITLE + CLOSE BUTTON
-            // -------------------------
+            
             Row(
               children: [
                 Expanded(
@@ -49,9 +47,7 @@ class EvaluationHeader extends StatelessWidget implements PreferredSizeWidget {
 
             const SizedBox(height: 12),
 
-            // -------------------------
-            // SEARCH FIELD
-            // -------------------------
+  
             TextField(
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search, color: Colors.black54, size: 20),
@@ -70,9 +66,6 @@ class EvaluationHeader extends StatelessWidget implements PreferredSizeWidget {
 
             const SizedBox(height: 16),
 
-            // -------------------------
-            // NEW LEARNING CHAT BUTTON
-            // -------------------------
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -101,10 +94,6 @@ class EvaluationHeader extends StatelessWidget implements PreferredSizeWidget {
             ),
 
             const SizedBox(height: 8),
-
-            // -------------------------
-            // NEW EVALUATION CHAT BUTTON
-            // -------------------------
             Container(
               decoration: BoxDecoration(
                 color: Colors.white,

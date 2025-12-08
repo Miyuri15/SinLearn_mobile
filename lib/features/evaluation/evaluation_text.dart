@@ -16,6 +16,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _inputController = TextEditingController();
   bool _isRecording = false;
+  int _selectedChatIndex = 1;
   List<Map<String, dynamic>> _chatList = [
     {'title': 'New Learning Chat', 'subtitle': '1 messages • 6 minutes ago', 'icon': Icons.menu_book_outlined, 'type': 'learning'},
     {'title': 'New Evaluation Chat', 'subtitle': '1 messages • 43 minutes ago', 'icon': Icons.assignment_turned_in_outlined, 'type': 'evaluation'},
@@ -30,6 +31,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         'icon': type == 'learning' ? Icons.menu_book_outlined : Icons.assignment_turned_in_outlined,
         'type': type,
       });
+      _selectedChatIndex = 0; // Select the newly created chat
     });
   }
 
@@ -61,6 +63,8 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                   theme: theme,
                   searchController: _searchController,
                   chatList: _chatList,
+                  selectedChatIndex: _selectedChatIndex,
+                  onChatSelected: (index) => setState(() => _selectedChatIndex = index),
                   onNewLearning: () => _addNewChat('learning'),
                   onNewEvaluation: () => _addNewChat('evaluation'),
                 ),
@@ -394,6 +398,8 @@ class _Sidebar extends StatelessWidget {
     required this.theme,
     required this.searchController,
     required this.chatList,
+    required this.selectedChatIndex,
+    required this.onChatSelected,
     required this.onNewLearning,
     required this.onNewEvaluation,
   });
@@ -401,6 +407,8 @@ class _Sidebar extends StatelessWidget {
   final ThemeData theme;
   final TextEditingController searchController;
   final List<Map<String, dynamic>> chatList;
+  final int selectedChatIndex;
+  final ValueChanged<int> onChatSelected;
   final VoidCallback onNewLearning;
   final VoidCallback onNewEvaluation;
 
@@ -422,13 +430,16 @@ class _Sidebar extends StatelessWidget {
           Expanded(
             child: Container(
               color: Colors.white,
-              child: ListView(
+              child: ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                children: chatList.map((chat) => _ChatListItem(
-                  title: chat['title'],
-                  subtitle: chat['subtitle'],
-                  icon: chat['icon'],
-                )).toList(),
+                itemCount: chatList.length,
+                itemBuilder: (context, index) => _ChatListItem(
+                  title: chatList[index]['title'],
+                  subtitle: chatList[index]['subtitle'],
+                  icon: chatList[index]['icon'],
+                  isSelected: index == selectedChatIndex,
+                  onTap: () => onChatSelected(index),
+                ),
               ),
             ),
           ),
@@ -458,11 +469,15 @@ class _ChatListItem extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
+    required this.isSelected,
+    required this.onTap,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -473,8 +488,8 @@ class _ChatListItem extends StatelessWidget {
         title: Text(title, style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500)),
         subtitle: Text(subtitle, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        onTap: () {},
-        selected: title.contains('Evaluation'),
+        onTap: onTap,
+        selected: isSelected,
         selectedTileColor: Colors.blue.withOpacity(0.08),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
