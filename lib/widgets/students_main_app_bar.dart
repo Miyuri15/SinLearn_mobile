@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../features/evaluation/students_rubric_selection_screen.dart';
+import '../features/recent_chat/recent_chats_page.dart';
+import '../features/syllabus/syllabus_page.dart';
 
 class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final int selectedIndex;
@@ -39,9 +41,15 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
         child: Row(
           children: [
             // LEFT MENU ICON
-            IconButton(
-              icon: const Icon(Icons.menu, size: 28),
-              onPressed: onMenuPressed,
+            Builder(
+              builder: (context) {
+                return IconButton(
+                  icon: const Icon(Icons.menu, size: 28),
+                  onPressed: () {
+                    Scaffold.of(context).openDrawer(); // Works now!
+                  },
+                );
+              },
             ),
 
             const SizedBox(width: 16),
@@ -70,11 +78,21 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
 
             const Spacer(),
+            IconButton(
+              icon: const Icon(Icons.document_scanner, size: 28),
+              onPressed: () => showRubricSelectionSidebar(context),
+            ),
 
             // RIGHT ICON — Tablet or Dashboard icon
-            IconButton(
-              icon: const Icon(Icons.book, size: 28),
-              onPressed: () => showRubricSelectionSidebar(context),
+            Builder(
+              builder: (ctx) {
+                return IconButton(
+                  icon: const Icon(Icons.book, size: 28),
+                  onPressed: () {
+                    showSyllabusSidebar(ctx); // safe context
+                  },
+                );
+              },
             ),
 
             const SizedBox(width: 8),
@@ -82,7 +100,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             // ADD BUTTON
             IconButton(
               icon: const Icon(Icons.add, size: 28),
-              onPressed: () => showRubricSelectionSidebar(context),
+              onPressed: () => (),
             ),
           ],
         ),
