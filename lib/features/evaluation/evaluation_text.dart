@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'learning_mode.dart';
+import 'heder.dart';
 
 class EvaluationTextPage extends StatefulWidget {
   const EvaluationTextPage({super.key});
@@ -84,6 +85,7 @@ class _Header extends StatelessWidget {
               children: [
                 _SegmentButton(
                   selected: modeIndex == 0,
+                  icon: Icons.menu_book_outlined,
                   label: 'Learning Mode',
                   onTap: () {
                     // navigate back to Learning Mode page
@@ -94,6 +96,7 @@ class _Header extends StatelessWidget {
                 ),
                 _SegmentButton(
                   selected: modeIndex == 1,
+                  icon: Icons.assignment_turned_in_outlined,
                   label: 'Evaluation Mode',
                   onTap: () => onModeChanged(1),
                 ),
@@ -135,11 +138,13 @@ class _SegmentButton extends StatelessWidget {
     required this.selected,
     required this.label,
     required this.onTap,
+    this.icon,
   });
 
   final bool selected;
   final String label;
   final VoidCallback onTap;
+  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -155,14 +160,23 @@ class _SegmentButton extends StatelessWidget {
               : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
         ),
-        child: Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: selected
-                ? theme.colorScheme.primary
-                : theme.textTheme.bodyMedium?.color,
-            fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 16, color: selected ? theme.colorScheme.primary : theme.iconTheme.color),
+              const SizedBox(width: 6),
+            ],
+            Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: selected
+                    ? theme.colorScheme.primary
+                    : theme.textTheme.bodyMedium?.color,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -189,23 +203,7 @@ class _Sidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('Recent Chats', style: theme.textTheme.titleMedium),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: searchController,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Search chats…',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
+          const EvaluationHeader(),
           Expanded(
             child: ListView(
               children: const [

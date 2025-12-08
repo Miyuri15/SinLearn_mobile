@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'evaluation_text.dart';
+import 'heder.dart';
 
 class LearningModePage extends StatefulWidget {
   const LearningModePage({super.key});
@@ -163,23 +164,7 @@ class _Sidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text('Recent Chats', style: theme.textTheme.titleMedium),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: searchController,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Search chats...',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
+          const EvaluationHeader(),
           Expanded(
             child: ListView(
               children: const [
