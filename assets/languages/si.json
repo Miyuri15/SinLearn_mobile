@@ -1,6 +1,21 @@
 {
   "app_name": "සිංලර්න්",
-
+  "ai_subtitle": "AI-නිර්මාණය කරන ලද සිංහල අධ්‍යාපනික සහකරු",
+  "sign_in": "පිවිසෙන්න",
+  "sign_up": "ලියාපදිංචි වන්න",
+  "email": "ඊමේල්",
+  "email_hint": "example@email.com",
+  "password": "මුරපදය",
+  "password_hint": "••••••••",
+  "name": "නම",
+  "name_hint": "ඔබේ නම",
+  "user_type": "පරිශීලක වර්ගය",
+  "student": "ශිෂ්‍ය",
+  "teacher": "ගුරු/ගුරුවරිය",
+  "signin_pressed": "පිවිසෙන්න බොත්තම",
+  "forgot_password": "මුරපදය අමතකද?",
+  "si_name": "සිංහල",
+  "en_name": "English",
   "settings": {
     "header": "සැකසීම්",
     "manage_preferences": "ඔබගේ මනාපයන් කළමනාකරණය කරන්න",
@@ -13,9 +28,6 @@
     "enable_dark_mode": "අඳුරු වර්ණ පටිපාටිය සක්‍රීය කරන්න",
     "profile": "පැතිකඩ",
     "your_account_information": "ඔබගේ ගිණුම් තොරතුරු",
-    "user_type": "පරිශීලක වර්ගය",
-    "name": "නම",
-    "email": "විද්යුත් තැපෑල",
     "notifications": "දැනුම්දීම්",
     "manage_notifications_preferences": "දැනුම්දීම් මනාපයන් කළමනාකරණය කරන්න",
     "message_notifications": "පණිවිඩ දැනුම්දීම්",
@@ -35,7 +47,6 @@
     "terms_conditions": "නියමයන් සහ කොන්දේසි",
     "privacy_policy": "පෞද්ගලිකත්ව ප්\u200dරතිපත්තිය"
   },
-
   "syllabus": {
     "header": "පාඨමාලා",
     "intro": "ඔබගේ විෂය නිර්දේශය උඩුගත කර තෝරන්න. AI ඔබගේ ප්‍රශ්න සඳහා ඔබේ විෂය නිර්දේශයට අනුව පිළිතුරු ලබා දේ.",
@@ -56,7 +67,6 @@
     "file_subject_default": "උඩුගත් ගොනුව",
     "tags": "ටැග්"
   },
-
   "recent_chats": {
     "header": "මෑත චැට්",
     "search_hint": "චැට් සොයන්න...",
@@ -72,7 +82,6 @@
     "settings": "සැකසුම්",
     "logout": "පිටවන්න"
   },
-
   "question_paper": {
     "header": "ප්‍රශ්නා පත්‍රය",
     "intro": "PDF හෝ DOCX ගොනුවක් උඩුගත කරන්න",
@@ -89,5 +98,4 @@
     "upload_error": "ගොනුව තෝරා ගැනීමට බැරි විය",
     "deleted": "මැකුවා: {0}"
   }
-
 }

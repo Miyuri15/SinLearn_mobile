@@ -1,6 +1,21 @@
 {
   "app_name": "SinLearn",
-
+  "ai_subtitle": "AI-Powered Sinhala Educational Assistant",
+  "sign_in": "Sign In",
+  "sign_up": "Sign Up",
+  "email": "Email",
+  "name": "Name",
+  "name_hint": "Your name",
+  "email_hint": "example@email.com",
+  "password": "Password",
+  "password_hint": "••••••••",
+  "user_type": "User Type",
+  "student": "Student",
+  "teacher": "Teacher",
+  "signin_pressed": "Sign in pressed",
+  "forgot_password": "Forgot password?",
+  "si_name": "සිංහල",
+  "en_name": "English",
   "settings": {
     "header": "Settings",
     "manage_preferences": "Manage your preferences",
@@ -13,9 +28,6 @@
     "enable_dark_mode": "Enable dark color scheme",
     "profile": "Profile",
     "your_account_information": "Your account information",
-    "user_type": "User Type",
-    "name": "Name",
-    "email": "Email",
     "notifications": "Notifications",
     "manage_notifications_preferences": "Manage notification preferences",
     "message_notifications": "Message Notifications",
@@ -35,7 +47,6 @@
     "terms_conditions": "Terms and Conditions",
     "privacy_policy": "Privacy Policy"
   },
-  
   "syllabus": {
     "header": "Syllabus",
     "intro": "Upload & select your syllabus. AI will provide answers based on your curriculum.",
@@ -87,5 +98,4 @@
     "upload_error": "Failed to pick file",
     "deleted": "Deleted: {0}"
   }
-
 }
