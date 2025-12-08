@@ -74,7 +74,7 @@ class SinLearnApp extends StatelessWidget {
       GoRoute(
         path: '/settings_teachers',
         builder: (context, state) {
-          // Provider value
+          //  Provider value
           final themeSettings = context.watch<ThemeSettings>();
 
 
@@ -151,7 +151,7 @@ class PlaceholderHome extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // context wtch
+    //  context.watch
     final isDark = context.watch<ThemeSettings>().isDark;
     final theme = Theme.of(context);
     final textColor = theme.colorScheme.onBackground;
