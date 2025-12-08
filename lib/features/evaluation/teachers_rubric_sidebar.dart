@@ -31,35 +31,35 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 // Rubric Cards
                 _buildRubricCard(
                   theme,
-                  'balanced_evaluation'.tr(),
-                  'balanced_semantic'.tr(),
-                  'marks_40'.tr(),
-                  'balanced_coverage'.tr(),
-                  'marks_30'.tr(),
-                  'balanced_relevance'.tr(),
-                  'marks_30'.tr(),
+                  'question_paper.balanced_evaluation'.tr(),
+                  'question_paper.balanced_semantic'.tr(),
+                  'question_paper.marks_40'.tr(),
+                  'question_paper.balanced_coverage'.tr(),
+                  'question_paper.marks_30'.tr(),
+                  'question_paper.balanced_relevance'.tr(),
+                  'question_paper.marks_30'.tr(),
                 ),
                 const SizedBox(height: 24),
                 _buildRubricCard(
                   theme,
-                  'understanding_focused'.tr(),
-                  'understanding_semantic'.tr(),
-                  'marks_60'.tr(),
-                  'understanding_coverage'.tr(),
-                  'marks_20'.tr(),
-                  'understanding_relevance'.tr(),
-                  'marks_20'.tr(),
+                  'question_paper.understanding_focused'.tr(),
+                  'question_paper.understanding_semantic'.tr(),
+                  'question_paper.marks_60'.tr(),
+                  'question_paper.understanding_coverage'.tr(),
+                  'question_paper.marks_20'.tr(),
+                  'question_paper.understanding_relevance'.tr(),
+                  'question_paper.marks_20'.tr(),
                 ),
                 const SizedBox(height: 24),
                 _buildRubricCard(
                   theme,
-                  'content_focused'.tr(),
-                  'content_semantic'.tr(),
-                  'marks_30'.tr(),
-                  'content_coverage'.tr(),
-                  'marks_50'.tr(),
-                  'content_relevance'.tr(),
-                  'marks_20'.tr(),
+                  'question_paper.content_focused'.tr(),
+                  'question_paper.content_semantic'.tr(),
+                  'question_paper.marks_30'.tr(),
+                  'question_paper.content_coverage'.tr(),
+                  'question_paper.marks_50'.tr(),
+                  'question_paper.content_relevance'.tr(),
+                  'question_paper.marks_20'.tr(),
                 ),
               ],
             ),
@@ -88,7 +88,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
             children: [
               Flexible(
                 child: Text(
-                  'teacher_rubrics'.tr(),
+                  'question_paper.teacher_rubrics'.tr(),
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -99,13 +99,13 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.of(context).pop(),
-                tooltip: 'close'.tr(),
+                tooltip: 'question_paper.close'.tr(),
               ),
             ],
           ),
           const SizedBox(height: 4),
           Text(
-            'teacher_rubric_description'.tr(),
+            'question_paper.teacher_rubric_description'.tr(),
             style: theme.textTheme.bodyMedium?.copyWith(
               fontSize: 10,
               color: theme.colorScheme.onSurface.withOpacity(0.7),
@@ -127,7 +127,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'or_upload_custom'.tr(),
+              'question_paper.or_upload_custom'.tr(),
               style: theme.textTheme.titleLarge?.copyWith(
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
@@ -135,7 +135,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
             ),
             const SizedBox(height: 8),
             Text(
-              'pdf_docx_excel'.tr(),
+              'question_paper.pdf_docx_excel'.tr(),
               style: theme.textTheme.bodySmall?.copyWith(
                 fontStyle: FontStyle.italic,
                 color: theme.colorScheme.onSurface.withOpacity(0.7),
@@ -146,7 +146,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
               width: double.infinity,
               child: OutlinedButton(
                 onPressed: _handleUpload,
-                child: Text('upload'.tr()),
+                child: Text('question_paper.upload'.tr()),
               ),
             ),
           ],
@@ -199,7 +199,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
             _item(coverageLabel, coverageMark),
             _item(relevanceLabel, relevanceMark),
             const Divider(),
-            _item('total'.tr(), 'marks_100'.tr()),
+            _item('question_paper.total'.tr(), 'question_paper.marks_100'.tr()),
           ],
         ),
       ),
