@@ -1,4 +1,21 @@
 {
+  "app_name": "සිංලර්න්",
+  "ai_subtitle": "AI-නිර්මාණය කරන ලද සිංහල අධ්‍යාපනික සහකරු",
+  "sign_in": "පිවිසෙන්න",
+  "sign_up": "ලියාපදිංචි වන්න",
+  "email": "ඊමේල්",
+  "email_hint": "example@email.com",
+  "password": "මුරපදය",
+  "password_hint": "••••••••",
+  "name": "නම",
+  "name_hint": "ඔබේ නම",
+  "user_type": "පරිශීලක වර්ගය",
+  "student": "ශිෂ්‍ය",
+  "teacher": "ගුරු/ගුරුවරිය",
+  "signin_pressed": "පිවිසෙන්න බොත්තම",
+  "forgot_password": "මුරපදය අමතකද?",
+  "si_name": "සිංහල",
+  "en_name": "English"
 
   "app_name": "සිංලර්න්",
   "syllabus": {

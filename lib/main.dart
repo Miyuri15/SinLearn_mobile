@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'layouts/mobile/sign_in_page.dart';
 import '../features/recent_chat/recent_chats_page.dart';
 import '../features/syllabus/syllabus_page.dart';
 
@@ -47,6 +48,15 @@ class _MyAppState extends State<MyApp> {
       themeMode: themeMode,
       theme: ThemeData(
         brightness: Brightness.light,
+        fontFamily: 'Roboto',
+        primaryColor: const Color(0xFF1E63FF),
+      ),
+      darkTheme: ThemeData(
+        brightness: Brightness.dark,
+        fontFamily: 'Roboto',
+        primaryColor: const Color(0xFF1E63FF),
+      ),
+      home: const SignInPage(),
         useMaterial3: true,
         colorSchemeSeed: Colors.blue,
       ),
@@ -110,4 +120,7 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
+}
+
+// placeholder home kept for reference (not currently used)
 }
