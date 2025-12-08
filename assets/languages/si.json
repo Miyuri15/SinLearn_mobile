@@ -15,9 +15,7 @@
   "signin_pressed": "පිවිසෙන්න බොත්තම",
   "forgot_password": "මුරපදය අමතකද?",
   "si_name": "සිංහල",
-  "en_name": "English"
-
-  "app_name": "සිංලර්න්",
+  "en_name": "English",
   "syllabus": {
     "header": "පාඨමාලා",
     "intro": "ඔබගේ විෂය නිර්දේශය උඩුගත කර තෝරන්න. AI ඔබගේ ප්‍රශ්න සඳහා ඔබේ විෂය නිර්දේශයට අනුව පිළිතුරු ලබා දේ.",

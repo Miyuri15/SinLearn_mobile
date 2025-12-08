@@ -15,8 +15,7 @@
   "signin_pressed": "Sign in pressed",
   "forgot_password": "Forgot password?",
   "si_name": "සිංහල",
-  "en_name": "English"
-  "app_name": "SinLearn",
+  "en_name": "English",
   "syllabus": {
     "header": "Syllabus",
     "intro": "Upload and select your subject syllabus. AI will answer your questions based on your subject syllabus.",
