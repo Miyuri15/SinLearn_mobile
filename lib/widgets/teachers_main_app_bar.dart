@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../features/evaluation/teachers_rubric_sidebar.dart';
 import '../features/recent_chat/recent_chats_page.dart';
 import '../features/syllabus/syllabus_page.dart';
+import '../features/question_paper/question_paper_page.dart';
 
 class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final int selectedIndex;
@@ -98,9 +99,9 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 
             // ADD BUTTON
             IconButton(
-              icon: const Icon(Icons.add, size: 28),
-              onPressed: () => (),
-            ),
+  icon: const Icon(Icons.add, size: 28),
+  onPressed: () => showQuestionPaperSidebar(context), // <-- Open sidebar
+),
           ],
         ),
       ),

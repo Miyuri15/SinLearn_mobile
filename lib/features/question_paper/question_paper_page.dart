@@ -240,3 +240,28 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
     );
   }
 }
+void showQuestionPaperSidebar(BuildContext context) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
+    barrierColor: Colors.black45,
+    transitionDuration: const Duration(milliseconds: 200),
+    pageBuilder: (BuildContext buildContext, Animation<double> animation,
+        Animation<double> secondaryAnimation) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: QuestionPaperPage(),
+      );
+    },
+    transitionBuilder: (_, anim, __, child) {
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(1, 0),
+          end: Offset.zero,
+        ).animate(anim),
+        child: child,
+      );
+    },
+  );
+}
