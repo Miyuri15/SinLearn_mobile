@@ -30,6 +30,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     final bool isWide = MediaQuery.of(context).size.width >= 900;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       drawer: _buildDrawer(context),
       appBar: MainAppBar(
         selectedIndex: _selectedSegment,
@@ -90,7 +91,7 @@ class _Sidebar extends StatelessWidget {
     return Container(
       width: 320,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: Colors.white, // was theme.colorScheme.surface
         border: Border(right: BorderSide(color: theme.dividerColor)),
       ),
       child: Column(

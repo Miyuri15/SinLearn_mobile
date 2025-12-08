@@ -15,6 +15,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     final theme = Theme.of(context);
 
     return Drawer(
+      backgroundColor: Colors.white, // make drawer host solid white
       child: SizedBox(
         width: 304,
         child: SingleChildScrollView(
@@ -120,7 +121,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
   // ---------------------- Upload Card -------------------------
   Widget _buildUploadCard(ThemeData theme) {
     return Card(
-      color: Colors.white,
+      color: Colors.white, // ensure white
       elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -168,7 +169,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     String relevanceMark,
   ) {
     return Card(
-      color: Colors.white,
+      color: Colors.white, // ensure white
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -254,7 +255,8 @@ void showTeachersRubricSidebar(BuildContext context) {
       return Align(
         alignment: Alignment.centerRight,
         child: Material(
-          borderRadius: BorderRadius.zero, // Remove rounded corners
+          borderRadius: BorderRadius.zero,
+          color: Colors.white, // ensure white host
           child: SizedBox(
             width: 304,
             height: double.infinity,

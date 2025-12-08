@@ -23,7 +23,7 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(20), // ✅ Rounded corners
       ),
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: Colors.white, // was theme.colorScheme.background
       child: Container(
         padding: const EdgeInsets.all(20),
         child: Form(

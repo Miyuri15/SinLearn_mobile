@@ -26,6 +26,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
     final theme = Theme.of(context);
 
     return Drawer(
+      backgroundColor: Colors.white, // make drawer background white
       child: SizedBox(
         width: 304,
         child: SingleChildScrollView(
@@ -41,7 +42,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                 // Standard Rubrics Card
                 Card(
                   elevation: 2,
-                  color: theme.colorScheme.surface,
+                  color: Colors.white, // was theme.colorScheme.surface
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -77,7 +78,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                 // Custom Upload Card
                 Card(
                   elevation: 2,
-                  color: theme.colorScheme.surface,
+                  color: Colors.white, // was theme.colorScheme.surface
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -251,7 +252,7 @@ void showRubricSelectionSidebar(BuildContext context) {
         alignment: Alignment.centerRight,
         child: Material(
           color: Colors.white,
-          borderRadius: BorderRadius.zero, // 🚫 Remove all corner radius
+          borderRadius: BorderRadius.zero,
           child: SizedBox(
             width: 304,
             height: double.infinity,

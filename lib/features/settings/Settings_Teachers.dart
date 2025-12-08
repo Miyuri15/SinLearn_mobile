@@ -39,7 +39,6 @@ class _SettingTeachersState extends State<SettingTeachers> {
   Widget build(BuildContext context) {
     //  Theme
     Theme.of(context);
-
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -62,11 +61,11 @@ class _SettingTeachersState extends State<SettingTeachers> {
         isDark ? const Color(0xFF2563EB) : const Color(0xFFBFDBFE);
     final infoText = isDark ? const Color(0xFF93C5FD) : const Color(0xFF374151);
 
-    // Header background (using card color for consistency)
-    final headerBg = card;
+    // Header background (force white so no pink tint)
+    final headerBg = Colors.white;
 
     return Scaffold(
-      backgroundColor: background,
+      backgroundColor: Colors.white, // changed to solid white
       body: SafeArea(
         child: SingleChildScrollView(
           // --- HEADER & BODY WRAPPED IN A COLUMN WITH HEADER BACKGROUND ---
@@ -112,7 +111,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: card,
+                  color: Colors.white, // was card
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -143,7 +142,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         value: context.locale,
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: languageInputBg, //  Theme API
+                          fillColor: Colors.white, // force white dropdown background
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 12),
                           border: OutlineInputBorder(
@@ -222,7 +221,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: card,
+                  color: Colors.white, // was card
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -303,7 +302,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: card,
+                  color: Colors.white, // was card
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -341,20 +340,17 @@ class _SettingTeachersState extends State<SettingTeachers> {
                       _label("settings.user_type".tr(), subText),
 
                       // Read-only Box (Uses profileInputBg for blue background in Dark Mode)
-                      _readonlyBox(
-                          "teacher".tr(), profileInputBg, text, isDark),
+                      _readonlyBox("teacher".tr(), Colors.white, text, isDark),
 
                       const SizedBox(height: 12),
                       // Localization Key
                       _label("settings.name".tr(), subText),
-                      _inputBox("User Name", profileInputBg, text,
-                          isDark), // Corrected: Uses profileInputBg
+                      _inputBox("User Name", Colors.white, text, isDark),
 
                       const SizedBox(height: 12),
                       // ✅ Localization Key සංශෝධනය කර ඇත
                       _label("settings.email".tr(), subText),
-                      _inputBox("user@example.com", profileInputBg, text,
-                          isDark), // Corrected: Uses profileInputBg
+                      _inputBox("user@example.com", Colors.white, text, isDark),
                     ],
                   ),
                 ),
@@ -367,7 +363,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: card,
+                  color: Colors.white, // was card
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -448,7 +444,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: card,
+                  color: Colors.white, // was card
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -526,7 +522,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: card,
+                  color: Colors.white, // was card
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -591,11 +587,14 @@ class _SettingTeachersState extends State<SettingTeachers> {
   }
 
   Widget _buildCard({required Widget child, required Color color}) {
+    // Use Theme divider to draw card outline so lines are visible on white cards
+    final borderColor = Theme.of(context).dividerColor.withOpacity(0.6);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: borderColor, width: 1),
       ),
       child: child,
     );

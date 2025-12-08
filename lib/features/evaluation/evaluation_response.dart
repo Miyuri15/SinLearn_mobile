@@ -7,6 +7,7 @@ class EvaluationResponsePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text('Evaluation Mode'),
         actions: [
@@ -103,7 +104,7 @@ class _EvaluationReportCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border:
             Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
