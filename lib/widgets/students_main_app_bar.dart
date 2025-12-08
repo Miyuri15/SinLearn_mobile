@@ -43,12 +43,10 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
           children: [
             // LEFT MENU ICON
             Builder(
-              builder: (context) {
+              builder: (ctx) {
                 return IconButton(
                   icon: const Icon(Icons.menu, size: 28),
-                  onPressed: () {
-                    Scaffold.of(context).openDrawer(); // Works now!
-                  },
+                  onPressed: () => Scaffold.of(ctx).openDrawer(),
                 );
               },
             ),
@@ -79,30 +77,34 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
 
             const Spacer(),
+
+            // RUBRIC (students) -> right-side sidebar
             IconButton(
               icon: const Icon(Icons.document_scanner, size: 28),
               onPressed: () => showRubricSelectionSidebar(context),
             ),
 
-            // RIGHT ICON — Tablet or Dashboard icon
+            // BOOK ICON -> Syllabus (sidebar)
             Builder(
               builder: (ctx) {
                 return IconButton(
                   icon: const Icon(Icons.book, size: 28),
-                  onPressed: () {
-                    showSyllabusSidebar(ctx); // safe context
-                  },
+                  onPressed: () => showSyllabusSidebar(ctx), // opens as right panel
                 );
               },
             ),
 
             const SizedBox(width: 8),
 
-            // ADD BUTTON
-            IconButton(
-  icon: const Icon(Icons.add, size: 28),
-  onPressed: () => showQuestionPaperSidebar(context), // <-- Open sidebar
-),
+            // ADD BUTTON -> Question Paper (sidebar)
+            Builder(
+              builder: (ctx) {
+                return IconButton(
+                  icon: const Icon(Icons.add, size: 28),
+                  onPressed: () => showQuestionPaperSidebar(ctx), // opens as right panel
+                );
+              },
+            ),
           ],
         ),
       ),
