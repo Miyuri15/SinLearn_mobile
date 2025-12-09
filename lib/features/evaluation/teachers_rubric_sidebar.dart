@@ -17,7 +17,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     final drawerW = screenW * 0.9 > 304 ? 304.0 : screenW * 0.9;
 
     return Drawer(
-      backgroundColor: Colors.white, // make drawer host solid white
+      backgroundColor: theme.colorScheme.surface, // was Colors.white
       child: SizedBox(
         width: drawerW,
         child: SingleChildScrollView(
@@ -30,8 +30,6 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 const SizedBox(height: 24),
                 _buildUploadCard(theme),
                 const SizedBox(height: 24),
-
-                // Rubric Cards
                 _buildRubricCard(
                   theme,
                   'question_paper.balanced_evaluation'.tr(),
@@ -123,8 +121,8 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
   // ---------------------- Upload Card -------------------------
   Widget _buildUploadCard(ThemeData theme) {
     return Card(
-      color: Colors.white, // ensure white
-      elevation: 2,
+      color: theme.cardColor, // was Colors.white
+      elevation: theme.brightness == Brightness.light ? 2 : 0,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -171,8 +169,8 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     String relevanceMark,
   ) {
     return Card(
-      color: Colors.white, // ensure white
-      elevation: 2,
+      color: theme.cardColor, // was Colors.white
+      elevation: theme.brightness == Brightness.light ? 2 : 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -254,13 +252,14 @@ void showTeachersRubricSidebar(BuildContext context) {
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (BuildContext buildContext, Animation<double> animation,
         Animation<double> secondaryAnimation) {
+      final theme = Theme.of(buildContext);
       final screenW = MediaQuery.of(buildContext).size.width;
       final drawerW = screenW * 0.9 > 304 ? 304.0 : screenW * 0.9;
       return Align(
         alignment: Alignment.centerRight,
         child: Material(
           borderRadius: BorderRadius.zero,
-          color: Colors.white, // ensure white host
+          color: theme.colorScheme.surface, // was Colors.white
           child: SizedBox(
             width: drawerW,
             height: double.infinity,
@@ -271,10 +270,7 @@ void showTeachersRubricSidebar(BuildContext context) {
     },
     transitionBuilder: (context, animation, secondaryAnimation, child) {
       return SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(1.0, 0.0),
-          end: Offset.zero,
-        ).animate(animation),
+        position: Tween<Offset>(begin: const Offset(1.0, 0.0), end: Offset.zero).animate(animation),
         child: child,
       );
     },

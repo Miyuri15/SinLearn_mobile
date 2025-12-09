@@ -36,7 +36,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     final sidebarWidth = isWide ? (size.width * 0.32).clamp(260.0, 360.0) : 0.0;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor, // was Colors.white
       drawer: _buildDrawer(context),
       appBar: MainAppBar(
         selectedIndex: _selectedSegment,
@@ -97,7 +97,7 @@ class _Sidebar extends StatelessWidget {
     return Container(
       width: 320,
       decoration: BoxDecoration(
-        color: Colors.white, // was theme.colorScheme.surface
+        color: theme.colorScheme.surface, // was Colors.white
         border: Border(right: BorderSide(color: theme.dividerColor)),
       ),
       child: Column(
@@ -187,9 +187,9 @@ class _EmptyChatView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('start_conversation'.tr(), style: theme.textTheme.headlineSmall?.copyWith(color: Colors.grey[600], fontWeight: FontWeight.w600)),
+          Text('start_conversation'.tr(), style: theme.textTheme.headlineSmall?.copyWith(color: theme.hintColor, fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
-          Text('type_question'.tr(), style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[450])),
+          Text('type_question'.tr(), style: theme.textTheme.bodyLarge?.copyWith(color: theme.hintColor)),
         ],
       ),
     );
@@ -218,10 +218,10 @@ class _InputBar extends StatelessWidget {
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: theme.colorScheme.surface, // was Colors.white
                   borderRadius: BorderRadius.circular(isSmallPhone ? 16 : 20),
-                  border: Border.all(color: Colors.grey.withOpacity(0.12)),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 6)],
+                  border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
+                  boxShadow: [if (theme.brightness == Brightness.light) BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 6)],
                 ),
                 child: TextField(
                   controller: controller,

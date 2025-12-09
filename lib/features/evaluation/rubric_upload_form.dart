@@ -20,10 +20,8 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
     final theme = Theme.of(context);
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20), // ✅ Rounded corners
-      ),
-      backgroundColor: Colors.white, // was theme.colorScheme.background
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: theme.cardColor, // was Colors.white
       child: Container(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -64,10 +62,8 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue, // ✅ Blue button
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12), // Rounded button
-                    ),
+                    backgroundColor: theme.colorScheme.primary, // was Colors.blue
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   onPressed: _submit,

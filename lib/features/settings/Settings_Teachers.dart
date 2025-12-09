@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingTeachers extends StatefulWidget {
   final bool isDark;
@@ -17,7 +17,7 @@ class SettingTeachers extends StatefulWidget {
 }
 
 class _SettingTeachersState extends State<SettingTeachers> {
-  bool get isDark => widget.isDark;
+  late bool isDark; // Use a local state variable for `isDark`
 
   // State variables for toggles
   bool messagesOn = true;
@@ -34,6 +34,31 @@ class _SettingTeachersState extends State<SettingTeachers> {
   // Dark Theme specific profile input background color (As requested: Blue for Profile)
   final Color darkProfileInputBackground =
       const Color(0xFF2563EB).withOpacity(0.1);
+
+  @override
+  void initState() {
+    super.initState();
+    isDark = widget.isDark; // Initialize with the value passed from the parent
+    _loadSavedTheme();
+  }
+
+  Future<void> _loadSavedTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('isDark')) {
+      final saved = prefs.getBool('isDark') ?? isDark;
+      if (saved != isDark) {
+        setState(() {
+          isDark = saved; // Update local state
+        });
+        widget.toggleTheme(saved); // Notify parent to apply the saved theme
+      }
+    }
+  }
+
+  Future<void> _saveThemePreference(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDark', value); // Save the theme preference
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -271,25 +296,28 @@ class _SettingTeachersState extends State<SettingTeachers> {
                               Text("settings.dark_mode".tr(),
                                   style: TextStyle(
                                       fontWeight: FontWeight.w500,
-                                      color: text)),
+                                      color: Theme.of(context).colorScheme.onBackground)),
                               //  Localization Key
                               Text("settings.enable_dark_mode".tr(),
-                                  style:
-                                      TextStyle(fontSize: 12, color: subText)),
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Theme.of(context).colorScheme.secondary)),
                             ],
                           ),
                           Switch(
                             value: isDark,
-                            onChanged: (v) {
-                              widget.toggleTheme(v);
-                              Future.microtask(() => setState(() {}));
+                            onChanged: (value) async {
+                              setState(() {
+                                isDark = value; // Update local state
+                              });
+                              await _saveThemePreference(value); // Save preference
+                              widget.toggleTheme(value); // Notify parent to update theme
                             },
-                            // Requested Switch Style
                             activeColor: Colors.white,
                             inactiveThumbColor: Colors.white,
-                            activeTrackColor: primaryBlue,
+                            activeTrackColor: const Color(0xFF2563EB),
                             inactiveTrackColor: Colors.grey.shade400,
-                          )
+                          ),
                         ],
                       ),
                     ],
@@ -1243,15 +1271,7 @@ at/evaluation/rubrics
     dependency: transitive
     description:
       name: xml
-      sha256: b015a8ad1c488f66851d762d3090a21c600e479dc75e68328c52774040cf9226
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.5.0"
-sdks:
-  dart: ">=3.8.0-0 <4.0.0"
-  dart: ">=3.8.0-0 <4.0.0"
-  dart: ">=3.7.0-0 <4.0.0"
-
+      sha256: b015a8ad1c488f66851d762d3090a21c
   flutter: ">=3.24.0"
 
  */

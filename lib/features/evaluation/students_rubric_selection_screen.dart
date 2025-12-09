@@ -28,7 +28,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
     final drawerW = screenW * 0.9 > 304 ? 304.0 : screenW * 0.9;
 
     return Drawer(
-      backgroundColor: Colors.white, // make drawer background white
+      backgroundColor: theme.colorScheme.surface, // was Colors.white
       child: SizedBox(
         width: drawerW,
         child: SingleChildScrollView(
@@ -37,14 +37,11 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Section
                 _buildHeader(theme),
                 const SizedBox(height: 24),
-
-                // Standard Rubrics Card
                 Card(
-                  elevation: 2,
-                  color: Colors.white, // was theme.colorScheme.surface
+                  elevation: theme.brightness == Brightness.light ? 2 : 0,
+                  color: theme.cardColor, // was Colors.white
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -76,11 +73,9 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Custom Upload Card
                 Card(
-                  elevation: 2,
-                  color: Colors.white, // was theme.colorScheme.surface
+                  elevation: theme.brightness == Brightness.light ? 2 : 0,
+                  color: theme.cardColor, // was Colors.white
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -250,12 +245,13 @@ void showRubricSelectionSidebar(BuildContext context) {
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (BuildContext buildContext, Animation<double> animation,
         Animation<double> secondaryAnimation) {
+      final theme = Theme.of(buildContext);
       final screenW = MediaQuery.of(buildContext).size.width;
       final drawerW = screenW * 0.9 > 304 ? 304.0 : screenW * 0.9;
       return Align(
         alignment: Alignment.centerRight,
         child: Material(
-          color: Colors.white,
+          color: theme.colorScheme.surface, // was Colors.white
           borderRadius: BorderRadius.zero,
           child: SizedBox(
             width: drawerW,

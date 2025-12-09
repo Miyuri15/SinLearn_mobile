@@ -36,7 +36,7 @@ class _EvaluationVoicePageState extends State<EvaluationVoicePage>
 		final isWide = MediaQuery.of(context).size.width >= 900;
 
 		return Scaffold(
-			backgroundColor: Colors.white, // ensure solid white
+			backgroundColor: theme.scaffoldBackgroundColor, // was Colors.white
 			appBar: isWide ? null : AppBar(toolbarHeight: 0),
 			body: Stack(
 				children: [

@@ -10,7 +10,7 @@ class EvaluationResponsePage extends StatelessWidget {
     final theme = Theme.of(context);
     final isCompact = MediaQuery.of(context).size.width < 420;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor, // was Colors.white
       appBar: AppBar(
         title: Text('evaluation_mode'.tr()),
         actions: isCompact
@@ -120,7 +120,7 @@ class _UserMessageBubble extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F8FF), // light blue card like image
+              color: theme.colorScheme.primary.withOpacity(0.10), // was light blue
               borderRadius: BorderRadius.circular(14),
             ),
             child: Text(text, style: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
@@ -139,10 +139,9 @@ class _EvaluationReportCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.cardColor, // was Colors.white
         borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -360,6 +359,7 @@ class _ReplyInputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return SafeArea(
       top: false,
       child: Row(
@@ -367,9 +367,9 @@ class _ReplyInputBar extends StatelessWidget {
           Expanded(
             child: Container(
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.colorScheme.surface, // was Colors.white
                 borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.08)),
+                border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
               ),
               child: TextField(
                 controller: controller,

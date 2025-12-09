@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../settings/Settings_Teachers.dart';
 import '../auth/sign_up_page.dart';
+import '../../main.dart' show MyApp; // access global theme toggler
 
 // Model
 class ChatEntry {
@@ -101,9 +102,11 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     return Drawer(
       width: 360,
-      backgroundColor: Colors.white, // force white background
+      // replace hard-coded white with themed surface color
+      backgroundColor: theme.colorScheme.surface,
       child: SafeArea(
         child: Column(
           children: [
@@ -126,7 +129,7 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                 ],
               ),
             ),
-            Divider(height: 1),
+            Divider(height: 1, color: isDark ? Colors.white12 : Colors.black12),
             // Search
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
@@ -200,9 +203,9 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => SettingTeachers(
-                            isDark:
-                                Theme.of(context).brightness == Brightness.dark,
-                            toggleTheme: (_) {},
+                            isDark: Theme.of(context).brightness == Brightness.dark,
+                            // connect settings toggle to app theme
+                            toggleTheme: (v) => MyApp.of(context).toggleTheme(v),
                           ),
                         ),
                       );
