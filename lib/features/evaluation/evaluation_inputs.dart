@@ -15,7 +15,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
   final TextEditingController _totalMarksController = TextEditingController();
   final TextEditingController _mainQuestionsController = TextEditingController();
   final TextEditingController _requiredQuestionsController = TextEditingController();
-  final TextEditingController _subQuestionsController = TextEditingController();
+  // Removed: final TextEditingController _subQuestionsController = TextEditingController();
 
   bool _isFileUploaded = false;
   Map<String, dynamic> _allocatedMarks = {};
@@ -30,7 +30,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
     _totalMarksController.dispose();
     _mainQuestionsController.dispose();
     _requiredQuestionsController.dispose();
-    _subQuestionsController.dispose();
+    // Removed: _subQuestionsController.dispose();
     _disposeSubQuestionControllers();
     super.dispose();
   }
@@ -45,14 +45,12 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
   void _initializePopup() {
     _disposeSubQuestionControllers();
     final mainQuestions = int.tryParse(_mainQuestionsController.text) ?? 0;
-    final subQuestions = int.tryParse(_subQuestionsController.text) ?? 0;
 
-    if (mainQuestions > 0 && subQuestions > 0) {
+    if (mainQuestions > 0) {
       for (int i = 1; i <= mainQuestions; i++) {
         _allocatedMarks['Q$i'] = {};
-        for (int j = 1; j <= subQuestions; j++) {
-          _allocatedMarks['Q$i']['S$j'] = '';
-        }
+        // Start with one default sub-question
+        _allocatedMarks['Q$i']['S1'] = '';
       }
       _updateSubQuestionControllers();
     }
@@ -60,8 +58,8 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
 
   void _updateSubQuestionControllers() {
     _disposeSubQuestionControllers();
-    final subQuestions = int.tryParse(_subQuestionsController.text) ?? 0;
     final currentQuestion = _currentQuestionIndex + 1;
+    final subQuestions = _allocatedMarks['Q$currentQuestion']?.length ?? 1;
 
     for (int i = 1; i <= subQuestions; i++) {
       final controller = TextEditingController(
@@ -72,7 +70,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
 
   void _saveCurrentQuestionMarks() {
     final currentQuestion = _currentQuestionIndex + 1;
-    final subQuestions = int.tryParse(_subQuestionsController.text) ?? 0;
+    final subQuestions = _allocatedMarks['Q$currentQuestion']?.length ?? 0;
 
     for (int i = 1; i <= subQuestions; i++) {
       if (i - 1 < _subQuestionMarkControllers.length) {
@@ -83,9 +81,8 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
 
   void _showAllocateMarksDialog() {
     final mainQuestions = int.tryParse(_mainQuestionsController.text) ?? 0;
-    final subQuestions = int.tryParse(_subQuestionsController.text) ?? 0;
 
-    if (mainQuestions == 0 || subQuestions == 0) {
+    if (mainQuestions == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('evaluation.validNumbersRequired'.tr())),
       );
@@ -149,7 +146,6 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
       'totalMarks': _totalMarksController.text,
       'mainQuestions': _mainQuestionsController.text,
       'requiredQuestions': _requiredQuestionsController.text,
-      'subQuestions': _subQuestionsController.text,
       'allocatedMarks': _allocatedMarks,
       'fileUploaded': _isFileUploaded,
     };
@@ -164,7 +160,6 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
     return _totalMarksController.text.isNotEmpty &&
         _mainQuestionsController.text.isNotEmpty &&
         _requiredQuestionsController.text.isNotEmpty &&
-        _subQuestionsController.text.isNotEmpty &&
         _isFileUploaded &&
         _allocatedMarks.isNotEmpty;
   }
@@ -302,13 +297,6 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                   hintText: 'evaluation.enterRequiredQuestions'.tr(),
                                   icon: Icons.assignment_turned_in,
                                   isDarkMode: isDarkMode),
-                              const SizedBox(height: 16),
-                              _buildInputField(
-                                  controller: _subQuestionsController,
-                                  label: 'evaluation.subQuestions'.tr(),
-                                  hintText: 'evaluation.enterSubQuestions'.tr(),
-                                  icon: Icons.list_alt,
-                                  isDarkMode: isDarkMode),
                               const SizedBox(height: 24),
                               if (isMobile)
                                 Column(
@@ -395,7 +383,6 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                               _totalMarksController.clear();
                                               _mainQuestionsController.clear();
                                               _requiredQuestionsController.clear();
-                                              _subQuestionsController.clear();
                                               setState(() {
                                                 _isFileUploaded = false;
                                                 _allocatedMarks.clear();
@@ -454,7 +441,6 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                         _totalMarksController.clear();
                                         _mainQuestionsController.clear();
                                         _requiredQuestionsController.clear();
-                                        _subQuestionsController.clear();
                                         setState(() {
                                           _isFileUploaded = false;
                                           _allocatedMarks.clear();
@@ -512,8 +498,23 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
               theme: theme,
               currentQuestionIndex: _currentQuestionIndex,
               mainQuestionsCount: int.tryParse(_mainQuestionsController.text) ?? 0,
-              subQuestionsCount: int.tryParse(_subQuestionsController.text) ?? 0,
               subQuestionMarkControllers: _subQuestionMarkControllers,
+              allocatedMarks: _allocatedMarks,
+              onAddSubQuestion: () {
+                final currentQuestion = _currentQuestionIndex + 1;
+                final newSubQuestionNumber = (_allocatedMarks['Q$currentQuestion']?.length ?? 0) + 1;
+                
+                // Add new sub-question to the allocated marks structure
+                _allocatedMarks['Q$currentQuestion']['S$newSubQuestionNumber'] = '';
+                
+                // Update controllers
+                _updateSubQuestionControllers();
+                
+                // Trigger rebuild
+                if (mounted) {
+                  setState(() {});
+                }
+              },
               onPrevious: () {
                 _saveCurrentQuestionMarks();
                 if (_currentQuestionIndex > 0) {
@@ -597,8 +598,9 @@ class _AllocateMarksPopup extends StatelessWidget {
     required this.theme,
     required this.currentQuestionIndex,
     required this.mainQuestionsCount,
-    required this.subQuestionsCount,
     required this.subQuestionMarkControllers,
+    required this.allocatedMarks,
+    required this.onAddSubQuestion,
     required this.onPrevious,
     required this.onNext,
     required this.onDone,
@@ -610,8 +612,9 @@ class _AllocateMarksPopup extends StatelessWidget {
   final ThemeData theme;
   final int currentQuestionIndex;
   final int mainQuestionsCount;
-  final int subQuestionsCount;
   final List<TextEditingController> subQuestionMarkControllers;
+  final Map<String, dynamic> allocatedMarks;
+  final VoidCallback onAddSubQuestion;
   final VoidCallback onPrevious;
   final VoidCallback onNext;
   final VoidCallback onDone;
@@ -621,6 +624,9 @@ class _AllocateMarksPopup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currentQuestion = currentQuestionIndex + 1;
+    final subQuestionsCount = allocatedMarks['Q$currentQuestion']?.length ?? 1;
+
     return Dialog(
       insetPadding:
           isMobile ? const EdgeInsets.all(16) : const EdgeInsets.all(20),
@@ -656,59 +662,94 @@ class _AllocateMarksPopup extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
+            
+            // Sub-questions count text
             Text(
-                '${'evaluation.enterMarksForSubQuestions'.tr()} (${'evaluation.total'.tr()}: $subQuestionsCount)',
-                style: theme.textTheme.bodyLarge
-                    ?.copyWith(color: isDarkMode ? Colors.grey[300] : Colors.grey[700])),
+              '${'evaluation.enterMarksForSubQuestions'.tr()} (${'evaluation.total'.tr()}: $subQuestionsCount)',
+              style: theme.textTheme.bodyLarge
+                  ?.copyWith(color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+            ),
+            
             const SizedBox(height: 24),
+            
+            // Sub-question input fields
             ConstrainedBox(
               constraints:
                   BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
               child: SingleChildScrollView(
                 child: Column(
-                  children: List.generate(subQuestionsCount, (index) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      child: TextField(
-                        controller: subQuestionMarkControllers[index],
-                        keyboardType: TextInputType.number,
-                        style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
-                        decoration: InputDecoration(
-                          labelText: '${'evaluation.subQuestion'.tr()} ${index + 1}',
-                          labelStyle: TextStyle(
-                              color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
-                          hintText: 'evaluation.enterMarks'.tr(),
-                          hintStyle: TextStyle(
-                              color: isDarkMode ? Colors.grey[400] : Colors.grey[600]),
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                  color: isDarkMode
-                                      ? Colors.grey.shade700
-                                      : Colors.grey.shade300)),
-                          enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                  color: isDarkMode
-                                      ? Colors.grey.shade700
-                                      : Colors.grey.shade300)),
-                          focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                  color: _EvaluationTextPageState.primaryBlue,
-                                  width: 2)),
-                          prefixIcon: const Icon(Icons.arrow_right,
-                              color: _EvaluationTextPageState.primaryBlue),
-                          filled: true,
-                          fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[50],
+                  children: [
+                    // Sub-question fields
+                    ...List.generate(subQuestionMarkControllers.length, (index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: TextField(
+                          controller: subQuestionMarkControllers[index],
+                          keyboardType: TextInputType.number,
+                          style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
+                          decoration: InputDecoration(
+                            labelText: '${'evaluation.subQuestion'.tr()} ${index + 1}',
+                            labelStyle: TextStyle(
+                                color: isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+                            hintText: 'evaluation.enterMarks'.tr(),
+                            hintStyle: TextStyle(
+                                color: isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                    color: isDarkMode
+                                        ? Colors.grey.shade700
+                                        : Colors.grey.shade300)),
+                            enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                    color: isDarkMode
+                                        ? Colors.grey.shade700
+                                        : Colors.grey.shade300)),
+                            focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(
+                                    color: Color(0xFF2196F3),
+                                    width: 2)),
+                            prefixIcon: const Icon(Icons.arrow_right,
+                                color: Color(0xFF2196F3)),
+                            filled: true,
+                            fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[50],
+                          ),
+                        ),
+                      );
+                    }),
+                    
+                    // Add sub-question button (centered under the input fields)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8, bottom: 16),
+                      child: Center(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Color(0xFF2196F3),
+                              width: 2,
+                            ),
+                          ),
+                          child: IconButton(
+                            onPressed: onAddSubQuestion,
+                            icon: Icon(Icons.add, color: Color(0xFF2196F3)),
+                            iconSize: isMobile ? 20 : 24,
+                            tooltip: 'evaluation.addSubQuestion'.tr(),
+                            padding: EdgeInsets.all(isMobile ? 8 : 12),
+                          ),
                         ),
                       ),
-                    );
-                  }),
+                    ),
+                  ],
                 ),
               ),
             ),
+            
             const SizedBox(height: 24),
+            
+            // Navigation buttons
             if (isMobile)
               Column(
                 children: [
@@ -716,13 +757,13 @@ class _AllocateMarksPopup extends StatelessWidget {
                     OutlinedButton.icon(
                       onPressed: onPrevious,
                       icon: const Icon(Icons.arrow_back,
-                          color: _EvaluationTextPageState.primaryBlue),
+                          color: Color(0xFF2196F3)),
                       label: Text('common.previous'.tr(),
                           style:
-                              const TextStyle(color: _EvaluationTextPageState.primaryBlue)),
+                              const TextStyle(color: Color(0xFF2196F3))),
                       style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(50),
-                          side: const BorderSide(color: _EvaluationTextPageState.primaryBlue),
+                          side: const BorderSide(color: Color(0xFF2196F3)),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12))),
                     ),
@@ -734,7 +775,7 @@ class _AllocateMarksPopup extends StatelessWidget {
                       label: Text('common.next'.tr(),
                           style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: _EvaluationTextPageState.primaryBlue,
+                          backgroundColor: Color(0xFF2196F3),
                           minimumSize: const Size.fromHeight(50),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12))),
@@ -746,7 +787,7 @@ class _AllocateMarksPopup extends StatelessWidget {
                       label: Text('common.done'.tr(),
                           style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: _EvaluationTextPageState.primaryBlue,
+                          backgroundColor: Color(0xFF2196F3),
                           minimumSize: const Size.fromHeight(50),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12))),
@@ -761,12 +802,12 @@ class _AllocateMarksPopup extends StatelessWidget {
                     OutlinedButton.icon(
                       onPressed: onPrevious,
                       icon: const Icon(Icons.arrow_back,
-                          color: _EvaluationTextPageState.primaryBlue),
+                          color: Color(0xFF2196F3)),
                       label: Text('common.previous'.tr(),
                           style:
-                              const TextStyle(color: _EvaluationTextPageState.primaryBlue)),
+                              const TextStyle(color: Color(0xFF2196F3))),
                       style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: _EvaluationTextPageState.primaryBlue),
+                          side: const BorderSide(color: Color(0xFF2196F3)),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12))),
                     )
@@ -779,7 +820,7 @@ class _AllocateMarksPopup extends StatelessWidget {
                       label: Text('common.next'.tr(),
                           style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: _EvaluationTextPageState.primaryBlue,
+                          backgroundColor: Color(0xFF2196F3),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12))),
                     )
@@ -790,7 +831,7 @@ class _AllocateMarksPopup extends StatelessWidget {
                       label: Text('common.done'.tr(),
                           style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: _EvaluationTextPageState.primaryBlue,
+                          backgroundColor: Color(0xFF2196F3),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12))),
                     ),
