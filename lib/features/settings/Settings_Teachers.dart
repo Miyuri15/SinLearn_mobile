@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingTeachers extends StatefulWidget {
   final bool isDark;
@@ -17,7 +17,7 @@ class SettingTeachers extends StatefulWidget {
 }
 
 class _SettingTeachersState extends State<SettingTeachers> {
-  bool get isDark => widget.isDark;
+  late bool isDark; // Use a local state variable for `isDark`
 
   // State variables for toggles
   bool messagesOn = true;
@@ -36,9 +36,35 @@ class _SettingTeachersState extends State<SettingTeachers> {
       const Color(0xFF2563EB).withOpacity(0.1);
 
   @override
+  void initState() {
+    super.initState();
+    isDark = widget.isDark; // Initialize with the value passed from the parent
+    _loadSavedTheme();
+  }
+
+  Future<void> _loadSavedTheme() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('isDark')) {
+      final saved = prefs.getBool('isDark') ?? isDark;
+      if (saved != isDark) {
+        setState(() {
+          isDark = saved; // Update local state
+        });
+        widget.toggleTheme(saved); // Notify parent to apply the saved theme
+      }
+    }
+  }
+
+  Future<void> _saveThemePreference(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDark', value); // Save the theme preference
+  }
+
+  @override
   Widget build(BuildContext context) {
     //  Theme
     Theme.of(context);
+
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -61,11 +87,11 @@ class _SettingTeachersState extends State<SettingTeachers> {
         isDark ? const Color(0xFF2563EB) : const Color(0xFFBFDBFE);
     final infoText = isDark ? const Color(0xFF93C5FD) : const Color(0xFF374151);
 
-    // Header background (force white so no pink tint)
-    final headerBg = Colors.white;
+    // Header background (using card color for consistency)
+    final headerBg = card;
 
     return Scaffold(
-      backgroundColor: Colors.white, // changed to solid white
+      backgroundColor: background,
       body: SafeArea(
         child: SingleChildScrollView(
           // --- HEADER & BODY WRAPPED IN A COLUMN WITH HEADER BACKGROUND ---
@@ -111,7 +137,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: Colors.white, // was card
+                  color: card,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -142,7 +168,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
                         value: context.locale,
                         decoration: InputDecoration(
                           filled: true,
-                          fillColor: Colors.white, // force white dropdown background
+                          fillColor: languageInputBg, //  Theme API
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 12),
                           border: OutlineInputBorder(
@@ -221,7 +247,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: Colors.white, // was card
+                  color: card,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -270,25 +296,28 @@ class _SettingTeachersState extends State<SettingTeachers> {
                               Text("settings.dark_mode".tr(),
                                   style: TextStyle(
                                       fontWeight: FontWeight.w500,
-                                      color: text)),
+                                      color: Theme.of(context).colorScheme.onBackground)),
                               //  Localization Key
                               Text("settings.enable_dark_mode".tr(),
-                                  style:
-                                      TextStyle(fontSize: 12, color: subText)),
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Theme.of(context).colorScheme.secondary)),
                             ],
                           ),
                           Switch(
                             value: isDark,
-                            onChanged: (v) {
-                              widget.toggleTheme(v);
-                              Future.microtask(() => setState(() {}));
+                            onChanged: (value) async {
+                              setState(() {
+                                isDark = value; // Update local state
+                              });
+                              await _saveThemePreference(value); // Save preference
+                              widget.toggleTheme(value); // Notify parent to update theme
                             },
-                            // Requested Switch Style
                             activeColor: Colors.white,
                             inactiveThumbColor: Colors.white,
-                            activeTrackColor: primaryBlue,
+                            activeTrackColor: const Color(0xFF2563EB),
                             inactiveTrackColor: Colors.grey.shade400,
-                          )
+                          ),
                         ],
                       ),
                     ],
@@ -302,7 +331,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: Colors.white, // was card
+                  color: card,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -340,17 +369,20 @@ class _SettingTeachersState extends State<SettingTeachers> {
                       _label("settings.user_type".tr(), subText),
 
                       // Read-only Box (Uses profileInputBg for blue background in Dark Mode)
-                      _readonlyBox("teacher".tr(), Colors.white, text, isDark),
+                      _readonlyBox(
+                          "teacher".tr(), profileInputBg, text, isDark),
 
                       const SizedBox(height: 12),
                       // Localization Key
                       _label("settings.name".tr(), subText),
-                      _inputBox("User Name", Colors.white, text, isDark),
+                      _inputBox("User Name", profileInputBg, text,
+                          isDark), // Corrected: Uses profileInputBg
 
                       const SizedBox(height: 12),
                       // ✅ Localization Key සංශෝධනය කර ඇත
                       _label("settings.email".tr(), subText),
-                      _inputBox("user@example.com", Colors.white, text, isDark),
+                      _inputBox("user@example.com", profileInputBg, text,
+                          isDark), // Corrected: Uses profileInputBg
                     ],
                   ),
                 ),
@@ -363,7 +395,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: Colors.white, // was card
+                  color: card,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -444,7 +476,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: Colors.white, // was card
+                  color: card,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -522,7 +554,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildCard(
-                  color: Colors.white, // was card
+                  color: card,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -587,14 +619,11 @@ class _SettingTeachersState extends State<SettingTeachers> {
   }
 
   Widget _buildCard({required Widget child, required Color color}) {
-    // Use Theme divider to draw card outline so lines are visible on white cards
-    final borderColor = Theme.of(context).dividerColor.withOpacity(0.6);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: borderColor, width: 1),
       ),
       child: child,
     );
@@ -1242,15 +1271,7 @@ at/evaluation/rubrics
     dependency: transitive
     description:
       name: xml
-      sha256: b015a8ad1c488f66851d762d3090a21c600e479dc75e68328c52774040cf9226
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.5.0"
-sdks:
-  dart: ">=3.8.0-0 <4.0.0"
-  dart: ">=3.8.0-0 <4.0.0"
-  dart: ">=3.7.0-0 <4.0.0"
-
+      sha256: b015a8ad1c488f66851d762d3090a21c
   flutter: ">=3.24.0"
 
  */

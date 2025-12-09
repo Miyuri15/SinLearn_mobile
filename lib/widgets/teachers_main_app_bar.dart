@@ -29,15 +29,13 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     return Material(
       elevation: 0,
-      color: Colors.white,
+      color: theme.colorScheme.surface, // was Colors.white
       child: Container(
         height: preferredSize.height,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          border: Border(
-            bottom: BorderSide(color: Color(0xFFE6ECF2), width: 1),
-          ),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface, // was Colors.white
+          border: Border(bottom: BorderSide(color: theme.dividerColor, width: 1)),
         ),
         child: Row(
           children: [
@@ -45,8 +43,10 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             Builder(
               builder: (ctx) {
                 return IconButton(
-                  icon: const Icon(Icons.menu, size: 28),
+                  icon: Icon(Icons.menu, size: 24, color: theme.colorScheme.onSurface),
                   onPressed: () => Scaffold.of(ctx).openDrawer(),
+                  padding: const EdgeInsets.all(8),
+                  splashRadius: 20,
                 );
               },
             ),
@@ -55,9 +55,9 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 
             // SEGMENT BUTTONS (Book | Clipboard)
             Container(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFFF7F9FC),
+                color: theme.colorScheme.surfaceVariant.withOpacity(0.5), // was 0xFFF7F9FC
                 borderRadius: BorderRadius.circular(28),
               ),
               child: Row(
@@ -79,17 +79,35 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             const Spacer(),
 
             // TEACHERS RUBRIC -> right-side sidebar
-            IconButton(
-              icon: const Icon(Icons.document_scanner, size: 28),
-              onPressed: () => showTeachersRubricSidebar(context),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 6),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: Icon(Icons.document_scanner, size: 20, color: theme.colorScheme.onSurface),
+                padding: const EdgeInsets.all(8),
+                splashRadius: 20,
+                onPressed: () => showTeachersRubricSidebar(context),
+              ),
             ),
 
             // BOOK ICON -> Syllabus (sidebar)
             Builder(
               builder: (ctx) {
-                return IconButton(
-                  icon: const Icon(Icons.book, size: 28),
-                  onPressed: () => showSyllabusSidebar(ctx), // opens as right panel
+                return Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: Icon(Icons.book, size: 20, color: theme.colorScheme.onSurface),
+                    padding: const EdgeInsets.all(8),
+                    splashRadius: 20,
+                    onPressed: () => showSyllabusSidebar(ctx), // opens as right panel
+                  ),
                 );
               },
             ),
@@ -100,7 +118,9 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             Builder(
               builder: (ctx) {
                 return IconButton(
-                  icon: const Icon(Icons.add, size: 28),
+                  icon: Icon(Icons.add, size: 22, color: theme.colorScheme.onSurface),
+                  padding: const EdgeInsets.all(8),
+                  splashRadius: 20,
                   onPressed: () => showQuestionPaperSidebar(ctx), // opens as right panel
                 );
               },
@@ -125,30 +145,20 @@ class _SegmentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(22),
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected ? theme.cardColor : Colors.transparent, // was white
           borderRadius: BorderRadius.circular(22),
           boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    spreadRadius: 1,
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  )
-                ]
+              ? [if (theme.brightness == Brightness.light) BoxShadow(color: Colors.black.withOpacity(0.06), spreadRadius: 1, blurRadius: 6, offset: const Offset(0, 2))]
               : [],
         ),
-        child: Icon(
-          icon,
-          size: 22,
-          color: isSelected ? Colors.black : Colors.grey[600],
-        ),
+        child: Icon(icon, size: 20, color: isSelected ? theme.colorScheme.onSurface : theme.iconTheme.color),
       ),
     );
   }

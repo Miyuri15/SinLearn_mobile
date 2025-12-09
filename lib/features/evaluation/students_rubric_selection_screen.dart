@@ -11,38 +11,37 @@ class RubricSelectionSidebar extends StatefulWidget {
 class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
   String? _selectedRubric;
 
-  // Mock standard rubrics
+  // localization keys for standard rubrics (defined in JSON)
   final List<String> _standardRubrics = [
-    'General Writing Rubric',
-    'Mathematics Problem Solving',
-    'Science Lab Report',
-    'Language Arts Comprehension',
-    'History Essay Rubric',
-    'Creative Writing Assessment'
+    'question_paper.rubric_general_writing',
+    'question_paper.rubric_math_problem_solving',
+    'question_paper.rubric_science_lab_report',
+    'question_paper.rubric_language_arts',
+    'question_paper.rubric_history_essay',
+    'question_paper.rubric_creative_writing',
   ];
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenW = MediaQuery.of(context).size.width;
+    final drawerW = screenW * 0.9 > 304 ? 304.0 : screenW * 0.9;
 
     return Drawer(
-      backgroundColor: Colors.white, // make drawer background white
+      backgroundColor: theme.colorScheme.surface, // was Colors.white
       child: SizedBox(
-        width: 304,
+        width: drawerW,
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header Section
                 _buildHeader(theme),
                 const SizedBox(height: 24),
-
-                // Standard Rubrics Card
                 Card(
-                  elevation: 2,
-                  color: Colors.white, // was theme.colorScheme.surface
+                  elevation: theme.brightness == Brightness.light ? 2 : 0,
+                  color: theme.cardColor, // was Colors.white
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -61,7 +60,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Standard rubrics'.tr(),
+                          'question_paper.standard_rubrics'.tr(),
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontSize: 12,
                             color: theme.colorScheme.onSurface.withOpacity(0.7),
@@ -74,11 +73,9 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Custom Upload Card
                 Card(
-                  elevation: 2,
-                  color: Colors.white, // was theme.colorScheme.surface
+                  elevation: theme.brightness == Brightness.light ? 2 : 0,
+                  color: theme.cardColor, // was Colors.white
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -211,10 +208,10 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
       style: theme.textTheme.bodyLarge?.copyWith(
         color: theme.colorScheme.onSurface,
       ),
-      items: _standardRubrics.map((String rubric) {
+      items: _standardRubrics.map((String rubricKey) {
         return DropdownMenuItem<String>(
-          value: rubric,
-          child: Text(rubric),
+          value: rubricKey,
+          child: Text(rubricKey.tr()),
         );
       }).toList(),
       onChanged: (String? newValue) {
@@ -248,13 +245,16 @@ void showRubricSelectionSidebar(BuildContext context) {
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (BuildContext buildContext, Animation<double> animation,
         Animation<double> secondaryAnimation) {
+      final theme = Theme.of(buildContext);
+      final screenW = MediaQuery.of(buildContext).size.width;
+      final drawerW = screenW * 0.9 > 304 ? 304.0 : screenW * 0.9;
       return Align(
         alignment: Alignment.centerRight,
         child: Material(
-          color: Colors.white,
+          color: theme.colorScheme.surface, // was Colors.white
           borderRadius: BorderRadius.zero,
           child: SizedBox(
-            width: 304,
+            width: drawerW,
             height: double.infinity,
             child: const RubricSelectionSidebar(),
           ),

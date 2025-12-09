@@ -257,14 +257,15 @@ void showQuestionPaperSidebar(BuildContext context) {
     barrierColor: Colors.black45,
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (BuildContext buildContext, Animation<double> animation, Animation<double> secondaryAnimation) {
+      final theme = Theme.of(buildContext);
       return Align(
         alignment: Alignment.centerRight,
         child: Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.zero, // flat panel, no rounding
+          color: theme.colorScheme.surface, // was Colors.white
+          borderRadius: BorderRadius.zero,
           child: SafeArea(
             child: SizedBox(
-              width: 304,          // compact sidebar width (same as rubric)
+              width: 304,
               height: double.infinity,
               child: const QuestionPaperPage(),
             ),

@@ -20,10 +20,8 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
     final theme = Theme.of(context);
 
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20), // ✅ Rounded corners
-      ),
-      backgroundColor: Colors.white, // was theme.colorScheme.background
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: theme.cardColor, // was Colors.white
       child: Container(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -64,10 +62,8 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
                 width: double.infinity,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue, // ✅ Blue button
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12), // Rounded button
-                    ),
+                    backgroundColor: theme.colorScheme.primary, // was Colors.blue
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
                   onPressed: _submit,
@@ -89,15 +85,16 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
       controller: controller,
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
-        labelText: key.tr(), // ✅ Localized field label
+        // keys are defined under question_paper (e.g. question_paper.content_semantic)
+        labelText: 'question_paper.$key'.tr(),
         suffixText: '%',
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) return 'Required';
+        if (value == null || value.isEmpty) return 'required'.tr();
         final num? val = num.tryParse(value);
-        if (val == null || val < 0 || val > 100) return 'Enter 0-100';
+        if (val == null || val < 0 || val > 100) return 'enter_0_100'.tr();
         return null;
       },
     );

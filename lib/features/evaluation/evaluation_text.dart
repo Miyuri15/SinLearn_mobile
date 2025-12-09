@@ -28,12 +28,13 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final size = MediaQuery.of(context).size;
     final isSmallPhone = size.width < 380;
     final isWide = size.width >= 900;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: MainAppBar(
         selectedIndex: _selectedSegment,
         onSegmentSelected: (index) {
@@ -56,9 +57,15 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Divider(height: 1),
-                Expanded(child: _EmptyChatView(theme: theme)),
-                const Divider(height: 1),
+                Divider(
+                  height: 1,
+                  color: theme.dividerColor,
+                ),
+                Expanded(child: _EmptyChatView(theme: theme, isDark: isDark)),
+                Divider(
+                  height: 1,
+                  color: theme.dividerColor,
+                ),
                 _InputBar(
                   controller: _inputController,
                   onMarksPressed: () {
@@ -67,6 +74,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                       MaterialPageRoute(builder: (_) => const EvaluationInputPage()),
                     );
                   },
+                  isDark: isDark,
                 ),
               ],
             ),
@@ -81,8 +89,9 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
 //                                EMPTY CHAT VIEW
 // -----------------------------------------------------------------------------
 class _EmptyChatView extends StatelessWidget {
-  const _EmptyChatView({required this.theme});
+  const _EmptyChatView({required this.theme, required this.isDark});
   final ThemeData theme;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -90,12 +99,20 @@ class _EmptyChatView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('evaluation.startNewEvaluation'.tr(),
-              style: theme.textTheme.headlineSmall?.copyWith(
-                  color: Colors.grey[600], fontWeight: FontWeight.w600)),
+          Text(
+            'evaluation.startNewEvaluation'.tr(),
+            style: theme.textTheme.headlineSmall?.copyWith(
+              color: isDark ? Colors.grey[300] : Colors.grey[600],
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 10),
-          Text('evaluation.typeQuestions'.tr(),
-              style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[450])),
+          Text(
+            'evaluation.typeQuestions'.tr(),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: isDark ? Colors.grey[400] : Colors.grey[450],
+            ),
+          ),
         ],
       ),
     );
@@ -106,9 +123,14 @@ class _EmptyChatView extends StatelessWidget {
 //                                  INPUT BAR
 // -----------------------------------------------------------------------------
 class _InputBar extends StatelessWidget {
-  const _InputBar({required this.controller, required this.onMarksPressed});
+  const _InputBar({
+    required this.controller,
+    required this.onMarksPressed,
+    required this.isDark,
+  });
   final TextEditingController controller;
   final VoidCallback onMarksPressed;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -133,13 +155,13 @@ class _InputBar extends StatelessWidget {
                       onPressed: () {},
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E63FF),
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(isSmallPhone ? 12 : 14),
                         ),
                       ),
-                      icon: const Icon(Icons.attach_file, color: Colors.white),
-                      label: Text('evaluation.attach'.tr(),
-                          style: const TextStyle(color: Colors.white)),
+                      icon: const Icon(Icons.attach_file),
+                      label: Text('evaluation.attach'.tr()),
                     ),
                   ),
                 ),
@@ -153,13 +175,13 @@ class _InputBar extends StatelessWidget {
                       onPressed: onMarksPressed,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E63FF),
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(isSmallPhone ? 12 : 14),
                         ),
                       ),
-                      icon: const Icon(Icons.add, color: Colors.white),
-                      label: Text('evaluation.marks'.tr(),
-                          style: const TextStyle(color: Colors.white)),
+                      icon: const Icon(Icons.add),
+                      label: Text('evaluation.marks'.tr()),
                     ),
                   ),
                 ),
@@ -173,13 +195,13 @@ class _InputBar extends StatelessWidget {
                       onPressed: () {},
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E63FF),
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(isSmallPhone ? 12 : 14),
                         ),
                       ),
-                      icon: const Icon(Icons.send_rounded, color: Colors.white),
-                      label: Text('evaluation.send'.tr(),
-                          style: const TextStyle(color: Colors.white)),
+                      icon: const Icon(Icons.send_rounded),
+                      label: Text('evaluation.send'.tr()),
                     ),
                   ),
                 ),
@@ -194,7 +216,7 @@ class _InputBar extends StatelessWidget {
               'evaluation.addAttachmentAndMarks'.tr(),
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: Colors.grey[600],
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
