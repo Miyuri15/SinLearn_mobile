@@ -10,12 +10,17 @@ class SignUpPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
-    final isPhone = size.width < 480;
-    final cardPadding = EdgeInsets.all(isPhone ? 24 : 36);
-    final emblemSize = isPhone ? 64.0 : 88.0;
-    final emblemIcon = isPhone ? 32.0 : 44.0;
+    final isPhone = size.width < 600; // Increased threshold for tablets
+    final isSmallPhone = size.width < 380; // Very small phones
+    final cardPadding = EdgeInsets.symmetric(
+      horizontal: isSmallPhone ? 20 : isPhone ? 24 : 36,
+      vertical: isSmallPhone ? 20 : isPhone ? 28 : 36,
+    );
+    final emblemSize = isSmallPhone ? 56.0 : isPhone ? 64.0 : 88.0;
+    final emblemIcon = isSmallPhone ? 28.0 : isPhone ? 32.0 : 44.0;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true, // Important for mobile
       body: GestureDetector(
         onTap: () => FocusScope.of(context).unfocus(),
         child: Container(
@@ -29,133 +34,178 @@ class SignUpPage extends StatelessWidget {
             ),
           ),
           child: SafeArea(
+            bottom: false, // Allow content to go above keyboard
             child: Stack(
               children: [
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: const _LanguageToggle(),
-                  ),
+                // Language Toggle - Positioned for mobile
+                Positioned(
+                  top: isSmallPhone ? 12 : 16,
+                  right: isSmallPhone ? 12 : 20,
+                  child: const _LanguageToggle(),
                 ),
-                Center(
-                  child: SingleChildScrollView(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 480),
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 18),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(28),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.03),
-                              blurRadius: 28,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
+                // Main Content
+                Padding(
+                  padding: EdgeInsets.only(
+                    top: isSmallPhone ? 50 : 60, // Space for language toggle
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                  ),
+                  child: Center(
+                    child: SingleChildScrollView(
+                      physics: const BouncingScrollPhysics(),
+                      child: Padding(
+                        padding: EdgeInsets.only(
+                          bottom: MediaQuery.of(context).viewInsets.bottom,
                         ),
-                        child: Padding(
-                          padding: cardPadding,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const SizedBox(height: 6),
-                              Container(
-                                width: emblemSize,
-                                height: emblemSize,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF1E63FF),
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: Icon(Icons.school, size: emblemIcon, color: Colors.white),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: 480,
+                            minHeight: size.height - 
+                                (isSmallPhone ? 100 : 120) - 
+                                MediaQuery.of(context).viewInsets.bottom,
+                          ),
+                          child: Container(
+                            margin: EdgeInsets.symmetric(
+                              horizontal: isSmallPhone ? 12 : isPhone ? 16 : 24,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(
+                                isSmallPhone ? 24 : 28,
                               ),
-                              const SizedBox(height: 24),
-                              Text(
-                                'app_name'.tr(),
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.4,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 28,
+                                  offset: const Offset(0, 8),
                                 ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'ai_subtitle'.tr(),
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey[400],
-                                  fontSize: isPhone ? 12 : 13,
-                                ),
-                              ),
-                              const SizedBox(height: 28),
-
-                              // Tabs
-                              Container(
-                                width: double.infinity,
-                                height: isPhone ? 48 : 52,
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: Colors.grey.withOpacity(0.06)),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.03),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 8),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: cardPadding,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (!isSmallPhone) const SizedBox(height: 6),
+                                  // Logo/Emblem
+                                  Container(
+                                    width: emblemSize,
+                                    height: emblemSize,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF1E63FF),
+                                      shape: BoxShape.circle,
                                     ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: InkWell(
-                                        borderRadius: BorderRadius.circular(18),
-                                        onTap: () => Navigator.of(context).pushReplacement(
-                                          MaterialPageRoute(builder: (_) => const SignInPage()),
+                                    alignment: Alignment.center,
+                                    child: Icon(
+                                      Icons.school,
+                                      size: emblemIcon,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  SizedBox(height: isSmallPhone ? 16 : 24),
+                                  // App Name
+                                  Text(
+                                    'app_name'.tr(),
+                                    style: theme.textTheme.headlineSmall?.copyWith(
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.4,
+                                      fontSize: isSmallPhone ? 22 : null,
+                                    ),
+                                  ),
+                                  SizedBox(height: isSmallPhone ? 4 : 6),
+                                  // Subtitle
+                                  Text(
+                                    'ai_subtitle'.tr(),
+                                    textAlign: TextAlign.center,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      color: Colors.grey[400],
+                                      fontSize: isSmallPhone ? 11 : isPhone ? 12 : 13,
+                                    ),
+                                  ),
+                                  SizedBox(height: isSmallPhone ? 20 : 28),
+
+                                  // Tabs
+                                  Container(
+                                    height: isSmallPhone ? 44 : isPhone ? 48 : 52,
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(
+                                        isSmallPhone ? 16 : 20,
+                                      ),
+                                      border: Border.all(
+                                        color: Colors.grey.withOpacity(0.06),
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.03),
+                                          blurRadius: 12,
+                                          offset: const Offset(0, 8),
                                         ),
-                                        child: Container(
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            'sign_in'.tr(),
-                                            style: TextStyle(
-                                              color: Colors.grey[500],
-                                              fontWeight: FontWeight.w700,
+                                      ],
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(isSmallPhone ? 14 : 18),
+                                            onTap: () => Navigator.of(context).pushReplacement(
+                                              MaterialPageRoute(
+                                                  builder: (_) => const SignInPage()),
+                                            ),
+                                            child: Container(
+                                              alignment: Alignment.center,
+                                              child: Text(
+                                                'sign_in'.tr(),
+                                                style: TextStyle(
+                                                  color: Colors.grey[500],
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: isSmallPhone ? 13 : null,
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Container(
-                                        alignment: Alignment.center,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(18),
-                                          border: Border.all(color: Colors.blue.withOpacity(0.15), width: 1.2),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(0.08),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 8),
+                                        SizedBox(width: isSmallPhone ? 6 : 8),
+                                        Expanded(
+                                          child: Container(
+                                            alignment: Alignment.center,
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(isSmallPhone ? 14 : 18),
+                                              border: Border.all(
+                                                color: Colors.blue.withOpacity(0.15),
+                                                width: 1.2,
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.08),
+                                                  blurRadius: 10,
+                                                  offset: const Offset(0, 8),
+                                                ),
+                                              ],
                                             ),
-                                          ],
+                                            child: Text(
+                                              'sign_up'.tr(),
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: isSmallPhone ? 13 : null,
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                        child: Text(
-                                          'sign_up'.tr(),
-                                          style: const TextStyle(fontWeight: FontWeight.w700),
-                                        ),
-                                      ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 22),
+                                  ),
+                                  SizedBox(height: isSmallPhone ? 18 : 22),
 
-                              const _SignUpForm(),
-                            ],
+                                  // Form
+                                  const _SignUpForm(),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -177,52 +227,82 @@ class _LanguageToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locale = context.locale;
-    final isPhone = MediaQuery.of(context).size.width < 480;
+    final size = MediaQuery.of(context).size;
+    final isSmallPhone = size.width < 380;
+    final isPhone = size.width < 600;
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isPhone ? 8 : 12, vertical: isPhone ? 6 : 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: isSmallPhone ? 6 : isPhone ? 8 : 12,
+        vertical: isSmallPhone ? 4 : isPhone ? 6 : 8,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 8)],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.language, size: isPhone ? 16 : 20, color: Colors.grey),
-          SizedBox(width: isPhone ? 8 : 12),
+          Icon(
+            Icons.language,
+            size: isSmallPhone ? 14 : isPhone ? 16 : 20,
+            color: Colors.grey,
+          ),
+          SizedBox(width: isSmallPhone ? 6 : isPhone ? 8 : 12),
+          // Sinhala
           GestureDetector(
             onTap: () => context.setLocale(const Locale('si')),
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: isPhone ? 10 : 12, vertical: isPhone ? 6 : 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallPhone ? 8 : isPhone ? 10 : 12,
+                vertical: isSmallPhone ? 4 : isPhone ? 6 : 8,
+              ),
               decoration: BoxDecoration(
-                color: locale.languageCode == 'si' ? Colors.blue[600] : Colors.transparent,
+                color: locale.languageCode == 'si'
+                    ? Colors.blue[600]
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 'si_name'.tr(),
                 style: TextStyle(
-                  fontSize: isPhone ? 12 : 14,
-                  color: locale.languageCode == 'si' ? Colors.white : Colors.grey[700],
+                  fontSize: isSmallPhone ? 11 : isPhone ? 12 : 14,
+                  color: locale.languageCode == 'si'
+                      ? Colors.white
+                      : Colors.grey[700],
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ),
-          SizedBox(width: isPhone ? 8 : 10),
+          SizedBox(width: isSmallPhone ? 6 : isPhone ? 8 : 10),
+          // English
           GestureDetector(
             onTap: () => context.setLocale(const Locale('en')),
             child: Container(
-              padding: EdgeInsets.symmetric(horizontal: isPhone ? 12 : 14, vertical: isPhone ? 6 : 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallPhone ? 8 : isPhone ? 12 : 14,
+                vertical: isSmallPhone ? 4 : isPhone ? 6 : 8,
+              ),
               decoration: BoxDecoration(
-                color: locale.languageCode == 'en' ? Colors.blue[600] : Colors.transparent,
+                color: locale.languageCode == 'en'
+                    ? Colors.blue[600]
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 'en_name'.tr(),
                 style: TextStyle(
-                  fontSize: isPhone ? 12 : 14,
-                  color: locale.languageCode == 'en' ? Colors.white : Colors.grey[700],
+                  fontSize: isSmallPhone ? 11 : isPhone ? 12 : 14,
+                  color: locale.languageCode == 'en'
+                      ? Colors.white
+                      : Colors.grey[700],
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -246,151 +326,330 @@ class _SignUpFormState extends State<_SignUpForm> {
   final _emailCtrl = TextEditingController();
   final _pwdCtrl = TextEditingController();
   String _userType = 'student';
+  
+  // For keyboard handling
+  final FocusNode _nameFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _pwdCtrl.dispose();
+    _nameFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isPhone = MediaQuery.of(context).size.width < 480;
+    final size = MediaQuery.of(context).size;
+    final isSmallPhone = size.width < 380;
+    final isPhone = size.width < 600;
 
     return Column(
       children: [
-        // Name
+        // Name Field
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('name'.tr(), style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[800])),
+          child: Text(
+            'name'.tr(),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+              fontSize: isSmallPhone ? 13 : null,
+            ),
+          ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: isSmallPhone ? 4 : 6),
         Container(
           decoration: BoxDecoration(
             color: const Color(0xFFF6F9FF),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(isSmallPhone ? 14 : 18),
             border: Border.all(color: const Color(0xFFE0E4F0)),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: Offset(0, 2))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: TextFormField(
             controller: _nameCtrl,
+            focusNode: _nameFocus,
             textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
+            onEditingComplete: () => _emailFocus.requestFocus(),
             decoration: InputDecoration(
               hintText: 'name_hint'.tr(),
-              hintStyle: const TextStyle(color: Color(0xFFA9B0C3)),
+              hintStyle: TextStyle(
+                color: const Color(0xFFA9B0C3),
+                fontSize: isSmallPhone ? 13 : null,
+              ),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: isSmallPhone ? 12 : 14,
+                vertical: isSmallPhone ? 12 : 14,
+              ),
             ),
           ),
         ),
 
-        const SizedBox(height: 12),
+        SizedBox(height: isSmallPhone ? 10 : 12),
 
-        // Email
+        // Email Field
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('email'.tr(), style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[800])),
+          child: Text(
+            'email'.tr(),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+              fontSize: isSmallPhone ? 13 : null,
+            ),
+          ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: isSmallPhone ? 4 : 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(isSmallPhone ? 14 : 18),
             border: Border.all(color: const Color(0xFFE0E4F0)),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: Offset(0, 2))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: TextFormField(
             controller: _emailCtrl,
+            focusNode: _emailFocus,
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            onEditingComplete: () => _passwordFocus.requestFocus(),
             decoration: InputDecoration(
               hintText: 'email_hint'.tr(),
-              hintStyle: const TextStyle(color: Color(0xFFA9B0C3)),
+              hintStyle: TextStyle(
+                color: const Color(0xFFA9B0C3),
+                fontSize: isSmallPhone ? 13 : null,
+              ),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: isSmallPhone ? 12 : 14,
+                vertical: isSmallPhone ? 12 : 14,
+              ),
             ),
           ),
         ),
 
-        const SizedBox(height: 12),
+        SizedBox(height: isSmallPhone ? 10 : 12),
 
-        // Password
+        // Password Field
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('password'.tr(), style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[800])),
+          child: Text(
+            'password'.tr(),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+              fontSize: isSmallPhone ? 13 : null,
+            ),
+          ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: isSmallPhone ? 4 : 6),
         Container(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(isSmallPhone ? 14 : 18),
             border: Border.all(color: const Color(0xFFE0E4F0)),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: Offset(0, 2))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
           child: TextFormField(
             controller: _pwdCtrl,
+            focusNode: _passwordFocus,
             obscureText: true,
+            textInputAction: TextInputAction.done,
+            onEditingComplete: () {
+              // Handle sign up
+              _passwordFocus.unfocus();
+            },
             decoration: InputDecoration(
               hintText: 'password_hint'.tr(),
-              hintStyle: const TextStyle(color: Color(0xFFA9B0C3)),
+              hintStyle: TextStyle(
+                color: const Color(0xFFA9B0C3),
+                fontSize: isSmallPhone ? 13 : null,
+              ),
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: isSmallPhone ? 12 : 14,
+                vertical: isSmallPhone ? 12 : 14,
+              ),
             ),
           ),
         ),
 
-        const SizedBox(height: 12),
+        SizedBox(height: isSmallPhone ? 10 : 12),
 
-        // User type
+        // User Type
         Align(
           alignment: Alignment.centerLeft,
-          child: Text('user_type'.tr(), style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey[800])),
+          child: Text(
+            'user_type'.tr(),
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[800],
+              fontSize: isSmallPhone ? 13 : null,
+            ),
+          ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: isSmallPhone ? 4 : 6),
         Row(
           children: [
             Expanded(
-              child: ChoiceChip(
-                label: Text('student'.tr()),
-                selected: _userType == 'student',
-                onSelected: (_) => setState(() => _userType = 'student'),
-                selectedColor: theme.colorScheme.primary.withOpacity(0.12),
-                labelStyle: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: _userType == 'student' ? theme.colorScheme.primary : Colors.grey[700],
-                  fontSize: isPhone ? 12 : 13,
+              child: GestureDetector(
+                onTap: () => setState(() => _userType = 'student'),
+                child: Container(
+                  height: isSmallPhone ? 84 : isPhone ? 96 : 112,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallPhone ? 10 : 12,
+                    vertical: isSmallPhone ? 10 : 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _userType == 'student'
+                        ? const Color(0xFFEAF2FF)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(isSmallPhone ? 14 : 16),
+                    border: Border.all(
+                      color: _userType == 'student'
+                          ? Colors.blue.withOpacity(0.5)
+                          : const Color(0xFFE0E4F0),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.menu_book_outlined,
+                        size: isSmallPhone ? 20 : isPhone ? 22 : 26,
+                        color: _userType == 'student'
+                            ? Colors.blue[700]
+                            : Colors.black87,
+                      ),
+                      SizedBox(height: isSmallPhone ? 6 : 8),
+                      Text(
+                        'student'.tr(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: isSmallPhone ? 12 : isPhone ? 13 : 14,
+                          color: _userType == 'student'
+                              ? Colors.blue[700]
+                              : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: isSmallPhone ? 6 : 8),
             Expanded(
-              child: ChoiceChip(
-                label: Text('teacher'.tr()),
-                selected: _userType == 'teacher',
-                onSelected: (_) => setState(() => _userType = 'teacher'),
-                selectedColor: theme.colorScheme.primary.withOpacity(0.12),
-                labelStyle: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: _userType == 'teacher' ? theme.colorScheme.primary : Colors.grey[700],
-                  fontSize: isPhone ? 12 : 13,
+              child: GestureDetector(
+                onTap: () => setState(() => _userType = 'teacher'),
+                child: Container(
+                  height: isSmallPhone ? 84 : isPhone ? 96 : 112,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallPhone ? 10 : 12,
+                    vertical: isSmallPhone ? 10 : 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _userType == 'teacher'
+                        ? const Color(0xFFEAF2FF)
+                        : Colors.white,
+                    borderRadius: BorderRadius.circular(isSmallPhone ? 14 : 16),
+                    border: Border.all(
+                      color: _userType == 'teacher'
+                          ? Colors.blue.withOpacity(0.5)
+                          : const Color(0xFFE0E4F0),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.school_outlined,
+                        size: isSmallPhone ? 20 : isPhone ? 22 : 26,
+                        color: _userType == 'teacher'
+                            ? Colors.blue[700]
+                            : Colors.black87,
+                      ),
+                      SizedBox(height: isSmallPhone ? 6 : 8),
+                      Text(
+                        'teacher'.tr(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: isSmallPhone ? 12 : isPhone ? 13 : 14,
+                          color: _userType == 'teacher'
+                              ? Colors.blue[700]
+                              : Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
         ),
 
-        const SizedBox(height: 18),
+        SizedBox(height: isSmallPhone ? 16 : 18),
+
+        // Sign Up Button
         SizedBox(
           width: double.infinity,
           child: ElevatedButton(
             style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: EdgeInsets.symmetric(
+                vertical: isSmallPhone ? 14 : 16,
+                horizontal: 8,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(isSmallPhone ? 10 : 12),
+              ),
               backgroundColor: const Color(0xFF1E7EFF),
+              elevation: 0,
             ),
             onPressed: () {
+              // Close keyboard before navigation
+              FocusScope.of(context).unfocus();
               // Proceed to app (mock)
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute(builder: (_) => const EvaluationTextPage()),
@@ -398,11 +657,21 @@ class _SignUpFormState extends State<_SignUpForm> {
             },
             child: Text(
               'sign_up'.tr(),
-              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: Colors.white),
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: isSmallPhone ? 15 : 16,
+                color: Colors.white,
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 6),
+        
+        // Bottom padding for keyboard
+        SizedBox(
+          height: MediaQuery.of(context).viewInsets.bottom > 0 
+              ? MediaQuery.of(context).viewInsets.bottom + 8 
+              : (isSmallPhone ? 8 : 12),
+        ),
       ],
     );
   }

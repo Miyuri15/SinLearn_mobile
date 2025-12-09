@@ -13,11 +13,13 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final screenW = MediaQuery.of(context).size.width;
+    final drawerW = screenW * 0.9 > 304 ? 304.0 : screenW * 0.9;
 
     return Drawer(
       backgroundColor: Colors.white, // make drawer host solid white
       child: SizedBox(
-        width: 304,
+        width: drawerW,
         child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -252,13 +254,15 @@ void showTeachersRubricSidebar(BuildContext context) {
     transitionDuration: const Duration(milliseconds: 200),
     pageBuilder: (BuildContext buildContext, Animation<double> animation,
         Animation<double> secondaryAnimation) {
+      final screenW = MediaQuery.of(buildContext).size.width;
+      final drawerW = screenW * 0.9 > 304 ? 304.0 : screenW * 0.9;
       return Align(
         alignment: Alignment.centerRight,
         child: Material(
           borderRadius: BorderRadius.zero,
           color: Colors.white, // ensure white host
           child: SizedBox(
-            width: 304,
+            width: drawerW,
             height: double.infinity,
             child: const TeachersRubricSidebar(),
           ),

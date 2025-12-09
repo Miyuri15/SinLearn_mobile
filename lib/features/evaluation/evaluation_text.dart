@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'learning_mode.dart';
 import 'heder.dart';
 import '../../widgets/teachers_main_app_bar.dart';
@@ -27,7 +29,11 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bool isWide = MediaQuery.of(context).size.width >= 900;
+    final size = MediaQuery.of(context).size;
+    final isSmallPhone = size.width < 380;
+    final isPhone = size.width < 600;
+    final bool isWide = size.width >= 900;
+    final sidebarWidth = isWide ? (size.width * 0.32).clamp(260.0, 360.0) : 0.0;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -51,7 +57,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       body: Row(
         children: [
           if (isWide)
-            _Sidebar(theme: theme, searchController: _searchController),
+            SizedBox(width: sidebarWidth, child: _Sidebar(theme: theme, searchController: _searchController)),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -125,11 +131,11 @@ class _Sidebar extends StatelessWidget {
               children: [
                 const Icon(Icons.settings, size: 18),
                 const SizedBox(width: 8),
-                Text('Settings', style: theme.textTheme.bodyMedium),
+                Text('recent_chats.settings'.tr(), style: theme.textTheme.bodyMedium),
                 const Spacer(),
                 const Icon(Icons.logout, size: 18),
                 const SizedBox(width: 8),
-                Text('Logout', style: theme.textTheme.bodyMedium),
+                Text('recent_chats.logout'.tr(), style: theme.textTheme.bodyMedium),
               ],
             ),
           ),
@@ -181,15 +187,9 @@ class _EmptyChatView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Start your conversation in Sinhala',
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Type a question or use voice input',
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor),
-          ),
+          Text('start_conversation'.tr(), style: theme.textTheme.headlineSmall?.copyWith(color: Colors.grey[600], fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          Text('type_question'.tr(), style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[450])),
         ],
       ),
     );
@@ -205,48 +205,74 @@ class _InputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
+    final isSmallPhone = size.width < 380;
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: EdgeInsets.fromLTRB(12, isSmallPhone ? 8 : 10, 12, 14),
         child: Row(
           children: [
+            // Input pill (attach + mic placed as suffix icons on the right)
             Expanded(
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Type your answer or upload a file…',
-                  prefixIcon: IconButton(
-                    tooltip: 'Attach file',
-                    onPressed: () {},
-                    icon: const Icon(Icons.attach_file),
-                  ),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: 'Voice input',
-                        onPressed: () {},
-                        icon: const Icon(Icons.mic_none),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(isSmallPhone ? 16 : 20),
+                  border: Border.all(color: Colors.grey.withOpacity(0.12)),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 6)],
+                ),
+                child: TextField(
+                  controller: controller,
+                  minLines: 1,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'type_answer_hint'.tr(),
+                    border: InputBorder.none,
+                    isDense: true,
+                    // constrain suffix icon area so it can't overflow
+                    suffixIcon: SizedBox(
+                      width: isSmallPhone ? 88 : 120,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          IconButton(
+                            onPressed: () async {
+                              final result = await FilePicker.platform.pickFiles(allowMultiple: false);
+                              if (result == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File selection canceled')));
+                                return;
+                              }
+                              final file = result.files.first;
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selected: ${file.name}')));
+                            },
+                            icon: const Icon(Icons.attach_file),
+                          ),
+                          IconButton(
+                            onPressed: () {},
+                            icon: const Icon(Icons.mic_none),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                  border: const OutlineInputBorder(),
                 ),
               ),
             ),
-            const SizedBox(width: 8),
-            Tooltip(
-              message: 'Send',
+            const SizedBox(width: 12),
+            // Send button (rounded square as in image)
+            SizedBox(
+              height: isSmallPhone ? 44 : 52,
+              width: isSmallPhone ? 44 : 52,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.all(14),
-                  shape: const CircleBorder(),
-                ),
                 onPressed: () {},
-                child: const Icon(Icons.send_rounded),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E63FF),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(isSmallPhone ? 12 : 14)),
+                  padding: EdgeInsets.zero,
+                ),
+                child: const Icon(Icons.send_rounded, color: Colors.white),
               ),
             ),
           ],

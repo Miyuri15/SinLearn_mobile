@@ -39,6 +39,30 @@
 
 
   "ai_subtitle": "AI-Powered Sinhala Educational Assistant",
+
+  "start_conversation": "Start your conversation in Sinhala",
+  "type_question": "Type a question or use voice input",
+  "ask_question_hint": "Ask a question...",
+  "type_answer_hint": "Type your answer or upload a file...",
+  "response_level": "Response Level",
+  "grades_6_8": "Grades 6-8",
+  "grades_9_11": "Grades 9-11",
+  "grades_12_plus": "Grades 12+",
+  "evaluation_mode": "Evaluation Mode",
+  "recording": "Recording",
+
+
+  "evaluation_report": "Evaluation Report",
+  "detailed_feedback": "Detailed Feedback",
+  "strengths": "Strengths",
+  "weaknesses": "Weaknesses",
+  "missing_points": "Missing Points",
+  "download": "Download",
+  "share": "Share",
+  "coverage_score": "Coverage Score",
+  "accuracy_score": "Accuracy Score",
+  "clarity": "Clarity",
+
   "sign_in": "Sign In",
   "sign_up": "Sign Up",
   "email": "Email",
@@ -145,6 +169,34 @@
     "total": "Total",
     "submit": "Submit",
     "total_value_note": "Total should be 100%",
-    "total_error": "Total should be 100%"
-  }
+    "total_error": "Total should be 100%",
+    "start_conversation": "Start your conversation in Sinhala",
+    "type_question": "Type a question or use voice input",
+    "response_level": "Response Level",
+    "ask_question_hint": "Ask a question...",
+    "type_answer_hint": "Type your answer or upload a file...",
+    "grades_6_8": "Grades 6-8",
+    "grades_9_11": "Grades 9-11",
+    "grades_12_plus": "Grades 12+",
+    "evaluation_mode": "Evaluation Mode",
+    "recording": "Recording",
+    "rubric_general_writing": "General Writing Rubric",
+    "rubric_math_problem_solving": "Mathematics Problem Solving",
+    "rubric_science_lab_report": "Science Lab Report",
+    "rubric_language_arts": "Language Arts Comprehension",
+    "rubric_history_essay": "History Essay Rubric",
+    "rubric_creative_writing": "Creative Writing Assessment",
+    "evaluation_report": "Evaluation Report",
+    "detailed_feedback": "Detailed Feedback",
+    "strengths": "Strengths",
+    "weaknesses": "Weaknesses",
+    "missing_points": "Missing Points",
+    "download": "Download",
+    "share": "Share",
+    "coverage_score": "Coverage Score",
+    "accuracy_score": "Accuracy Score",
+    "clarity": "Clarity"
+  },
+  "required": "Required",
+  "enter_0_100": "Enter a value between 0 and 100"
 }

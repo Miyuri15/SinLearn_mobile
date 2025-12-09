@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'evaluation_text.dart';
 import 'heder.dart';
 import '../../widgets/teachers_main_app_bar.dart';
@@ -13,7 +15,8 @@ class LearningModePage extends StatefulWidget {
 
 class _LearningModePageState extends State<LearningModePage> {
   int _selectedSegment = 0; // 0 = Learning, 1 = Evaluation
-  String _responseLevel = 'Grades 9-11';
+  // store the localization key (display shows .tr())
+  String _responseLevel = 'grades_9_11';
 
   final TextEditingController _inputController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
@@ -28,7 +31,11 @@ class _LearningModePageState extends State<LearningModePage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bool isWide = MediaQuery.of(context).size.width >= 900;
+    final size = MediaQuery.of(context).size;
+    final isSmallPhone = size.width < 380;
+    final isPhone = size.width < 600;
+    final bool isWide = size.width >= 900;
+    final sidebarWidth = isWide ? (size.width * 0.32).clamp(260.0, 360.0) : 0.0;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -52,7 +59,7 @@ class _LearningModePageState extends State<LearningModePage> {
       body: Row(
         children: [
           if (isWide)
-            _Sidebar(theme: theme, searchController: _searchController),
+            SizedBox(width: sidebarWidth, child: _Sidebar(theme: theme, searchController: _searchController)),
 
           // RIGHT SIDE
           Expanded(
@@ -197,15 +204,11 @@ class _EmptyChatView extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('Start your conversation in Sinhala',
-              style: theme.textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Text(
-            'Type a question or use voice input',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.hintColor,
-            ),
-          ),
+          // Fetch localized text for start_conversation
+          Text('start_conversation'.tr(), style: theme.textTheme.headlineSmall?.copyWith(color: Colors.grey[600], fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          // Fetch localized text for type_question
+          Text('type_question'.tr(), style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[450])),
         ],
       ),
     );
@@ -229,157 +232,209 @@ class _InputBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final size = MediaQuery.of(context).size;
+    final isSmallPhone = size.width < 380;
 
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 500;
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: LayoutBuilder(builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 520;
 
-            return isNarrow
-                ? Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Response Level dropdown
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+          if (narrow) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Text('response_level'.tr(), style: theme.textTheme.bodySmall),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: isSmallPhone ? 6 : 8),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: theme.dividerColor),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(isSmallPhone ? 8 : 10),
+                          border: Border.all(color: Colors.grey.withOpacity(0.12)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: responseLevel,
+                            isExpanded: true,
+                            items: [
+                              DropdownMenuItem(value: 'grades_6_8', child: Text('grades_6_8'.tr())),
+                              DropdownMenuItem(value: 'grades_9_11', child: Text('grades_9_11'.tr())),
+                              DropdownMenuItem(value: 'grades_12_plus', child: Text('grades_12_plus'.tr())),
+                            ],
+                            onChanged: (v) => v != null ? onResponseLevelChanged(v) : null,
+                            selectedItemBuilder: (context) => [
+                              Text('grades_6_8'.tr()),
+                              Text('grades_9_11'.tr()),
+                              Text('grades_12_plus'.tr()),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Input row with pill input + send button
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.grey.withOpacity(0.12)),
                         ),
                         child: Row(
                           children: [
-                            Text('Response Level',
-                                style: theme.textTheme.bodySmall),
-                            const SizedBox(width: 8),
-                            DropdownButton<String>(
-                              value: responseLevel,
-                              items: const [
-                                DropdownMenuItem(
-                                    value: 'Grades 6-8',
-                                    child: Text('Grades 6-8')),
-                                DropdownMenuItem(
-                                    value: 'Grades 9-11',
-                                    child: Text('Grades 9-11')),
-                                DropdownMenuItem(
-                                    value: 'Grades 12+',
-                                    child: Text('Grades 12+')),
-                              ],
-                              onChanged: (v) {
-                                if (v != null) onResponseLevelChanged(v);
-                              },
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextField(
+                                controller: controller,
+                                minLines: 1,
+                                maxLines: 4,
+                                decoration: InputDecoration(
+                                  hintText: 'ask_question_hint'.tr(),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            // constrain suffix icon area so it can't overflow on tiny screens
+                            SizedBox(
+                              width: isSmallPhone ? 88 : 120,
+                              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+                                IconButton(onPressed: () async {
+                                  final result = await FilePicker.platform.pickFiles(allowMultiple: false);
+                                  if (result == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File selection canceled')));
+                                    return;
+                                  }
+                                  final file = result.files.first;
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selected: ${file.name}')));
+                                }, icon: const Icon(Icons.attach_file)),
+                                IconButton(onPressed: () {}, icon: const Icon(Icons.mic_none)),
+                              ]),
                             ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      height: 52,
+                      width: 52,
+                      child: ElevatedButton(
+                        onPressed: () {},
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E63FF),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: const Icon(Icons.send_rounded, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          }
 
-                      // Input + Send
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: controller,
-                              minLines: 1,
-                              maxLines: 4,
-                              decoration: const InputDecoration(
-                                hintText: 'Ask a question...',
-                                prefixIcon: Icon(Icons.attach_file),
-                                suffixIcon: Icon(Icons.mic_none),
-                                border: OutlineInputBorder(),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Tooltip(
-                            message: 'Send',
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.all(14),
-                                shape: const CircleBorder(),
-                              ),
-                              onPressed: () {},
-                              child: const Icon(Icons.send_rounded),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  )
-                : Row(
+          // Wide layout
+          return Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                margin: const EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.withOpacity(0.12)),
+                ),
+                child: Row(
+                  children: [
+                    Text('response_level'.tr(), style: theme.textTheme.bodySmall),
+                    const SizedBox(width: 8),
+                    DropdownButton<String>(
+                      value: responseLevel,
+                      underline: const SizedBox.shrink(),
+                      items: [
+                        DropdownMenuItem(value: 'grades_6_8', child: Text('grades_6_8'.tr())),
+                        DropdownMenuItem(value: 'grades_9_11', child: Text('grades_9_11'.tr())),
+                        DropdownMenuItem(value: 'grades_12_plus', child: Text('grades_12_plus'.tr())),
+                      ],
+                      onChanged: (v) {
+                        if (v != null) onResponseLevelChanged(v);
+                      },
+                      selectedItemBuilder: (context) => [
+                        Text('grades_6_8'.tr()),
+                        Text('grades_9_11'.tr()),
+                        Text('grades_12_plus'.tr()),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: Colors.grey.withOpacity(0.12)),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 6)],
+                  ),
+                  child: Row(
                     children: [
-                      // Response Level dropdown
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: theme.dividerColor),
-                        ),
-                        child: Row(
-                          children: [
-                            Text('Response Level',
-                                style: theme.textTheme.bodySmall),
-                            const SizedBox(width: 8),
-                            DropdownButton<String>(
-                              value: responseLevel,
-                              items: const [
-                                DropdownMenuItem(
-                                    value: 'Grades 6-8',
-                                    child: Text('Grades 6-8')),
-                                DropdownMenuItem(
-                                    value: 'Grades 9-11',
-                                    child: Text('Grades 9-11')),
-                                DropdownMenuItem(
-                                    value: 'Grades 12+',
-                                    child: Text('Grades 12+')),
-                              ],
-                              onChanged: (v) {
-                                if (v != null) onResponseLevelChanged(v);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
                       const SizedBox(width: 12),
-
-                      // Text input
                       Expanded(
                         child: TextField(
                           controller: controller,
                           minLines: 1,
                           maxLines: 4,
-                          decoration: const InputDecoration(
-                            hintText: 'Ask a question...',
-                            prefixIcon: Icon(Icons.attach_file),
-                            suffixIcon: Icon(Icons.mic_none),
-                            border: OutlineInputBorder(),
+                          decoration: InputDecoration(
+                            hintText: 'ask_question_hint'.tr(),
+                            border: InputBorder.none,
+                            isDense: true,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-
-                      // Send Button
-                      Tooltip(
-                        message: 'Send',
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.all(14),
-                            shape: const CircleBorder(),
-                          ),
-                          onPressed: () {},
-                          child: const Icon(Icons.send_rounded),
-                        ),
-                      ),
+                      IconButton(onPressed: () async {
+                        final result = await FilePicker.platform.pickFiles(allowMultiple: false);
+                        if (result == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File selection canceled')));
+                          return;
+                        }
+                        final file = result.files.first;
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selected: ${file.name}')));
+                      }, icon: const Icon(Icons.attach_file)),
+                      IconButton(onPressed: () {}, icon: const Icon(Icons.mic_none)),
                     ],
-                  );
-          },
-        ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 52,
+                width: 52,
+                child: ElevatedButton(
+                  onPressed: () {},
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E63FF),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    padding: EdgeInsets.zero,
+                  ),
+                  child: const Icon(Icons.send_rounded, color: Colors.white),
+                ),
+              ),
+            ],
+          );
+        }),
       ),
     );
   }

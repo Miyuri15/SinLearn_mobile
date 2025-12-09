@@ -89,15 +89,16 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
       controller: controller,
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
-        labelText: key.tr(), // ✅ Localized field label
+        // keys are defined under question_paper (e.g. question_paper.content_semantic)
+        labelText: 'question_paper.$key'.tr(),
         suffixText: '%',
         border: const OutlineInputBorder(),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       validator: (value) {
-        if (value == null || value.isEmpty) return 'Required';
+        if (value == null || value.isEmpty) return 'required'.tr();
         final num? val = num.tryParse(value);
-        if (val == null || val < 0 || val > 100) return 'Enter 0-100';
+        if (val == null || val < 0 || val > 100) return 'enter_0_100'.tr();
         return null;
       },
     );

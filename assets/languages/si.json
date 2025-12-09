@@ -37,6 +37,7 @@
   },
 
   "ai_subtitle": "AI-නිර්මාණය කරන ලද සිංහල අධ්‍යාපනික සහකරු",
+
   "sign_in": "පිවිසෙන්න",
   "sign_up": "ලියාපදිංචි වන්න",
   "email": "ඊමේල්",
@@ -45,13 +46,32 @@
   "password_hint": "••••••••",
   "name": "නම",
   "name_hint": "ඔබේ නම",
-  "user_type": "පරිශීලක වර්ගය",
-  "student": "ශිෂ්‍ය",
-  "teacher": "ගුරු/ගුරුවරිය",
-  "signin_pressed": "පිවිසෙන්න බොත්තම",
-  "forgot_password": "මුරපදය අමතකද?",
   "si_name": "සිංහල",
   "en_name": "English",
+
+  "start_conversation": "ඔබගේ සංවාදය සිංහලෙන් ආරම්භ කරන්න",
+  "type_question": "ප්‍රශ්නයක් ඇසීමට හෝ හඬ යොදා ගැනීමට වගුවන්න",
+  "ask_question_hint": "ප්‍රශ්නයක් ඇසන්න...",
+  "type_answer_hint": "ඔබේ පිළිතුර ටයිප් කරන්න හෝ ගොනුවක් උඩුගත කරන්න...",
+  "response_level": "ප්‍රතිචාර මට්ටම",
+  "grades_6_8": "ශ්‍රේණිය 6-8",
+  "grades_9_11": "ශ්‍රේණිය 9-11",
+  "grades_12_plus": "ශ්‍රේණිය 12+",
+  "evaluation_mode": "ඇගයීම් මාදිලිය",
+  "recording": "‍රෙකෝඩ් වෙමින් පවතී",
+
+
+  "evaluation_report": "ඇගයීම් වාර්තාව",
+  "detailed_feedback": "විස්තරාත්මක ප්‍රතිචාර",
+  "strengths": "ශක්තිමත්වූ දෑ",
+  "weaknesses": "දුර්වලතා",
+  "missing_points": "හිඟ වන කරුණු",
+  "download": "බාගත කරන්න",
+  "share": "හුවමාරු කරන්න",
+  "coverage_score": "ආවරණ ලකුණු",
+  "accuracy_score": "නිවැරදි බව ලකුණු",
+  "clarity": "පැහැදිළි බව",
+
   "syllabus": {
     "header": "පාඨමාලා",
     "intro": "ඔබගේ විෂය නිර්දේශය උඩුගත කර තෝරන්න. AI ඔබගේ ප්‍රශ්න සඳහා ඔබේ විෂය නිර්දේශයට අනුව පිළිතුරු ලබා දේ.",
@@ -143,6 +163,14 @@
     "total": "මුළු එකතුව",
     "submit": "ඇතුළත් කරන්න",
     "total_value_note": "එකතුව 100% විය යුතුය",
-    "total_error": "එකතුව 100% විය යුතුය"
+    "total_error": "එකතුව 100% විය යුතුය",
+    "rubric_general_writing": "සාමාන්‍ය ලිවීමේ රුබ්‍රික්",
+    "rubric_math_problem_solving": "ගණිත ගැටළු විසඳීමේ රුබ්‍රික්",
+    "rubric_science_lab_report": "විද්‍යා 실험 වාර්තා රුබ්‍රික්",
+    "rubric_language_arts": "භාෂා කලාවන් පරික්ෂණ රුබ්‍රික්",
+    "rubric_history_essay": "පුරාවිද්‍යා රචනා රුබ්‍රික්",
+    "rubric_creative_writing": "සාමූහික සංස්කරණ රචනා ඇගයීම්",
+    "required": "අවශ්‍යයි",
+      "enter_0_100": "0 — 100 අතර අගයක් ඇතුළත් කරන්න"
+    }
   }
-}
