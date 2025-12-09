@@ -393,7 +393,7 @@ class _SignUpFormState extends State<_SignUpForm> {
             onPressed: () {
               // Proceed to app (mock)
               Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const EvaluationTextPage()),
+                MaterialPageRoute(builder: (_) => const SignInPage()),               
               );
             },
             child: Text(
