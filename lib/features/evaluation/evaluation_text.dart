@@ -5,9 +5,9 @@ import 'learning_mode.dart';
 import 'evaluation_inputs.dart';
 import '../../widgets/teachers_main_app_bar.dart';
 import '../recent_chat/recent_chats_page.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // added
-import '../evaluation/evaluation_response.dart'; // add import to navigate
-import 'dart:convert'; // added for jsonDecode
+import 'package:shared_preferences/shared_preferences.dart';
+import '../evaluation/evaluation_response.dart';
+import 'dart:convert';
 
 class EvaluationTextPage extends StatefulWidget {
   const EvaluationTextPage({super.key});
@@ -17,12 +17,18 @@ class EvaluationTextPage extends StatefulWidget {
 }
 
 class _EvaluationTextPageState extends State<EvaluationTextPage> {
-  int _selectedSegment = 1; // 0 = Learning, 1 = Evaluation
+  int _selectedSegment = 1;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _inputController = TextEditingController();
-  String? _attachedFileName; // added
-  static const String _attachmentKey = 'evaluation_attachment'; // added
-  static const String _evaluationStorageKey = 'evaluation_data'; // added
+  String? _attachedFileName;
+  static const String _attachmentKey = 'evaluation_attachment';
+  static const String _evaluationStorageKey = 'evaluation_data';
+  static const String _rubricKey = 'hasRubric';
+
+  // State variables to track the required inputs
+  bool _hasRubrics = false;
+  bool _hasMarks = false;
+  bool _hasAttachment = false;
 
   @override
   void dispose() {
@@ -34,14 +40,35 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   @override
   void initState() {
     super.initState();
-    _loadAttachment(); // added
+    _loadAllData();
   }
 
-  Future<void> _loadAttachment() async {
+  Future<void> _loadAllData() async {
     final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString(_attachmentKey);
-    if (name != null && mounted) {
-      setState(() => _attachedFileName = name);
+    
+    // Load attachment
+    final attachmentName = prefs.getString(_attachmentKey);
+    if (attachmentName != null && mounted) {
+      setState(() {
+        _attachedFileName = attachmentName;
+        _hasAttachment = true;
+      });
+    }
+    
+    // Load rubric status
+    final hasRubric = prefs.getBool(_rubricKey) ?? false;
+    if (mounted) {
+      setState(() {
+        _hasRubrics = hasRubric;
+      });
+    }
+    
+    // Load marks status
+    final marksData = prefs.getString(_evaluationStorageKey);
+    if (mounted) {
+      setState(() {
+        _hasMarks = marksData != null && marksData.isNotEmpty;
+      });
     }
   }
 
@@ -57,7 +84,10 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_attachmentKey, file.name);
     if (mounted) {
-      setState(() => _attachedFileName = file.name);
+      setState(() {
+        _attachedFileName = file.name;
+        _hasAttachment = true;
+      });
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('evaluation.fileUploaded'.tr())),
@@ -68,7 +98,10 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_attachmentKey);
     if (mounted) {
-      setState(() => _attachedFileName = null);
+      setState(() {
+        _attachedFileName = null;
+        _hasAttachment = false;
+      });
     }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('evaluation.attachmentRemoved'.tr())),
@@ -90,11 +123,34 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     final evalData = await _getSavedEvaluationData();
     if (evalData == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('evaluation.viewMarks'.tr())), // minimal hint to save marks first
+        SnackBar(
+          content: Text('evaluation.viewMarks'.tr()),
+        ),
       );
       return;
     }
-    // Build a concise message text
+    
+    final prefs = await SharedPreferences.getInstance();
+    final hasRubric = prefs.getBool(_rubricKey) ?? false;
+    
+    if (!hasRubric) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('evaluation.addRubricRequired'.tr()),
+        ),
+      );
+      return;
+    }
+    
+    if (!_hasAttachment) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('evaluation.addAttachmentRequired'.tr()),
+        ),
+      );
+      return;
+    }
+    
     final total = evalData['totalMarks'] ?? '';
     final main = evalData['mainQuestions'] ?? '';
     final req = evalData['requiredQuestions'] ?? '';
@@ -114,13 +170,24 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     );
   }
 
+  // Listen for changes when returning from other pages
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // This will be called when returning from other pages
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAllData();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final size = MediaQuery.of(context).size;
-    final isSmallPhone = size.width < 380;
-    final isWide = size.width >= 900;
+
+    // Debug log to check state
+    print('Send button enabled: ${_hasRubrics && _hasMarks && _hasAttachment}');
+    print('Has Rubrics: $_hasRubrics, Has Marks: $_hasMarks, Has Attachment: $_hasAttachment');
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -154,7 +221,8 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                 // Show attached file chip if present
                 if (_attachedFileName != null)
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: InputChip(
@@ -164,23 +232,54 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                       ),
                     ),
                   ),
+                // Show requirements status
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  child: Wrap(
+                    spacing: 8,
+                    children: [
+                      Chip(
+                        label: Text('Rubric: ${_hasRubrics ? '✓' : '✗'}'),
+                        backgroundColor: _hasRubrics ? Colors.green.shade100 : Colors.red.shade100,
+                        labelStyle: TextStyle(color: _hasRubrics ? Colors.green.shade800 : Colors.red.shade800),
+                      ),
+                      Chip(
+                        label: Text('Marks: ${_hasMarks ? '✓' : '✗'}'),
+                        backgroundColor: _hasMarks ? Colors.green.shade100 : Colors.red.shade100,
+                        labelStyle: TextStyle(color: _hasMarks ? Colors.green.shade800 : Colors.red.shade800),
+                      ),
+                      Chip(
+                        label: Text('Attachment: ${_hasAttachment ? '✓' : '✗'}'),
+                        backgroundColor: _hasAttachment ? Colors.green.shade100 : Colors.red.shade100,
+                        labelStyle: TextStyle(color: _hasAttachment ? Colors.green.shade800 : Colors.red.shade800),
+                      ),
+                    ],
+                  ),
+                ),
                 Divider(
                   height: 1,
                   color: theme.dividerColor,
                 ),
                 _InputBar(
                   controller: _inputController,
-                  onMarksPressed: () {
-                    Navigator.push(
+                  onMarksPressed: () async {
+                    // Navigate to marks page and wait for result
+                    await Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const EvaluationInputPage()),
+                      MaterialPageRoute(
+                        builder: (_) => const EvaluationInputPage(),
+                      ),
                     );
+                    // When returning, reload the marks status
+                    _loadAllData();
                   },
                   onAttachPressed: _pickAndSaveAttachment,
                   attachedFileName: _attachedFileName,
                   onRemoveAttachment: _removeAttachment,
                   isDark: isDark,
-                  onSendPressed: _sendToChat, // added
+                  onSendPressed: (_hasRubrics && _hasMarks && _hasAttachment)
+                      ? () => _sendToChat()
+                      : null,
                 ),
               ],
             ),
@@ -233,24 +332,22 @@ class _InputBar extends StatelessWidget {
     required this.controller,
     required this.onMarksPressed,
     required this.isDark,
-    required this.onAttachPressed, // added
-    required this.attachedFileName, // added
-    required this.onRemoveAttachment, // added
-    required this.onSendPressed, // added
+    required this.onAttachPressed,
+    required this.attachedFileName,
+    required this.onRemoveAttachment,
+    required this.onSendPressed,
   });
   final TextEditingController controller;
   final VoidCallback onMarksPressed;
   final bool isDark;
-  final VoidCallback onAttachPressed; // added
-  final String? attachedFileName; // added
-  final VoidCallback onRemoveAttachment; // added
-  final VoidCallback onSendPressed; // added
+  final VoidCallback onAttachPressed;
+  final String? attachedFileName;
+  final VoidCallback onRemoveAttachment;
+  final VoidCallback? onSendPressed;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final size = MediaQuery.of(context).size;
-    final isSmallPhone = size.width < 380;
 
     return SafeArea(
       top: false,
@@ -258,24 +355,26 @@ class _InputBar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: EdgeInsets.fromLTRB(12, isSmallPhone ? 8 : 10, 12, 6),
+            padding: EdgeInsets.fromLTRB(12, 10, 12, 6),
             child: Row(
               children: [
                 // Attach File
                 Expanded(
                   child: SizedBox(
-                    height: isSmallPhone ? 44 : 52,
+                    height: 52,
                     child: ElevatedButton.icon(
                       onPressed: onAttachPressed,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E63FF),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(isSmallPhone ? 12 : 14),
+                          borderRadius:
+                              BorderRadius.circular(14),
                         ),
                       ),
                       icon: const Icon(Icons.attach_file),
-                      label: Text('evaluation.attach'.tr()), // changed: always show "Attach"
+                      label: Text('evaluation.attach'
+                          .tr()),
                     ),
                   ),
                 ),
@@ -284,14 +383,15 @@ class _InputBar extends StatelessWidget {
                 // Add Marks
                 Expanded(
                   child: SizedBox(
-                    height: isSmallPhone ? 44 : 52,
+                    height: 52,
                     child: ElevatedButton.icon(
                       onPressed: onMarksPressed,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E63FF),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(isSmallPhone ? 12 : 14),
+                          borderRadius:
+                              BorderRadius.circular(14),
                         ),
                       ),
                       icon: const Icon(Icons.add),
@@ -304,14 +404,17 @@ class _InputBar extends StatelessWidget {
                 // Send
                 Expanded(
                   child: SizedBox(
-                    height: isSmallPhone ? 44 : 52,
+                    height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: onSendPressed, // changed: send to chat
+                      onPressed: onSendPressed,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E63FF),
+                        backgroundColor: onSendPressed != null 
+                          ? const Color(0xFF1E63FF)
+                          : Colors.grey,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(isSmallPhone ? 12 : 14),
+                          borderRadius:
+                              BorderRadius.circular(14),
                         ),
                       ),
                       icon: const Icon(Icons.send_rounded),
