@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RubricUploadForm extends StatefulWidget {
   const RubricUploadForm({super.key});
@@ -11,9 +12,14 @@ class RubricUploadForm extends StatefulWidget {
 class _RubricUploadFormState extends State<RubricUploadForm> {
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController semanticController = TextEditingController(text: '40');
-  final TextEditingController coverageController = TextEditingController(text: '30');
-  final TextEditingController relevanceController = TextEditingController(text: '30');
+  final TextEditingController semanticController =
+      TextEditingController(text: '40');
+  final TextEditingController coverageController =
+      TextEditingController(text: '30');
+  final TextEditingController relevanceController =
+      TextEditingController(text: '30');
+
+  String? totalError; // <-- for inline error display
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +27,7 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      backgroundColor: theme.cardColor, // was Colors.white
+      backgroundColor: theme.cardColor,
       child: Container(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -30,9 +36,8 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Title ---
               Text(
-                'select_rubric'.tr(), // ✅ Localized
+                'select_rubric'.tr(),
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   fontSize: 18,
@@ -40,36 +45,44 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
               ),
               const SizedBox(height: 8),
 
-              // --- Subtopic ---
               Text(
-                'total_value_note'.tr(), // Add this key to JSON for "The entered value total should 100%"
+                'total_value_note'.tr(),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onBackground.withOpacity(0.7),
                 ),
               ),
               const SizedBox(height: 16),
 
-              // --- Input fields ---
               _buildPercentageField('content_semantic', semanticController),
               const SizedBox(height: 8),
               _buildPercentageField('content_coverage', coverageController),
               const SizedBox(height: 8),
               _buildPercentageField('content_relevance', relevanceController),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
 
-              // --- Submit button ---
+              // <-- Show total error inline
+              if (totalError != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    totalError!,
+                    style: const TextStyle(color: Colors.red),
+                  ),
+                ),
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
+                  onPressed: _submit,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary, // was Colors.blue
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: theme.colorScheme.primary,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  onPressed: _submit,
                   child: Text(
-                    'submit'.tr(), // ✅ Localized
-                    style: const TextStyle(fontSize: 16, color: Colors.white),
+                    'submit'.tr(),
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
                   ),
                 ),
               ),
@@ -85,39 +98,55 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
       controller: controller,
       keyboardType: TextInputType.number,
       decoration: InputDecoration(
-        // keys are defined under question_paper (e.g. question_paper.content_semantic)
         labelText: 'question_paper.$key'.tr(),
         suffixText: '%',
         border: const OutlineInputBorder(),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) return 'required'.tr();
         final num? val = num.tryParse(value);
-        if (val == null || val < 0 || val > 100) return 'enter_0_100'.tr();
+        if (val == null || val < 0 || val > 100) {
+          return 'enter_0_100'.tr();
+        }
         return null;
       },
     );
   }
 
-  void _submit() {
-    if (_formKey.currentState!.validate()) {
-      final total = int.parse(semanticController.text) +
-          int.parse(coverageController.text) +
-          int.parse(relevanceController.text);
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
 
-      if (total != 100) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('total_error'.tr())), // ✅ Localized total error
-        );
-        return;
-      }
+    final semantic = int.parse(semanticController.text);
+    final coverage = int.parse(coverageController.text);
+    final relevance = int.parse(relevanceController.text);
+    final total = semantic + coverage + relevance;
 
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('upload_message'.tr())), // ✅ Localized upload message
-      );
+    if (total != 100) {
+      setState(() {
+        totalError = 'total_error'.tr(); // <-- show inline error
+      });
+      return;
     }
+
+    // Clear previous error
+    setState(() {
+      totalError = null;
+    });
+
+    // Save rubric to local storage
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('semantic', semantic);
+    await prefs.setInt('coverage', coverage);
+    await prefs.setInt('relevance', relevance);
+    await prefs.setBool('hasRubric', true);
+
+    Navigator.pop(context);
+
+    ScaffoldMessenger.of(Navigator.of(context).context).showSnackBar(
+      SnackBar(content: Text('upload_message'.tr())),
+    );
   }
 
   @override

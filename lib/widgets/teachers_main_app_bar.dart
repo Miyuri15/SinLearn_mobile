@@ -79,19 +79,21 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             const Spacer(),
 
             // TEACHERS RUBRIC -> right-side sidebar
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                shape: BoxShape.circle,
+            // show rubric icon only in Evaluation mode (selectedIndex == 1)
+            if (selectedIndex == 1)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: Icon(Icons.document_scanner, size: 20, color: theme.colorScheme.onSurface),
+                  padding: const EdgeInsets.all(8),
+                  splashRadius: 20,
+                  onPressed: () => showTeachersRubricSidebar(context),
+                ),
               ),
-              child: IconButton(
-                icon: Icon(Icons.document_scanner, size: 20, color: theme.colorScheme.onSurface),
-                padding: const EdgeInsets.all(8),
-                splashRadius: 20,
-                onPressed: () => showTeachersRubricSidebar(context),
-              ),
-            ),
 
             // BOOK ICON -> Syllabus (sidebar)
             Builder(

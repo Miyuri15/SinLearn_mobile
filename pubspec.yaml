@@ -36,6 +36,8 @@ dependencies:
   # For voice recording (future use)
   audio_waveforms: ^1.2.0
 
+  #For local storage
+  shared_preferences: ^2.1.1
 
 dev_dependencies:
   flutter_test:
