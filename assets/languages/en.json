@@ -92,7 +92,7 @@
     "upload_success": "Uploaded: {0}",
     "upload_error": "Failed to select file",
     "delete_title": "Delete Syllabus",
-    "delete_confirm": "Do you want to delete \"{0}\"? This cannot be undone.",
+    "delete_confirm": "Do you want to delete \"{name}\"? This cannot be undone.",
     "delete": "Delete",
     "deleted": "Deleted: {0}",
     "file_subject_default": "Uploaded File",
@@ -171,7 +171,10 @@
     "total_value_note": "Total should be 100%",
     "total_error": "Total should be 100%",
     "view_rubric": "View Rubric",
-    "remove_rubric": "Rubric"
+    "remove_rubric": "Rubric",
+    "delete_confirm": "Do you want to delete \"{name}\"? This cannot be undone.",
+    "delete": "Delete",
+    "delete_title": "Delete Question Paper"
   },
    "common": {
     "settings": "Settings",

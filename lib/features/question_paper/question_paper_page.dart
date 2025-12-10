@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 class QuestionPaperPage extends StatefulWidget {
   const QuestionPaperPage({super.key});
@@ -12,6 +14,51 @@ class QuestionPaperPage extends StatefulWidget {
 class _QuestionPaperPageState extends State<QuestionPaperPage> {
   PlatformFile? _file;
   static const Set<String> _allowed = {'pdf', 'doc', 'docx'};
+  static const _prefsKey = 'question_paper_file';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedFile();
+  }
+
+  Future<void> _loadSavedFile() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_prefsKey);
+    if (raw == null) return;
+    try {
+      final Map<String, dynamic> data = jsonDecode(raw);
+      final name = (data['name'] as String?) ?? '';
+      if (name.isEmpty) return;
+      // Hydrate minimal PlatformFile for UI display (no 'extension' named arg)
+      setState(() {
+        _file = PlatformFile(
+          name: name,
+          size: (data['size'] as int?) ?? 0,
+          // bytes/path can be omitted; we only need name for display
+        );
+      });
+    } catch (_) {
+      // ignore malformed storage
+    }
+  }
+
+  Future<void> _saveFile(PlatformFile file) async {
+    final prefs = await SharedPreferences.getInstance();
+    final payload = jsonEncode({
+      'name': file.name,
+      'ext': file.extension,
+      'size': file.size,
+      // 'path': file.path, // optional: uncomment if you need to persist path
+      'savedAt': DateTime.now().toIso8601String(),
+    });
+    await prefs.setString(_prefsKey, payload);
+  }
+
+  Future<void> _clearSavedFile() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_prefsKey);
+  }
 
   Future<void> _pickFile() async {
     try {
@@ -35,6 +82,7 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
         return;
       }
       setState(() => _file = picked);
+      await _saveFile(picked);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(tr('question_paper.upload_success', args: [picked.name]))),
       );
@@ -45,14 +93,35 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
     }
   }
 
-  void _deleteFile() {
+  Future<bool> _confirmDelete(String name) async {
+    final res = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          title: Text(tr('question_paper.delete_title', args: [])), // optional title key if present
+          content: Text(tr('question_paper.delete_confirm', namedArgs: {'name': name})),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(tr('question_paper.cancel'))),
+            ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(tr('question_paper.delete'))),
+          ],
+        );
+      },
+    );
+    return res == true;
+  }
+
+  void _deleteFile() async {
     final name = _file?.name ?? '';
+    if (name.isEmpty) return;
+    final ok = await _confirmDelete(name);
+    if (!ok) return;
     setState(() => _file = null);
-    if (name.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr('question_paper.deleted', args: [name]))),
-      );
-    }
+    await _clearSavedFile();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(tr('question_paper.deleted', args: [name]))),
+    );
   }
 
   @override

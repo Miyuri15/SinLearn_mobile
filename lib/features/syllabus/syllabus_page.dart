@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:file_picker/file_picker.dart'; // add file_picker dependency
+import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+// add JSON helpers
+import 'dart:convert';
 
 class SyllabusItem {
   final String title;
@@ -12,6 +15,21 @@ class SyllabusItem {
       required this.subject,
       required this.date,
       required this.tags});
+
+  // add serialization for local persistence
+  Map<String, dynamic> toJson() => {
+        'title': title,
+        'subject': subject,
+        'date': date,
+        'tags': tags,
+      };
+
+  factory SyllabusItem.fromJson(Map<String, dynamic> json) => SyllabusItem(
+        title: json['title'] ?? '',
+        subject: json['subject'] ?? '',
+        date: json['date'] ?? '',
+        tags: json['tags'] ?? '',
+      );
 }
 
 class TeacherSyllabusContent extends StatefulWidget {
@@ -39,6 +57,41 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
         date: '20/02/2024',
         tags: 'Algebra, Geometry, Trigonometry'),
   ];
+
+  static const _prefsKey = 'syllabus_items';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadItems();
+  }
+
+  Future<void> _loadItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    final listJson = prefs.getStringList(_prefsKey);
+    if (listJson == null) return;
+    try {
+      final decoded = listJson
+          .map((s) => SyllabusItem.fromJson(
+              s.isNotEmpty ? Map<String, dynamic>.from(jsonDecode(s)) : {}))
+          .toList();
+      setState(() {
+        _items
+          ..clear()
+          ..addAll(decoded);
+      });
+    } catch (_) {
+      // ignore malformed storage
+    }
+  }
+
+  Future<void> _saveItems() async {
+    final prefs = await SharedPreferences.getInstance();
+    // ensure List<String> for setStringList
+    final List<String> listJson =
+        _items.map((e) => jsonEncode(e.toJson())).toList();
+    await prefs.setStringList(_prefsKey, listJson);
+  }
 
   Future<void> _pickFile() async {
     try {
@@ -71,6 +124,7 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                 date: date,
                 tags: ''));
       });
+      await _saveItems();
 
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(tr('syllabus.upload_success', args: [filename]))));
@@ -88,7 +142,8 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
         return AlertDialog(
           backgroundColor: isDark ? Color(0xFF1E1E1E) : Colors.white,
           title: Text(tr('syllabus.delete_title')),
-          content: Text(tr('syllabus.delete_confirm', args: [title])),
+          // use namedArgs so translators can use {name}
+          content: Text(tr('syllabus.delete_confirm', namedArgs: {'name': title})),
           actions: [
             TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
@@ -110,6 +165,8 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
     setState(() {
       _items.removeAt(index);
     });
+    await _saveItems();
+    // show deletion notification with name
     ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(tr('syllabus.deleted', args: [item.title]))));
   }
