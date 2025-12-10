@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:math' as math;
 
-class EvaluationResponsePage extends StatelessWidget {
+class EvaluationResponsePage extends StatefulWidget {
   const EvaluationResponsePage({
     super.key,
     this.initialMessageText,
@@ -10,17 +12,111 @@ class EvaluationResponsePage extends StatelessWidget {
     this.evaluationData,
   });
 
-  // added fields to accept payload
   final String? initialMessageText;
   final String? attachmentName;
   final Map<String, dynamic>? evaluationData;
 
   @override
+  State<EvaluationResponsePage> createState() => _EvaluationResponsePageState();
+}
+
+class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
+  final List<_ChatMessage> _messages = [];
+  final TextEditingController _replyController = TextEditingController();
+  String? _attachedFileName; // reply input attachment
+  static const String _replyAttachmentKey = 'evaluation_response_attachment';
+
+  @override
+  void initState() {
+    super.initState();
+    // seed initial message + attachment from navigation payload
+    if (widget.initialMessageText != null || widget.attachmentName != null) {
+      _messages.add(_ChatMessage(
+        text: widget.initialMessageText ?? '',
+        fromUser: true,
+        attachmentName: widget.attachmentName,
+      ));
+    }
+    _loadReplyAttachment();
+  }
+
+  @override
+  void dispose() {
+    _replyController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadReplyAttachment() async {
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString(_replyAttachmentKey);
+    if (name != null && mounted) {
+      setState(() => _attachedFileName = name);
+    }
+  }
+
+  Future<void> _pickReplyAttachment() async {
+    final result = await FilePicker.platform.pickFiles(allowMultiple: false);
+    if (result == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('evaluation.selectFileCancelled'.tr())),
+      );
+      return;
+    }
+    final file = result.files.first;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_replyAttachmentKey, file.name);
+    if (mounted) {
+      setState(() => _attachedFileName = file.name);
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('evaluation.fileUploaded'.tr())),
+    );
+  }
+
+  void _removeReplyAttachment() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_replyAttachmentKey);
+    if (mounted) {
+      setState(() => _attachedFileName = null);
+    }
+  }
+
+  bool _containsSinhala(String s) {
+    return RegExp(r'[\u0D80-\u0DFF]').hasMatch(s);
+  }
+
+  void _sendReply() {
+    final text = _replyController.text.trim();
+    if (text.isEmpty && _attachedFileName == null) return;
+
+    // Add user message
+    setState(() {
+      _messages.add(_ChatMessage(
+        text: text,
+        fromUser: true,
+        attachmentName: _attachedFileName,
+      ));
+      _replyController.clear();
+      _attachedFileName = null;
+    });
+    _removeReplyAttachment(); // clear persisted attachment
+
+    // Single bot reply (Sinhala or English)
+    final isSinhala = _containsSinhala(text);
+    final botReply = isSinhala ? 'ඔබට කෙසේ උදව් කළ හැකිද?' : 'How can I help you?';
+    setState(() {
+      _messages.add(_ChatMessage(text: botReply, fromUser: false));
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isCompact = MediaQuery.of(context).size.width < 420;
+    final _initialMessage = _messages.isNotEmpty ? _messages.first : null; // added
+
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor, // was Colors.white
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('evaluation_mode'.tr()),
         actions: isCompact
@@ -84,26 +180,95 @@ class EvaluationResponsePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // render initial message and attachment if provided
-            if (initialMessageText != null || attachmentName != null) ...[
-              _UserMessageBubble(
+            // Initial message (if any) at the very top
+            if (_initialMessage != null) ...[
+              _MessageBubble(
                 time: TimeOfDay.now().format(context),
-                text: initialMessageText ?? '',
+                text: _initialMessage.text,
+                fromUser: _initialMessage.fromUser,
               ),
-              if (attachmentName != null)
+              if (_initialMessage.attachmentName != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8, left: 40),
-                  child: InputChip(
-                    label: Text(attachmentName!),
-                    avatar: const Icon(Icons.attach_file, size: 18),
-                    onDeleted: null,
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Align(
+                    alignment: _initialMessage.fromUser ? Alignment.centerRight : Alignment.centerLeft,
+                    child: Column(
+                      crossAxisAlignment: _initialMessage.fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                      children: [
+                        InputChip(
+                          label: Text(_initialMessage.attachmentName!),
+                          avatar: const Icon(Icons.attach_file, size: 18),
+                          onDeleted: null,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          TimeOfDay.now().format(context), // time under attachment
+                          textAlign: _initialMessage.fromUser ? TextAlign.right : TextAlign.left,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).hintColor,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               const SizedBox(height: 12),
             ],
+
+            // Evaluation report next
             _EvaluationReportCard(theme: theme),
             const SizedBox(height: 16),
-            _ReplyInputBar(controller: TextEditingController()),
+
+            // Subsequent chat messages (skip the initial one)
+            ..._messages.skip(1).map((m) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _MessageBubble(
+                        time: TimeOfDay.now().format(context),
+                        text: m.text,
+                        fromUser: m.fromUser,
+                      ),
+                      if (m.attachmentName != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Align(
+                            alignment: m.fromUser ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Column(
+                              crossAxisAlignment: m.fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                              children: [
+                                InputChip(
+                                  label: Text(m.attachmentName!),
+                                  avatar: const Icon(Icons.attach_file, size: 18),
+                                  onDeleted: null,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  TimeOfDay.now().format(context), // time under attachment
+                                  textAlign: m.fromUser ? TextAlign.right : TextAlign.left,
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Theme.of(context).hintColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                )),
+
+            const SizedBox(height: 16),
+
+            // Reply input stays at bottom
+            _ReplyInputBar(
+              controller: _replyController,
+              attachedFileName: _attachedFileName,
+              onAttach: _pickReplyAttachment,
+              onRemoveAttachment: _removeReplyAttachment,
+              onSend: _sendReply,
+            ),
           ],
         ),
       ),
@@ -111,46 +276,12 @@ class EvaluationResponsePage extends StatelessWidget {
   }
 }
 
-class _UserMessageBubble extends StatelessWidget {
-  const _UserMessageBubble({required this.time, required this.text});
-  final String time;
+// Simple message model for this page
+class _ChatMessage {
+  _ChatMessage({required this.text, required this.fromUser, this.attachmentName});
   final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            border: Border.all(color: theme.dividerColor),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.mic_none, size: 16),
-              const SizedBox(width: 4),
-              Text(time, style: theme.textTheme.labelSmall),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.10), // was light blue
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Text(text, style: theme.textTheme.bodyLarge?.copyWith(height: 1.5)),
-          ),
-        ),
-      ],
-    );
-  }
+  final bool fromUser;
+  final String? attachmentName;
 }
 
 class _EvaluationReportCard extends StatelessWidget {
@@ -375,76 +506,251 @@ class _BulletSection extends StatelessWidget {
   }
 }
 
-class _ReplyInputBar extends StatelessWidget {
-  const _ReplyInputBar({required this.controller});
+class _ReplyInputBar extends StatefulWidget {
+  const _ReplyInputBar({
+    required this.controller,
+    required this.attachedFileName,
+    required this.onAttach,
+    required this.onRemoveAttachment,
+    required this.onSend,
+  });
   final TextEditingController controller;
+  final String? attachedFileName;
+  final VoidCallback onAttach;
+  final VoidCallback onRemoveAttachment;
+  final VoidCallback onSend;
+
+  @override
+  State<_ReplyInputBar> createState() => _ReplyInputBarState();
+}
+
+class _ReplyInputBarState extends State<_ReplyInputBar> with SingleTickerProviderStateMixin {
+  bool _isRecording = false;
+  late final AnimationController _animController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  void _startRecording() {
+    setState(() => _isRecording = true);
+    _animController.repeat();
+  }
+
+  void _stopRecording() {
+    _animController.stop();
+    setState(() => _isRecording = false);
+  }
+
+  void _cancelRecording() {
+    _animController.stop();
+    setState(() => _isRecording = false);
+  }
+
+  Widget _waveform(ThemeData theme) {
+    const barCount = 14;
+    const maxBarHeight = 28.0;
+    const minBarHeight = 6.0;
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, child) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(barCount, (i) {
+            final phase = (i / barCount) * math.pi * 2;
+            final t = (_animController.value * math.pi * 2) + phase;
+            final v = (math.sin(t) + 1) / 2; // used math.sin
+            final h = minBarHeight + (v * (maxBarHeight - minBarHeight));
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Container(
+                width: 6,
+                height: h,
+                decoration: BoxDecoration(
+                  color: Colors.redAccent,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+
+  Widget _recordingPanel(ThemeData theme) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.brightness == Brightness.light ? Colors.red.shade50 : Colors.red.shade900.withOpacity(0.16),
+        border: Border.all(color: Colors.red.withOpacity(0.22)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Container(width: 10, height: 10, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
+          const SizedBox(width: 12),
+          Expanded(child: Center(child: _waveform(theme))),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: _cancelRecording,
+                icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                label: Text('Cancel', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: _stopRecording,
+                icon: const Icon(Icons.mic_off, color: Colors.red),
+                label: Text('Stop', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SafeArea(
       top: false,
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface, // was Colors.white
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
-              ),
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'type_answer_hint'.tr(),
-                  border: InputBorder.none,
-                  isDense: true,
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        onPressed: () async {
-                          final result = await FilePicker.platform.pickFiles(allowMultiple: false);
-                          if (result == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('evaluation.selectFileCancelled'.tr())),
-                            );
-                            return;
-                          }
-                          final file = result.files.first;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('evaluation.fileUploaded'.tr())),
-                          );
-                        },
-                        icon: const Icon(Icons.attach_file),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          // voice action placeholder
-                        },
-                        icon: const Icon(Icons.mic_none),
-                      ),
-                    ],
-                  ),
+          // show attached file chip if present
+          if (widget.attachedFileName != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: InputChip(
+                  label: Text(widget.attachedFileName!),
+                  avatar: const Icon(Icons.attach_file, size: 18),
+                  onDeleted: widget.onRemoveAttachment,
                 ),
               ),
             ),
-          ),
-          const SizedBox(width: 8),
-          SizedBox(
-            height: 48,
-            width: 48,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  backgroundColor: const Color(0xFF1E63FF)),
-              onPressed: () {},
-              child: const Icon(Icons.send_rounded, color: Colors.white),
-            ),
+          // show recording panel if active
+          if (_isRecording) _recordingPanel(theme),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
+                  ),
+                  child: TextField(
+                    controller: widget.controller,
+                    minLines: 1,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: 'type_answer_hint'.tr(),
+                      border: InputBorder.none,
+                      isDense: true,
+                      suffixIcon: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: widget.onAttach,
+                            icon: const Icon(Icons.attach_file),
+                          ),
+                          IconButton(
+                            onPressed: _isRecording ? _stopRecording : _startRecording,
+                            icon: Icon(_isRecording ? Icons.mic : Icons.mic_none),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 48,
+                width: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: const Color(0xFF1E63FF),
+                  ),
+                  onPressed: widget.onSend,
+                  child: const Icon(Icons.send_rounded, color: Colors.white),
+                ),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Replace _UserMessageBubble with alignment-aware bubble
+class _MessageBubble extends StatelessWidget {
+  const _MessageBubble({required this.time, required this.text, required this.fromUser});
+  final String time;
+  final String text;
+  final bool fromUser;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bubbleColor = fromUser ? const Color(0xFF1E63FF) : theme.colorScheme.surface;
+    final textColor = fromUser ? Colors.white : theme.textTheme.bodyLarge?.color;
+    final align = fromUser ? Alignment.centerRight : Alignment.centerLeft;
+
+    return Align(
+      alignment: align,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.80),
+        child: Column(
+          crossAxisAlignment: fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: bubbleColor,
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  if (Theme.of(context).brightness == Brightness.light)
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                ],
+              ),
+              child: Text(
+                text,
+                style: theme.textTheme.bodyLarge?.copyWith(color: textColor, height: 1.5),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                time,
+                textAlign: fromUser ? TextAlign.right : TextAlign.left,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: (textColor as Color?)?.withOpacity(0.7) ?? theme.hintColor,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
