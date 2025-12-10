@@ -169,7 +169,9 @@
     "total": "Total",
     "submit": "Submit",
     "total_value_note": "Total should be 100%",
-    "total_error": "Total should be 100%"
+    "total_error": "Total should be 100%",
+    "view_rubric": "View Rubric",
+    "remove_rubric": "Rubric"
   },
    "common": {
     "settings": "Settings",
@@ -211,6 +213,11 @@
     "attach": "Attach",
     "marks": "Marks",
     "send": "Send",
-    "addAttachmentAndMarks": "Add the attachment and marks before starting the conversation"
+    "addAttachmentAndMarks": "Add the attachment and marks before starting the conversation",
+    "requiredQuestionsExceed": "Required questions cannot exceed main questions",
+    "fillAllSubQuestionMarks": "Please enter marks for all sub-questions",
+    "viewEditMarks": "View Marks",
+    "removeData": "Remove Data",
+    "dataRemoved": "Data removed successfully"
   }
 }

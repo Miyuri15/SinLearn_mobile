@@ -163,7 +163,9 @@
     "total": "මුළු එකතුව",
     "submit": "ඇතුළත් කරන්න",
     "total_value_note": "එකතුව 100% විය යුතුය",
-    "total_error": "එකතුව 100% විය යුතුය"
+    "total_error": "එකතුව 100% විය යුතුය",
+    "view_rubric": "බලන්න",
+    "remove_rubric": "මකන්න"
   },
   "common": {
     "settings": "සැකසුම්",
@@ -205,6 +207,11 @@
     "attach": "ගොනුව",
     "marks": "ලකුණු",
     "send": "යවන්න",
-    "addAttachmentAndMarks": "සංවාදය ආරම්භ කිරීමට පෙර සංග්‍රහය සහ ලකුණු එක් කරන්න"
+    "addAttachmentAndMarks": "සංවාදය ආරම්භ කිරීමට පෙර සංග්‍රහය සහ ලකුණු එක් කරන්න",
+    "requiredQuestionsExceed": "අවශ්‍ය ප්‍රශ්න ගණන ප්‍රධාන ප්‍රශ්න ගණනට වඩා වැඩි විය නොහැක",
+    "fillAllSubQuestionMarks": "කරුණාකර සියලුම උපප්‍රශ්න සඳහා ලකුණු ඇතුළත් කරන්න",
+    "viewEditMarks": "ලකුණු බලන්න",
+    "removeData": "දත්ත ඉවත් කරන්න",
+    "dataRemoved": "දත්ත සාර්ථකව ඉවත් කරන ලදී"
   }
 }
