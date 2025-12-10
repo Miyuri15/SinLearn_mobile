@@ -215,6 +215,8 @@
     "fillAllSubQuestionMarks": "කරුණාකර සියලුම උපප්‍රශ්න සඳහා ලකුණු ඇතුළත් කරන්න",
     "viewEditMarks": "ලකුණු බලන්න",
     "removeData": "දත්ත ඉවත් කරන්න",
-    "dataRemoved": "දත්ත සාර්ථකව ඉවත් කරන ලදී"
+    "dataRemoved": "දත්ත සාර්ථකව ඉවත් කරන ලදී",
+    "selectFileCancelled": "ගොනු තේරීම අවලංගු කරන ලදි",
+    "attachmentRemoved": "ඇමුණුම ඉවත් කරන ලදි"
   }
 }

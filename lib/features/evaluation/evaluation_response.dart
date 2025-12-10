@@ -3,7 +3,17 @@ import 'package:file_picker/file_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 
 class EvaluationResponsePage extends StatelessWidget {
-  const EvaluationResponsePage({super.key});
+  const EvaluationResponsePage({
+    super.key,
+    this.initialMessageText,
+    this.attachmentName,
+    this.evaluationData,
+  });
+
+  // added fields to accept payload
+  final String? initialMessageText;
+  final String? attachmentName;
+  final Map<String, dynamic>? evaluationData;
 
   @override
   Widget build(BuildContext context) {
@@ -74,11 +84,23 @@ class EvaluationResponsePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _UserMessageBubble(
-              time: '04:40',
-              text: 'doc1.',
-            ),
-            const SizedBox(height: 12),
+            // render initial message and attachment if provided
+            if (initialMessageText != null || attachmentName != null) ...[
+              _UserMessageBubble(
+                time: TimeOfDay.now().format(context),
+                text: initialMessageText ?? '',
+              ),
+              if (attachmentName != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, left: 40),
+                  child: InputChip(
+                    label: Text(attachmentName!),
+                    avatar: const Icon(Icons.attach_file, size: 18),
+                    onDeleted: null,
+                  ),
+                ),
+              const SizedBox(height: 12),
+            ],
             _EvaluationReportCard(theme: theme),
             const SizedBox(height: 16),
             _ReplyInputBar(controller: TextEditingController()),
@@ -386,11 +408,15 @@ class _ReplyInputBar extends StatelessWidget {
                         onPressed: () async {
                           final result = await FilePicker.platform.pickFiles(allowMultiple: false);
                           if (result == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File selection canceled')));
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('evaluation.selectFileCancelled'.tr())),
+                            );
                             return;
                           }
                           final file = result.files.first;
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selected: ${file.name}')));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('evaluation.fileUploaded'.tr())),
+                          );
                         },
                         icon: const Icon(Icons.attach_file),
                       ),
