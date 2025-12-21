@@ -13,6 +13,8 @@ dependencies:
 
   provider: ^6.1.1
 
+  dio: ^5.4.0
+
   cupertino_icons: ^1.0.8
 
   # Localization support (English + Sinhala)
@@ -38,6 +40,8 @@ dependencies:
 
   #For local storage
   shared_preferences: ^2.1.1
+  # Secure storage for sensitive tokens
+  flutter_secure_storage: ^8.0.0
 
 dev_dependencies:
   flutter_test:

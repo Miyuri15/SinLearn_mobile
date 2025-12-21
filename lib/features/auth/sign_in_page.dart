@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'sign_up_page.dart';
 import '../evaluation/evaluation_text.dart';
+import 'services/auth_service.dart';
 
 class SignInPage extends StatelessWidget {
   const SignInPage({super.key});
@@ -340,6 +342,11 @@ class _AuthFormState extends State<_AuthForm> {
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
 
+  final AuthService _authService = AuthService();
+  bool _loading = false;
+
+  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+
   @override
   void dispose() {
     _emailCtrl.dispose();
@@ -477,13 +484,57 @@ class _AuthFormState extends State<_AuthForm> {
               backgroundColor: const Color(0xFF1E7EFF),
               elevation: 0,
             ),
-            onPressed: () {
-              // Close keyboard before navigation
+            onPressed: _loading ? null : () async {
               FocusScope.of(context).unfocus();
-              // Navigate to EvaluationTextPage
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const EvaluationTextPage()),
-              );
+
+              final email = _emailCtrl.text.trim();
+              final password = _pwdCtrl.text;
+
+              if (email.isEmpty || password.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Please enter email and password')),
+                );
+                return;
+              }
+
+              setState(() => _loading = true);
+
+              try {
+                final result = await _authService.signIn(
+                  email: email,
+                  password: password,
+                );
+
+                final accessToken = result['access_token'];
+                final refreshToken = result['refresh_token'];
+
+                // Persist tokens securely for later use
+                try {
+                  if (accessToken != null) {
+                    await _secureStorage.write(key: 'access_token', value: accessToken.toString());
+                  }
+                  if (refreshToken != null) {
+                    await _secureStorage.write(key: 'refresh_token', value: refreshToken.toString());
+                  }
+                } catch (e) {
+                  // If secure storage write fails, log and continue (user still created)
+                  // You may want to report this to analytics or show a non-blocking message
+                }
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Login successful')),
+                );
+
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (_) => const EvaluationTextPage()),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(e.toString())),
+                );
+              } finally {
+                setState(() => _loading = false);
+              }
             },
             child: Text(
               'sign_in'.tr(),
