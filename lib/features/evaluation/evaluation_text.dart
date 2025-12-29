@@ -45,7 +45,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
 
   Future<void> _loadAllData() async {
     final prefs = await SharedPreferences.getInstance();
-    
+
     // Load attachment
     final attachmentName = prefs.getString(_attachmentKey);
     if (attachmentName != null && mounted) {
@@ -54,7 +54,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         _hasAttachment = true;
       });
     }
-    
+
     // Load rubric status
     final hasRubric = prefs.getBool(_rubricKey) ?? false;
     if (mounted) {
@@ -62,7 +62,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         _hasRubrics = hasRubric;
       });
     }
-    
+
     // Load marks status
     final marksData = prefs.getString(_evaluationStorageKey);
     if (mounted) {
@@ -129,10 +129,10 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       );
       return;
     }
-    
+
     final prefs = await SharedPreferences.getInstance();
     final hasRubric = prefs.getBool(_rubricKey) ?? false;
-    
+
     if (!hasRubric) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -141,7 +141,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       );
       return;
     }
-    
+
     if (!_hasAttachment) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -150,7 +150,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       );
       return;
     }
-    
+
     final total = evalData['totalMarks'] ?? '';
     final main = evalData['mainQuestions'] ?? '';
     final req = evalData['requiredQuestions'] ?? '';
@@ -187,7 +187,8 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
 
     // Debug log to check state
     print('Send button enabled: ${_hasRubrics && _hasMarks && _hasAttachment}');
-    print('Has Rubrics: $_hasRubrics, Has Marks: $_hasMarks, Has Attachment: $_hasAttachment');
+    print(
+        'Has Rubrics: $_hasRubrics, Has Marks: $_hasMarks, Has Attachment: $_hasAttachment');
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -234,24 +235,41 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                   ),
                 // Show requirements status
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   child: Wrap(
                     spacing: 8,
                     children: [
                       Chip(
                         label: Text('Rubric: ${_hasRubrics ? '✓' : '✗'}'),
-                        backgroundColor: _hasRubrics ? Colors.green.shade100 : Colors.red.shade100,
-                        labelStyle: TextStyle(color: _hasRubrics ? Colors.green.shade800 : Colors.red.shade800),
+                        backgroundColor: _hasRubrics
+                            ? Colors.green.shade100
+                            : Colors.red.shade100,
+                        labelStyle: TextStyle(
+                            color: _hasRubrics
+                                ? Colors.green.shade800
+                                : Colors.red.shade800),
                       ),
                       Chip(
                         label: Text('Marks: ${_hasMarks ? '✓' : '✗'}'),
-                        backgroundColor: _hasMarks ? Colors.green.shade100 : Colors.red.shade100,
-                        labelStyle: TextStyle(color: _hasMarks ? Colors.green.shade800 : Colors.red.shade800),
+                        backgroundColor: _hasMarks
+                            ? Colors.green.shade100
+                            : Colors.red.shade100,
+                        labelStyle: TextStyle(
+                            color: _hasMarks
+                                ? Colors.green.shade800
+                                : Colors.red.shade800),
                       ),
                       Chip(
-                        label: Text('Attachment: ${_hasAttachment ? '✓' : '✗'}'),
-                        backgroundColor: _hasAttachment ? Colors.green.shade100 : Colors.red.shade100,
-                        labelStyle: TextStyle(color: _hasAttachment ? Colors.green.shade800 : Colors.red.shade800),
+                        label:
+                            Text('Attachment: ${_hasAttachment ? '✓' : '✗'}'),
+                        backgroundColor: _hasAttachment
+                            ? Colors.green.shade100
+                            : Colors.red.shade100,
+                        labelStyle: TextStyle(
+                            color: _hasAttachment
+                                ? Colors.green.shade800
+                                : Colors.red.shade800),
                       ),
                     ],
                   ),
@@ -368,13 +386,11 @@ class _InputBar extends StatelessWidget {
                         backgroundColor: const Color(0xFF1E63FF),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       icon: const Icon(Icons.attach_file),
-                      label: Text('evaluation.attach'
-                          .tr()),
+                      label: Text('evaluation.attach'.tr()),
                     ),
                   ),
                 ),
@@ -390,8 +406,7 @@ class _InputBar extends StatelessWidget {
                         backgroundColor: const Color(0xFF1E63FF),
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       icon: const Icon(Icons.add),
@@ -408,13 +423,12 @@ class _InputBar extends StatelessWidget {
                     child: ElevatedButton.icon(
                       onPressed: onSendPressed,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: onSendPressed != null 
-                          ? const Color(0xFF1E63FF)
-                          : Colors.grey,
+                        backgroundColor: onSendPressed != null
+                            ? const Color(0xFF1E63FF)
+                            : Colors.grey,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(14),
                         ),
                       ),
                       icon: const Icon(Icons.send_rounded),

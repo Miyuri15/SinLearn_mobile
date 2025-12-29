@@ -103,7 +103,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
 
     // Single bot reply (Sinhala or English)
     final isSinhala = _containsSinhala(text);
-    final botReply = isSinhala ? 'ඔබට කෙසේ උදව් කළ හැකිද?' : 'How can I help you?';
+    final botReply =
+        isSinhala ? 'ඔබට කෙසේ උදව් කළ හැකිද?' : 'How can I help you?';
     setState(() {
       _messages.add(_ChatMessage(text: botReply, fromUser: false));
     });
@@ -113,7 +114,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isCompact = MediaQuery.of(context).size.width < 420;
-    final _initialMessage = _messages.isNotEmpty ? _messages.first : null; // added
+    final _initialMessage =
+        _messages.isNotEmpty ? _messages.first : null; // added
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -137,7 +139,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                         break;
                       case 'question':
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Question Paper selected')),
+                          const SnackBar(
+                              content: Text('Question Paper selected')),
                         );
                         break;
                     }
@@ -145,7 +148,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                   itemBuilder: (context) => const [
                     PopupMenuItem(value: 'rubric', child: Text('Rubric')),
                     PopupMenuItem(value: 'syllabus', child: Text('Syllabus')),
-                    PopupMenuItem(value: 'question', child: Text('Question Paper')),
+                    PopupMenuItem(
+                        value: 'question', child: Text('Question Paper')),
                   ],
                 ),
               ]
@@ -159,7 +163,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                   onSelected: (value) {
                     if (value == 'question') {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Question Paper selected')),
+                        const SnackBar(
+                            content: Text('Question Paper selected')),
                       );
                     } else if (value == 'rubric') {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -168,7 +173,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                     }
                   },
                   itemBuilder: (context) => const [
-                    PopupMenuItem(value: 'question', child: Text('Question Paper')),
+                    PopupMenuItem(
+                        value: 'question', child: Text('Question Paper')),
                     PopupMenuItem(value: 'rubric', child: Text('Rubric')),
                   ],
                 ),
@@ -191,9 +197,13 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Align(
-                    alignment: _initialMessage.fromUser ? Alignment.centerRight : Alignment.centerLeft,
+                    alignment: _initialMessage.fromUser
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
                     child: Column(
-                      crossAxisAlignment: _initialMessage.fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                      crossAxisAlignment: _initialMessage.fromUser
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
                       children: [
                         InputChip(
                           label: Text(_initialMessage.attachmentName!),
@@ -202,11 +212,15 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          TimeOfDay.now().format(context), // time under attachment
-                          textAlign: _initialMessage.fromUser ? TextAlign.right : TextAlign.left,
-                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).hintColor,
-                          ),
+                          TimeOfDay.now()
+                              .format(context), // time under attachment
+                          textAlign: _initialMessage.fromUser
+                              ? TextAlign.right
+                              : TextAlign.left,
+                          style:
+                              Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Theme.of(context).hintColor,
+                                  ),
                         ),
                       ],
                     ),
@@ -234,22 +248,33 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                         Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Align(
-                            alignment: m.fromUser ? Alignment.centerRight : Alignment.centerLeft,
+                            alignment: m.fromUser
+                                ? Alignment.centerRight
+                                : Alignment.centerLeft,
                             child: Column(
-                              crossAxisAlignment: m.fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                              crossAxisAlignment: m.fromUser
+                                  ? CrossAxisAlignment.end
+                                  : CrossAxisAlignment.start,
                               children: [
                                 InputChip(
                                   label: Text(m.attachmentName!),
-                                  avatar: const Icon(Icons.attach_file, size: 18),
+                                  avatar:
+                                      const Icon(Icons.attach_file, size: 18),
                                   onDeleted: null,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  TimeOfDay.now().format(context), // time under attachment
-                                  textAlign: m.fromUser ? TextAlign.right : TextAlign.left,
-                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Theme.of(context).hintColor,
-                                  ),
+                                  TimeOfDay.now()
+                                      .format(context), // time under attachment
+                                  textAlign: m.fromUser
+                                      ? TextAlign.right
+                                      : TextAlign.left,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .labelSmall
+                                      ?.copyWith(
+                                        color: Theme.of(context).hintColor,
+                                      ),
                                 ),
                               ],
                             ),
@@ -278,7 +303,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
 
 // Simple message model for this page
 class _ChatMessage {
-  _ChatMessage({required this.text, required this.fromUser, this.attachmentName});
+  _ChatMessage(
+      {required this.text, required this.fromUser, this.attachmentName});
   final String text;
   final bool fromUser;
   final String? attachmentName;
@@ -294,7 +320,8 @@ class _EvaluationReportCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor, // was Colors.white
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+        border:
+            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -307,9 +334,12 @@ class _EvaluationReportCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('evaluation_report'.tr(), style: theme.textTheme.titleMedium),
+                    Text('evaluation_report'.tr(),
+                        style: theme.textTheme.titleMedium),
                     const SizedBox(height: 2),
-                    Text('detailed_feedback'.tr(), style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor)),
+                    Text('detailed_feedback'.tr(),
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.hintColor)),
                   ],
                 ),
               ),
@@ -524,14 +554,16 @@ class _ReplyInputBar extends StatefulWidget {
   State<_ReplyInputBar> createState() => _ReplyInputBarState();
 }
 
-class _ReplyInputBarState extends State<_ReplyInputBar> with SingleTickerProviderStateMixin {
+class _ReplyInputBarState extends State<_ReplyInputBar>
+    with SingleTickerProviderStateMixin {
   bool _isRecording = false;
   late final AnimationController _animController;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _animController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800));
   }
 
   @override
@@ -591,13 +623,19 @@ class _ReplyInputBarState extends State<_ReplyInputBar> with SingleTickerProvide
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.brightness == Brightness.light ? Colors.red.shade50 : Colors.red.shade900.withOpacity(0.16),
+        color: theme.brightness == Brightness.light
+            ? Colors.red.shade50
+            : Colors.red.shade900.withOpacity(0.16),
         border: Border.all(color: Colors.red.withOpacity(0.22)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
-          Container(width: 10, height: 10, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
+          Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                  color: Colors.red, shape: BoxShape.circle)),
           const SizedBox(width: 12),
           Expanded(child: Center(child: _waveform(theme))),
           Row(
@@ -605,13 +643,17 @@ class _ReplyInputBarState extends State<_ReplyInputBar> with SingleTickerProvide
               TextButton.icon(
                 onPressed: _cancelRecording,
                 icon: const Icon(Icons.close, size: 18, color: Colors.grey),
-                label: Text('Cancel', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+                label: Text('Cancel',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: Colors.grey)),
               ),
               const SizedBox(width: 8),
               TextButton.icon(
                 onPressed: _stopRecording,
                 icon: const Icon(Icons.mic_off, color: Colors.red),
-                label: Text('Stop', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red)),
+                label: Text('Stop',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: Colors.red)),
               ),
             ],
           ),
@@ -650,7 +692,8 @@ class _ReplyInputBarState extends State<_ReplyInputBar> with SingleTickerProvide
                   decoration: BoxDecoration(
                     color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(28),
-                    border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
+                    border:
+                        Border.all(color: theme.dividerColor.withOpacity(0.12)),
                   ),
                   child: TextField(
                     controller: widget.controller,
@@ -668,8 +711,10 @@ class _ReplyInputBarState extends State<_ReplyInputBar> with SingleTickerProvide
                             icon: const Icon(Icons.attach_file),
                           ),
                           IconButton(
-                            onPressed: _isRecording ? _stopRecording : _startRecording,
-                            icon: Icon(_isRecording ? Icons.mic : Icons.mic_none),
+                            onPressed:
+                                _isRecording ? _stopRecording : _startRecording,
+                            icon:
+                                Icon(_isRecording ? Icons.mic : Icons.mic_none),
                           ),
                         ],
                       ),
@@ -683,7 +728,8 @@ class _ReplyInputBarState extends State<_ReplyInputBar> with SingleTickerProvide
                 width: 48,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                     backgroundColor: const Color(0xFF1E63FF),
                   ),
                   onPressed: widget.onSend,
@@ -700,7 +746,8 @@ class _ReplyInputBarState extends State<_ReplyInputBar> with SingleTickerProvide
 
 // Replace _UserMessageBubble with alignment-aware bubble
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.time, required this.text, required this.fromUser});
+  const _MessageBubble(
+      {required this.time, required this.text, required this.fromUser});
   final String time;
   final String text;
   final bool fromUser;
@@ -708,16 +755,20 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final bubbleColor = fromUser ? const Color(0xFF1E63FF) : theme.colorScheme.surface;
-    final textColor = fromUser ? Colors.white : theme.textTheme.bodyLarge?.color;
+    final bubbleColor =
+        fromUser ? const Color(0xFF1E63FF) : theme.colorScheme.surface;
+    final textColor =
+        fromUser ? Colors.white : theme.textTheme.bodyLarge?.color;
     final align = fromUser ? Alignment.centerRight : Alignment.centerLeft;
 
     return Align(
       alignment: align,
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.80),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.80),
         child: Column(
-          crossAxisAlignment: fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment:
+              fromUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -735,7 +786,8 @@ class _MessageBubble extends StatelessWidget {
               ),
               child: Text(
                 text,
-                style: theme.textTheme.bodyLarge?.copyWith(color: textColor, height: 1.5),
+                style: theme.textTheme.bodyLarge
+                    ?.copyWith(color: textColor, height: 1.5),
               ),
             ),
             const SizedBox(height: 4),
@@ -745,7 +797,8 @@ class _MessageBubble extends StatelessWidget {
                 time,
                 textAlign: fromUser ? TextAlign.right : TextAlign.left,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: (textColor as Color?)?.withOpacity(0.7) ?? theme.hintColor,
+                  color: (textColor as Color?)?.withOpacity(0.7) ??
+                      theme.hintColor,
                 ),
               ),
             ),
