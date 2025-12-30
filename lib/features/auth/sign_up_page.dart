@@ -21,19 +21,36 @@ class SignUpPage extends StatelessWidget {
         : [const Color(0xFFE8EDFF), const Color(0xFFD8DFFF)];
 
     final cardPadding = EdgeInsets.symmetric(
-      horizontal: isSmallPhone ? 20 : isPhone ? 24 : 36,
-      vertical: isSmallPhone ? 20 : isPhone ? 28 : 36,
+      horizontal: isSmallPhone
+          ? 20
+          : isPhone
+              ? 24
+              : 36,
+      vertical: isSmallPhone
+          ? 20
+          : isPhone
+              ? 28
+              : 36,
     );
 
     final surfaceFill = isDark ? theme.cardColor : Colors.white;
-    final inputFill = isDark ? const Color(0xFF141414) : const Color(0xFFF6F9FF);
+    final inputFill =
+        isDark ? const Color(0xFF141414) : const Color(0xFFF6F9FF);
     final borderColor = isDark ? Colors.white10 : const Color(0xFFE0E4F0);
     final labelColor = isDark ? Colors.grey[300] : Colors.grey[800];
     final hintColor = isDark ? Colors.grey[500] : const Color(0xFFA9B0C3);
     // ---------------------------------------------------------------------
 
-    final emblemSize = isSmallPhone ? 56.0 : isPhone ? 64.0 : 88.0;
-    final emblemIcon = isSmallPhone ? 28.0 : isPhone ? 32.0 : 44.0;
+    final emblemSize = isSmallPhone
+        ? 56.0
+        : isPhone
+            ? 64.0
+            : 88.0;
+    final emblemIcon = isSmallPhone
+        ? 28.0
+        : isPhone
+            ? 32.0
+            : 44.0;
 
     return Scaffold(
       resizeToAvoidBottomInset: true, // Important for mobile
@@ -82,7 +99,11 @@ class SignUpPage extends StatelessWidget {
                           ),
                           child: Container(
                             margin: EdgeInsets.symmetric(
-                              horizontal: isSmallPhone ? 12 : isPhone ? 16 : 24,
+                              horizontal: isSmallPhone
+                                  ? 12
+                                  : isPhone
+                                      ? 16
+                                      : 24,
                               vertical: 8,
                             ),
                             decoration: BoxDecoration(
@@ -124,7 +145,8 @@ class SignUpPage extends StatelessWidget {
                                   // App Name
                                   Text(
                                     'app_name'.tr(),
-                                    style: theme.textTheme.headlineSmall?.copyWith(
+                                    style:
+                                        theme.textTheme.headlineSmall?.copyWith(
                                       fontWeight: FontWeight.w700,
                                       letterSpacing: 0.4,
                                       fontSize: isSmallPhone ? 22 : null,
@@ -136,15 +158,24 @@ class SignUpPage extends StatelessWidget {
                                     'ai_subtitle'.tr(),
                                     textAlign: TextAlign.center,
                                     style: theme.textTheme.bodyMedium?.copyWith(
-                                      color: theme.colorScheme.onSurface.withOpacity(0.6),
-                                      fontSize: isSmallPhone ? 11 : isPhone ? 12 : 13,
+                                      color: theme.colorScheme.onSurface
+                                          .withOpacity(0.6),
+                                      fontSize: isSmallPhone
+                                          ? 11
+                                          : isPhone
+                                              ? 12
+                                              : 13,
                                     ),
                                   ),
                                   SizedBox(height: isSmallPhone ? 20 : 28),
 
                                   // Tabs
                                   Container(
-                                    height: isSmallPhone ? 44 : isPhone ? 48 : 52,
+                                    height: isSmallPhone
+                                        ? 44
+                                        : isPhone
+                                            ? 48
+                                            : 52,
                                     padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
                                       // USE surface fill for tab container as well
@@ -167,9 +198,13 @@ class SignUpPage extends StatelessWidget {
                                       children: [
                                         Expanded(
                                           child: InkWell(
-                                            borderRadius: BorderRadius.circular(isSmallPhone ? 14 : 18),
-                                            onTap: () => Navigator.of(context).pushReplacement(
-                                              MaterialPageRoute(builder: (_) => const SignInPage()),
+                                            borderRadius: BorderRadius.circular(
+                                                isSmallPhone ? 14 : 18),
+                                            onTap: () => Navigator.of(context)
+                                                .pushReplacement(
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const SignInPage()),
                                             ),
                                             child: Container(
                                               alignment: Alignment.center,
@@ -178,7 +213,8 @@ class SignUpPage extends StatelessWidget {
                                                 style: TextStyle(
                                                   color: Colors.grey[500],
                                                   fontWeight: FontWeight.w700,
-                                                  fontSize: isSmallPhone ? 13 : null,
+                                                  fontSize:
+                                                      isSmallPhone ? 13 : null,
                                                 ),
                                               ),
                                             ),
@@ -191,14 +227,17 @@ class SignUpPage extends StatelessWidget {
                                             decoration: BoxDecoration(
                                               color: surfaceFill,
                                               borderRadius:
-                                                  BorderRadius.circular(isSmallPhone ? 14 : 18),
+                                                  BorderRadius.circular(
+                                                      isSmallPhone ? 14 : 18),
                                               border: Border.all(
-                                                color: Colors.blue.withOpacity(0.15),
+                                                color: Colors.blue
+                                                    .withOpacity(0.15),
                                                 width: 1.2,
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
-                                                  color: Colors.black.withOpacity(0.08),
+                                                  color: Colors.black
+                                                      .withOpacity(0.08),
                                                   blurRadius: 10,
                                                   offset: const Offset(0, 8),
                                                 ),
@@ -208,7 +247,8 @@ class SignUpPage extends StatelessWidget {
                                               'sign_up'.tr(),
                                               style: TextStyle(
                                                 fontWeight: FontWeight.w700,
-                                                fontSize: isSmallPhone ? 13 : null,
+                                                fontSize:
+                                                    isSmallPhone ? 13 : null,
                                               ),
                                             ),
                                           ),
@@ -257,15 +297,25 @@ class _LanguageToggle extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isSmallPhone ? 6 : isPhone ? 8 : 12,
-        vertical: isSmallPhone ? 4 : isPhone ? 6 : 8,
+        horizontal: isSmallPhone
+            ? 6
+            : isPhone
+                ? 8
+                : 12,
+        vertical: isSmallPhone
+            ? 4
+            : isPhone
+                ? 6
+                : 8,
       ),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.06),
+            color: isDark
+                ? Colors.black.withOpacity(0.3)
+                : Colors.black.withOpacity(0.06),
             blurRadius: 8,
           ),
         ],
@@ -275,50 +325,96 @@ class _LanguageToggle extends StatelessWidget {
         children: [
           Icon(
             Icons.language,
-            size: isSmallPhone ? 14 : isPhone ? 16 : 20,
+            size: isSmallPhone
+                ? 14
+                : isPhone
+                    ? 16
+                    : 20,
             color: iconColor,
           ),
-          SizedBox(width: isSmallPhone ? 6 : isPhone ? 8 : 12),
+          SizedBox(
+              width: isSmallPhone
+                  ? 6
+                  : isPhone
+                      ? 8
+                      : 12),
           // Sinhala
           GestureDetector(
             onTap: () => context.setLocale(const Locale('si')),
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: isSmallPhone ? 8 : isPhone ? 10 : 12,
-                vertical: isSmallPhone ? 4 : isPhone ? 6 : 8,
+                horizontal: isSmallPhone
+                    ? 8
+                    : isPhone
+                        ? 10
+                        : 12,
+                vertical: isSmallPhone
+                    ? 4
+                    : isPhone
+                        ? 6
+                        : 8,
               ),
               decoration: BoxDecoration(
-                color: locale.languageCode == 'si' ? Colors.blue[600] : Colors.transparent,
+                color: locale.languageCode == 'si'
+                    ? Colors.blue[600]
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 'si_name'.tr(),
                 style: TextStyle(
-                  fontSize: isSmallPhone ? 11 : isPhone ? 12 : 14,
-                  color: locale.languageCode == 'si' ? Colors.white : textUnselected,
+                  fontSize: isSmallPhone
+                      ? 11
+                      : isPhone
+                          ? 12
+                          : 14,
+                  color: locale.languageCode == 'si'
+                      ? Colors.white
+                      : textUnselected,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
           ),
-          SizedBox(width: isSmallPhone ? 6 : isPhone ? 8 : 10),
+          SizedBox(
+              width: isSmallPhone
+                  ? 6
+                  : isPhone
+                      ? 8
+                      : 10),
           // English
           GestureDetector(
             onTap: () => context.setLocale(const Locale('en')),
             child: Container(
               padding: EdgeInsets.symmetric(
-                horizontal: isSmallPhone ? 8 : isPhone ? 12 : 14,
-                vertical: isSmallPhone ? 4 : isPhone ? 6 : 8,
+                horizontal: isSmallPhone
+                    ? 8
+                    : isPhone
+                        ? 12
+                        : 14,
+                vertical: isSmallPhone
+                    ? 4
+                    : isPhone
+                        ? 6
+                        : 8,
               ),
               decoration: BoxDecoration(
-                color: locale.languageCode == 'en' ? Colors.blue[600] : Colors.transparent,
+                color: locale.languageCode == 'en'
+                    ? Colors.blue[600]
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
                 'en_name'.tr(),
                 style: TextStyle(
-                  fontSize: isSmallPhone ? 11 : isPhone ? 12 : 14,
-                  color: locale.languageCode == 'en' ? Colors.white : textUnselected,
+                  fontSize: isSmallPhone
+                      ? 11
+                      : isPhone
+                          ? 12
+                          : 14,
+                  color: locale.languageCode == 'en'
+                      ? Colors.white
+                      : textUnselected,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -342,7 +438,7 @@ class _SignUpFormState extends State<_SignUpForm> {
   final _emailCtrl = TextEditingController();
   final _pwdCtrl = TextEditingController();
   String _userType = 'student';
-  
+
   // For keyboard handling
   final FocusNode _nameFocus = FocusNode();
   final FocusNode _emailFocus = FocusNode();
@@ -544,7 +640,11 @@ class _SignUpFormState extends State<_SignUpForm> {
               child: GestureDetector(
                 onTap: () => setState(() => _userType = 'student'),
                 child: Container(
-                  height: isSmallPhone ? 84 : isPhone ? 96 : 112,
+                  height: isSmallPhone
+                      ? 84
+                      : isPhone
+                          ? 96
+                          : 112,
                   padding: EdgeInsets.symmetric(
                     horizontal: isSmallPhone ? 10 : 12,
                     vertical: isSmallPhone ? 10 : 12,
@@ -573,8 +673,14 @@ class _SignUpFormState extends State<_SignUpForm> {
                     children: [
                       Icon(
                         Icons.menu_book_outlined,
-                        size: isSmallPhone ? 20 : isPhone ? 22 : 26,
-                        color: _userType == 'student' ? Colors.blue[700] : labelColor,
+                        size: isSmallPhone
+                            ? 20
+                            : isPhone
+                                ? 22
+                                : 26,
+                        color: _userType == 'student'
+                            ? Colors.blue[700]
+                            : labelColor,
                       ),
                       SizedBox(height: isSmallPhone ? 6 : 8),
                       Text(
@@ -582,8 +688,14 @@ class _SignUpFormState extends State<_SignUpForm> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: isSmallPhone ? 12 : isPhone ? 13 : 14,
-                          color: _userType == 'student' ? Colors.blue[700] : labelColor,
+                          fontSize: isSmallPhone
+                              ? 12
+                              : isPhone
+                                  ? 13
+                                  : 14,
+                          color: _userType == 'student'
+                              ? Colors.blue[700]
+                              : labelColor,
                         ),
                       ),
                     ],
@@ -596,7 +708,11 @@ class _SignUpFormState extends State<_SignUpForm> {
               child: GestureDetector(
                 onTap: () => setState(() => _userType = 'teacher'),
                 child: Container(
-                  height: isSmallPhone ? 84 : isPhone ? 96 : 112,
+                  height: isSmallPhone
+                      ? 84
+                      : isPhone
+                          ? 96
+                          : 112,
                   padding: EdgeInsets.symmetric(
                     horizontal: isSmallPhone ? 10 : 12,
                     vertical: isSmallPhone ? 10 : 12,
@@ -625,8 +741,14 @@ class _SignUpFormState extends State<_SignUpForm> {
                     children: [
                       Icon(
                         Icons.school_outlined,
-                        size: isSmallPhone ? 20 : isPhone ? 22 : 26,
-                        color: _userType == 'teacher' ? Colors.blue[700] : labelColor,
+                        size: isSmallPhone
+                            ? 20
+                            : isPhone
+                                ? 22
+                                : 26,
+                        color: _userType == 'teacher'
+                            ? Colors.blue[700]
+                            : labelColor,
                       ),
                       SizedBox(height: isSmallPhone ? 6 : 8),
                       Text(
@@ -634,8 +756,14 @@ class _SignUpFormState extends State<_SignUpForm> {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
-                          fontSize: isSmallPhone ? 12 : isPhone ? 13 : 14,
-                          color: _userType == 'teacher' ? Colors.blue[700] : labelColor,
+                          fontSize: isSmallPhone
+                              ? 12
+                              : isPhone
+                                  ? 13
+                                  : 14,
+                          color: _userType == 'teacher'
+                              ? Colors.blue[700]
+                              : labelColor,
                         ),
                       ),
                     ],
@@ -668,7 +796,7 @@ class _SignUpFormState extends State<_SignUpForm> {
               FocusScope.of(context).unfocus();
               // Proceed to app (mock)
               Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const SignInPage()),               
+                MaterialPageRoute(builder: (_) => const SignInPage()),
               );
             },
             child: Text(
@@ -681,11 +809,11 @@ class _SignUpFormState extends State<_SignUpForm> {
             ),
           ),
         ),
-        
+
         // Bottom padding for keyboard
         SizedBox(
-          height: MediaQuery.of(context).viewInsets.bottom > 0 
-              ? MediaQuery.of(context).viewInsets.bottom + 8 
+          height: MediaQuery.of(context).viewInsets.bottom > 0
+              ? MediaQuery.of(context).viewInsets.bottom + 8
               : (isSmallPhone ? 8 : 12),
         ),
       ],
