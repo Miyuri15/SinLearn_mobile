@@ -275,36 +275,35 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     );
   }
 
-Widget _rubricButtonsRow() {
-  return Row(
-    children: [
-      Expanded(
-        child: ElevatedButton.icon(
-          onPressed: _viewRubric,
-          icon: const Icon(Icons.visibility, size: 18),
-          label: Text('question_paper.view_rubric'.tr()), // <-- localized
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
+  Widget _rubricButtonsRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _viewRubric,
+            icon: const Icon(Icons.visibility, size: 18),
+            label: Text('question_paper.view_rubric'.tr()), // <-- localized
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
           ),
         ),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        child: ElevatedButton.icon(
-          onPressed: _removeRubric,
-          icon: const Icon(Icons.delete, size: 18),
-          label: Text('question_paper.remove_rubric'.tr()), // <-- localized
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
+        const SizedBox(width: 10),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _removeRubric,
+            icon: const Icon(Icons.delete, size: 18),
+            label: Text('question_paper.remove_rubric'.tr()), // <-- localized
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
           ),
         ),
-      ),
-    ],
-  );
-}
-
+      ],
+    );
+  }
 }
 
 void showTeachersRubricSidebar(BuildContext context) {
@@ -329,7 +328,7 @@ void showTeachersRubricSidebar(BuildContext context) {
             width: drawerWidth,
             height: double.infinity,
             color: theme.colorScheme.surface,
-            child: const TeachersRubricSidebar(),
+            child: SafeArea(left: false, child: const TeachersRubricSidebar()),
           ),
         ),
       );
