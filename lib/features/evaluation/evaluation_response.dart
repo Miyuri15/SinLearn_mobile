@@ -320,8 +320,7 @@ class _EvaluationReportCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor, // was Colors.white
         borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.4)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -434,10 +433,9 @@ class _GradeBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        color: theme.colorScheme.primary.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20),
-        border:
-            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.5)),
       ),
       child: Text(
         grade,

@@ -162,7 +162,7 @@ class _SegmentButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: selected
-              ? theme.colorScheme.primary.withValues(alpha: 0.1)
+              ? theme.colorScheme.primary.withOpacity(0.1)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
         ),
@@ -215,9 +215,9 @@ class _RecordingBar extends StatelessWidget {
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.red.withValues(alpha: 0.06),
+            color: Colors.red.withOpacity(0.06),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+            border: Border.all(color: Colors.red.withOpacity(0.2)),
           ),
           child: Row(
             children: [
