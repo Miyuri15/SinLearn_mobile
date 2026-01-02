@@ -137,7 +137,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                         break;
                       case 'question':
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Question Paper selected')),
+                          const SnackBar(
+                              content: Text('Question Paper selected')),
                         );
                         break;
                     }
@@ -145,7 +146,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                   itemBuilder: (context) => const [
                     PopupMenuItem(value: 'rubric', child: Text('Rubric')),
                     PopupMenuItem(value: 'syllabus', child: Text('Syllabus')),
-                    PopupMenuItem(value: 'question', child: Text('Question Paper')),
+                    PopupMenuItem(
+                        value: 'question', child: Text('Question Paper')),
                   ],
                 ),
               ]
@@ -159,7 +161,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                   onSelected: (value) {
                     if (value == 'question') {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Question Paper selected')),
+                        const SnackBar(
+                            content: Text('Question Paper selected')),
                       );
                     } else if (value == 'rubric') {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -168,7 +171,8 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                     }
                   },
                   itemBuilder: (context) => const [
-                    PopupMenuItem(value: 'question', child: Text('Question Paper')),
+                    PopupMenuItem(
+                        value: 'question', child: Text('Question Paper')),
                     PopupMenuItem(value: 'rubric', child: Text('Rubric')),
                   ],
                 ),
@@ -294,7 +298,7 @@ class _EvaluationReportCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor, // was Colors.white
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.4)),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.4)),
       ),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -307,9 +311,12 @@ class _EvaluationReportCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('evaluation_report'.tr(), style: theme.textTheme.titleMedium),
+                    Text('evaluation_report'.tr(),
+                        style: theme.textTheme.titleMedium),
                     const SizedBox(height: 2),
-                    Text('detailed_feedback'.tr(), style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor)),
+                    Text('detailed_feedback'.tr(),
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.hintColor)),
                   ],
                 ),
               ),
@@ -404,10 +411,9 @@ class _GradeBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+        color: theme.colorScheme.primary.withOpacity(0.08),
         borderRadius: BorderRadius.circular(20),
-        border:
-            Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.5)),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.5)),
       ),
       child: Text(
         grade,
@@ -506,6 +512,14 @@ class _BulletSection extends StatelessWidget {
   }
 }
 
+class _ReplyInputBar extends StatefulWidget {
+  const _ReplyInputBar({
+    required this.controller,
+    required this.attachedFileName,
+    required this.onAttach,
+    required this.onRemoveAttachment,
+    required this.onSend,
+  });
 class _ReplyInputBar extends StatefulWidget {
   const _ReplyInputBar({
     required this.controller,

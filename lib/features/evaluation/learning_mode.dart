@@ -9,6 +9,10 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:math' as math;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:math' as math;
 
 class LearningModePage extends StatefulWidget {
   const LearningModePage({super.key});
@@ -107,7 +111,10 @@ class _LearningModePageState extends State<LearningModePage> {
       body: Row(
         children: [
           if (isWide)
-            SizedBox(width: sidebarWidth, child: _Sidebar(theme: theme, searchController: _searchController)),
+            SizedBox(
+                width: sidebarWidth,
+                child: _Sidebar(
+                    theme: theme, searchController: _searchController)),
 
           // RIGHT SIDE
           Expanded(
@@ -558,7 +565,8 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
               children: [
                 Row(
                   children: [
-                    Text('response_level'.tr(), style: theme.textTheme.bodySmall),
+                    Text('response_level'.tr(),
+                        style: theme.textTheme.bodySmall),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Container(
@@ -614,7 +622,8 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surface, // was Colors.white
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
+                          border: Border.all(
+                              color: theme.dividerColor.withOpacity(0.12)),
                         ),
                         child: Row(
                           children: [
@@ -653,10 +662,12 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                         onPressed: _send,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E63FF),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
                           padding: EdgeInsets.zero,
                         ),
-                        child: const Icon(Icons.send_rounded, color: Colors.white),
+                        child:
+                            const Icon(Icons.send_rounded, color: Colors.white),
                       ),
                     ),
                   ],

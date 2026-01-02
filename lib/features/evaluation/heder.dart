@@ -39,7 +39,11 @@ class EvaluationHeader extends StatelessWidget implements PreferredSizeWidget {
                       decoration: BoxDecoration(
                         color: theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(22),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8)],
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black.withOpacity(0.02),
+                              blurRadius: 8)
+                        ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -52,8 +56,10 @@ class EvaluationHeader extends StatelessWidget implements PreferredSizeWidget {
                               borderRadius: BorderRadius.circular(20),
                               onTap: () {},
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                child: Icon(Icons.menu_book_outlined, color: primaryBlue),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 10),
+                                child: Icon(Icons.menu_book_outlined,
+                                    color: primaryBlue),
                               ),
                             ),
                           ),
@@ -66,8 +72,10 @@ class EvaluationHeader extends StatelessWidget implements PreferredSizeWidget {
                               borderRadius: BorderRadius.circular(20),
                               onTap: () {},
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                child: Icon(Icons.checklist_rtl_outlined, color: Colors.black54),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                                child: Icon(Icons.checklist_rtl_outlined,
+                                    color: Colors.black54),
                               ),
                             ),
                           ),
@@ -78,8 +86,11 @@ class EvaluationHeader extends StatelessWidget implements PreferredSizeWidget {
                 ),
 
                 // right icons (document, book, plus)
-                IconButton(icon: const Icon(Icons.insert_drive_file_outlined), onPressed: () {}),
-                IconButton(icon: const Icon(Icons.book_outlined), onPressed: () {}),
+                IconButton(
+                    icon: const Icon(Icons.insert_drive_file_outlined),
+                    onPressed: () {}),
+                IconButton(
+                    icon: const Icon(Icons.book_outlined), onPressed: () {}),
                 IconButton(icon: const Icon(Icons.add), onPressed: () {}),
               ],
             ),

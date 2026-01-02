@@ -8,6 +8,9 @@ import '../recent_chat/recent_chats_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../evaluation/evaluation_response.dart';
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../evaluation/evaluation_response.dart';
+import 'dart:convert';
 
 class EvaluationTextPage extends StatefulWidget {
   const EvaluationTextPage({super.key});
@@ -18,8 +21,18 @@ class EvaluationTextPage extends StatefulWidget {
 
 class _EvaluationTextPageState extends State<EvaluationTextPage> {
   int _selectedSegment = 1;
+  int _selectedSegment = 1;
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _inputController = TextEditingController();
+  String? _attachedFileName;
+  static const String _attachmentKey = 'evaluation_attachment';
+  static const String _evaluationStorageKey = 'evaluation_data';
+  static const String _rubricKey = 'hasRubric';
+
+  // State variables to track the required inputs
+  bool _hasRubrics = false;
+  bool _hasMarks = false;
+  bool _hasAttachment = false;
   String? _attachedFileName;
   static const String _attachmentKey = 'evaluation_attachment';
   static const String _evaluationStorageKey = 'evaluation_data';
@@ -364,6 +377,7 @@ class _InputBar extends StatelessWidget {
                     height: 52,
                     child: ElevatedButton.icon(
                       onPressed: onAttachPressed,
+                      onPressed: onAttachPressed,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E63FF),
                         foregroundColor: Colors.white,
@@ -405,7 +419,9 @@ class _InputBar extends StatelessWidget {
                 Expanded(
                   child: SizedBox(
                     height: 52,
+                    height: 52,
                     child: ElevatedButton.icon(
+                      onPressed: onSendPressed,
                       onPressed: onSendPressed,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: onSendPressed != null 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:sinlearn_mobile/features/auth/auth_page.dart';
 import '../settings/Settings_Teachers.dart';
 import '../auth/sign_up_page.dart';
 import '../../main.dart' show MyApp;
@@ -267,9 +268,11 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => SettingTeachers(
-                            isDark: Theme.of(context).brightness == Brightness.dark,
+                            isDark:
+                                Theme.of(context).brightness == Brightness.dark,
                             // connect settings toggle to app theme
-                            toggleTheme: (v) => MyApp.of(context).toggleTheme(v),
+                            toggleTheme: (v) =>
+                                MyApp.of(context).toggleTheme(v),
                           ),
                         ),
                       );
@@ -280,9 +283,9 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                     icon: Icons.logout,
                     label: 'recent_chats.logout'.tr(),
                     onTap: () {
-                      Navigator.of(context).push(
+                      Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
-                          builder: (context) => const SignUpPage(),
+                          builder: (context) => const AuthPage(),
                         ),
                       );
                     },
