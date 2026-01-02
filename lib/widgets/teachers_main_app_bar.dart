@@ -21,114 +21,126 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   });
 
   @override
-  Size get preferredSize => const Size.fromHeight(70);
+  Size get preferredSize => const Size.fromHeight(80);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
     return Material(
-      elevation: 0,
-      color: theme.colorScheme.surface, // was Colors.white
-      child: Container(
-        height: preferredSize.height,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface, // was Colors.white
-          border: Border(bottom: BorderSide(color: theme.dividerColor, width: 1)),
-        ),
-        child: Row(
-          children: [
-            // LEFT MENU ICON -> Recent Chats
-            Builder(
-              builder: (ctx) {
-                return IconButton(
-                  icon: Icon(Icons.menu, size: 24, color: theme.colorScheme.onSurface),
-                  onPressed: () => Scaffold.of(ctx).openDrawer(),
-                  padding: const EdgeInsets.all(8),
-                  splashRadius: 20,
-                );
-              },
-            ),
+        elevation: 0,
+        color: theme.colorScheme.surface, // was Colors.white
+        child: Container(
+          height: preferredSize.height,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface, // was Colors.white
+            border:
+                Border(bottom: BorderSide(color: theme.dividerColor, width: 1)),
+          ),
+          child: SafeArea(
+            child: Row(
+              children: [
+                // LEFT MENU ICON -> Recent Chats
+                Builder(
+                  builder: (ctx) {
+                    return IconButton(
+                      icon: Icon(Icons.menu,
+                          size: 24, color: theme.colorScheme.onSurface),
+                      onPressed: () => Scaffold.of(ctx).openDrawer(),
+                      padding: const EdgeInsets.all(8),
+                      splashRadius: 20,
+                    );
+                  },
+                ),
 
-            const SizedBox(width: 16),
+                const SizedBox(width: 16),
 
-            // SEGMENT BUTTONS (Book | Clipboard)
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.5), // was 0xFFF7F9FC
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: Row(
-                children: [
-                  _SegmentButton(
-                    icon: Icons.menu_book_outlined,
-                    isSelected: selectedIndex == 0,
-                    onTap: () => onSegmentSelected(0),
-                  ),
-                  _SegmentButton(
-                    icon: Icons.assignment_turned_in_outlined,
-                    isSelected: selectedIndex == 1,
-                    onTap: () => onSegmentSelected(1),
-                  ),
-                ],
-              ),
-            ),
-
-            const Spacer(),
-
-            // TEACHERS RUBRIC -> right-side sidebar
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 6),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: Icon(Icons.document_scanner, size: 20, color: theme.colorScheme.onSurface),
-                padding: const EdgeInsets.all(8),
-                splashRadius: 20,
-                onPressed: () => showTeachersRubricSidebar(context),
-              ),
-            ),
-
-            // BOOK ICON -> Syllabus (sidebar)
-            Builder(
-              builder: (ctx) {
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                // SEGMENT BUTTONS (Book | Clipboard)
+                Container(
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                    shape: BoxShape.circle,
+                    color: theme.colorScheme.surfaceVariant
+                        .withOpacity(0.5), // was 0xFFF7F9FC
+                    borderRadius: BorderRadius.circular(28),
                   ),
-                  child: IconButton(
-                    icon: Icon(Icons.book, size: 20, color: theme.colorScheme.onSurface),
-                    padding: const EdgeInsets.all(8),
-                    splashRadius: 20,
-                    onPressed: () => showSyllabusSidebar(ctx), // opens as right panel
+                  child: Row(
+                    children: [
+                      _SegmentButton(
+                        icon: Icons.menu_book_outlined,
+                        isSelected: selectedIndex == 0,
+                        onTap: () => onSegmentSelected(0),
+                      ),
+                      _SegmentButton(
+                        icon: Icons.assignment_turned_in_outlined,
+                        isSelected: selectedIndex == 1,
+                        onTap: () => onSegmentSelected(1),
+                      ),
+                    ],
                   ),
-                );
-              },
-            ),
+                ),
 
-            const SizedBox(width: 8),
+                const Spacer(),
 
-            // ADD BUTTON -> Question Paper (sidebar)
-            Builder(
-              builder: (ctx) {
-                return IconButton(
-                  icon: Icon(Icons.add, size: 22, color: theme.colorScheme.onSurface),
-                  padding: const EdgeInsets.all(8),
-                  splashRadius: 20,
-                  onPressed: () => showQuestionPaperSidebar(ctx), // opens as right panel
-                );
-              },
+                // TEACHERS RUBRIC -> right-side sidebar
+                // show rubric icon only in Evaluation mode (selectedIndex == 1)
+                if (selectedIndex == 1)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.document_scanner,
+                          size: 20, color: theme.colorScheme.onSurface),
+                      padding: const EdgeInsets.all(8),
+                      splashRadius: 20,
+                      onPressed: () => showTeachersRubricSidebar(context),
+                    ),
+                  ),
+
+                // BOOK ICON -> Syllabus (sidebar)
+                Builder(
+                  builder: (ctx) {
+                    return Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color:
+                            theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        icon: Icon(Icons.book,
+                            size: 20, color: theme.colorScheme.onSurface),
+                        padding: const EdgeInsets.all(8),
+                        splashRadius: 20,
+                        onPressed: () =>
+                            showSyllabusSidebar(ctx), // opens as right panel
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(width: 8),
+
+                // ADD BUTTON -> Question Paper (sidebar)
+                Builder(
+                  builder: (ctx) {
+                    return IconButton(
+                      icon: Icon(Icons.add,
+                          size: 22, color: theme.colorScheme.onSurface),
+                      padding: const EdgeInsets.all(8),
+                      splashRadius: 20,
+                      onPressed: () =>
+                          showQuestionPaperSidebar(ctx), // opens as right panel
+                    );
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
+          ),
+        ));
   }
 }
 
@@ -155,10 +167,21 @@ class _SegmentButton extends StatelessWidget {
           color: isSelected ? theme.cardColor : Colors.transparent, // was white
           borderRadius: BorderRadius.circular(22),
           boxShadow: isSelected
-              ? [if (theme.brightness == Brightness.light) BoxShadow(color: Colors.black.withOpacity(0.06), spreadRadius: 1, blurRadius: 6, offset: const Offset(0, 2))]
+              ? [
+                  if (theme.brightness == Brightness.light)
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        spreadRadius: 1,
+                        blurRadius: 6,
+                        offset: const Offset(0, 2))
+                ]
               : [],
         ),
-        child: Icon(icon, size: 20, color: isSelected ? theme.colorScheme.onSurface : theme.iconTheme.color),
+        child: Icon(icon,
+            size: 20,
+            color: isSelected
+                ? theme.colorScheme.onSurface
+                : theme.iconTheme.color),
       ),
     );
   }

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:sinlearn_mobile/features/auth/auth_page.dart';
 import '../settings/Settings_Teachers.dart';
-import '../auth/sign_up_page.dart';
-import '../../main.dart' show MyApp; // access global theme toggler
+import '../../main.dart' show MyApp;
+import '../evaluation/learning_mode.dart';
+import '../evaluation/evaluation_text.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 // Model
 class ChatEntry {
@@ -34,38 +38,99 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
   final List<ChatEntry> _all = [];
   String? _activeId;
   final _search = TextEditingController();
+  int _version = 0;
 
   @override
   void initState() {
     super.initState();
-    // Seed example data
-    final now = DateTime.now();
-    _all.addAll([
-      ChatEntry(
-        title: 'recent_chats.new_learning'.tr(),
-        type: ChatType.learning,
-        createdAt: now.subtract(const Duration(minutes: 0)),
-      ),
-      ChatEntry(
-        title: 'recent_chats.new_learning'.tr(),
-        type: ChatType.learning,
-        createdAt: now.subtract(const Duration(minutes: 60)),
-        messageCount: 1,
-      ),
-      ChatEntry(
-        title: 'recent_chats.new_evaluation'.tr(),
-        type: ChatType.evaluation,
-        createdAt: now.subtract(const Duration(hours: 2)),
-      ),
-    ]);
-    _activeId = _all.first.id;
-    _search.addListener(() => setState(() {}));
+    _loadChats();
   }
 
-  @override
-  void dispose() {
-    _search.dispose();
-    super.dispose();
+  Future<void> _seedInitialChats() async {
+    final now = DateTime.now();
+    setState(() {
+      _all
+        ..clear()
+        ..addAll([
+          ChatEntry(
+              title: 'recent_chats.new_learning'.tr(),
+              type: ChatType.learning,
+              createdAt: now,
+              messageCount: 0),
+          ChatEntry(
+              title: 'recent_chats.new_learning'.tr(),
+              type: ChatType.learning,
+              createdAt: now.subtract(const Duration(minutes: 60)),
+              messageCount: 1),
+          ChatEntry(
+              title: 'recent_chats.new_evaluation'.tr(),
+              type: ChatType.evaluation,
+              createdAt: now.subtract(const Duration(hours: 2)),
+              messageCount: 0),
+        ]);
+      _activeId = _all.first.id;
+      // keep ids monotonic
+      ChatEntry._next = (_all
+          .map((c) => int.tryParse(c.id) ?? 0)
+          .fold<int>(0, (a, b) => a > b ? a : b));
+    });
+    await _saveChats();
+  }
+
+  Future<void> _loadChats() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('recent_chats');
+    _version = prefs.getInt('recent_chats_version') ?? 0;
+
+    if (raw == null) {
+      await _seedInitialChats();
+      return;
+    }
+
+    try {
+      final data = jsonDecode(raw);
+      if (data is List && data.isNotEmpty) {
+        _all
+          ..clear()
+          ..addAll(data.map((e) => ChatEntry(
+                id: e['id'],
+                title: e['title'],
+                type: e['type'] == 'learning'
+                    ? ChatType.learning
+                    : ChatType.evaluation,
+                createdAt: DateTime.parse(e['createdAt']),
+                messageCount: e['messageCount'] ?? 0,
+              )));
+        ChatEntry._next = (_all
+            .map((c) => int.tryParse(c.id) ?? 0)
+            .fold<int>(0, (a, b) => a > b ? a : b));
+        _activeId = _all.isNotEmpty ? _all.first.id : null;
+        setState(() {});
+      } else {
+        // empty list or wrong shape -> seed defaults
+        await _seedInitialChats();
+      }
+    } catch (_) {
+      // corrupted JSON -> seed defaults
+      await _seedInitialChats();
+    }
+  }
+
+  Future<void> _saveChats() async {
+    final prefs = await SharedPreferences.getInstance();
+    final data = _all
+        .map((c) => {
+              'id': c.id,
+              'title': c.title,
+              'type': c.type == ChatType.learning ? 'learning' : 'evaluation',
+              'createdAt': c.createdAt.toIso8601String(),
+              'messageCount': c.messageCount,
+            })
+        .toList();
+    await prefs.setString('recent_chats', jsonEncode(data));
+    // bump version so drawer can detect changes
+    _version = (_version + 1);
+    await prefs.setInt('recent_chats_version', _version);
   }
 
   void _create(ChatType type) {
@@ -80,6 +145,17 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
       _all.insert(0, entry);
       _activeId = entry.id;
     });
+    _saveChats();
+
+    // Close the drawer first, then navigate to the appropriate interface
+    Navigator.of(context).pop();
+    if (type == ChatType.learning) {
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const LearningModePage()));
+    } else {
+      Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const EvaluationTextPage()));
+    }
   }
 
   String _relative(DateTime time) {
@@ -99,8 +175,19 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
     return _all.where((c) => c.title.toLowerCase().contains(q)).toList();
   }
 
+  // Refresh on build if storage changed (e.g., after returning to this drawer)
+  void _checkVersionAndReload() async {
+    final prefs = await SharedPreferences.getInstance();
+    final latest = prefs.getInt('recent_chats_version') ?? 0;
+    if (latest != _version) {
+      await _loadChats();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => _checkVersionAndReload());
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
     return Drawer(
@@ -203,9 +290,11 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (context) => SettingTeachers(
-                            isDark: Theme.of(context).brightness == Brightness.dark,
+                            isDark:
+                                Theme.of(context).brightness == Brightness.dark,
                             // connect settings toggle to app theme
-                            toggleTheme: (v) => MyApp.of(context).toggleTheme(v),
+                            toggleTheme: (v) =>
+                                MyApp.of(context).toggleTheme(v),
                           ),
                         ),
                       );
@@ -216,9 +305,9 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                     icon: Icons.logout,
                     label: 'recent_chats.logout'.tr(),
                     onTap: () {
-                      Navigator.of(context).push(
+                      Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
-                          builder: (context) => const SignUpPage(),
+                          builder: (context) => const AuthPage(),
                         ),
                       );
                     },
@@ -315,7 +404,18 @@ class _RecentItem extends StatelessWidget {
           Text(timeLabel, style: const TextStyle(fontSize: 12)),
         ],
       ),
-      onTap: onTap,
+      onTap: () {
+        onTap();
+        // navigate to interface for this chat type
+        Navigator.of(context).pop();
+        if (entry.type == ChatType.learning) {
+          Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LearningModePage()));
+        } else {
+          Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const EvaluationTextPage()));
+        }
+      },
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );

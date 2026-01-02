@@ -5,12 +5,30 @@ import 'evaluation_text.dart';
 import 'heder.dart';
 import '../../widgets/teachers_main_app_bar.dart';
 import '../recent_chat/recent_chats_page.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:math' as math;
 
 class LearningModePage extends StatefulWidget {
   const LearningModePage({super.key});
 
   @override
   State<LearningModePage> createState() => _LearningModePageState();
+}
+
+// Add a simple message model
+class Message {
+  final String text;
+  final bool fromUser;
+  final DateTime time;
+  final List<PlatformFile>? attachments; // new
+  Message({
+    required this.text,
+    required this.fromUser,
+    this.attachments,
+    DateTime? time,
+  }) : time = time ?? DateTime.now();
 }
 
 class _LearningModePageState extends State<LearningModePage> {
@@ -21,11 +39,43 @@ class _LearningModePageState extends State<LearningModePage> {
   final TextEditingController _inputController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
 
+  // new: messages list
+  final List<Message> _messages = [];
+
   @override
   void dispose() {
     _inputController.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  // helper: detect if text contains Sinhala characters
+  bool _containsSinhala(String s) {
+    return RegExp(r'[\u0D80-\u0DFF]').hasMatch(s);
+  }
+
+  // helper to handle sending + language-aware reply
+  void _handleSendMessage(String text, [List<PlatformFile>? attachments]) {
+    final trimmed = text.trim();
+    if (trimmed.isEmpty && (attachments == null || attachments.isEmpty)) return;
+
+    setState(() {
+      _messages.add(
+          Message(text: trimmed, fromUser: true, attachments: attachments));
+    });
+
+    // choose reply language based on content
+    final bool isSinhala = _containsSinhala(trimmed);
+    final String botReply =
+        isSinhala ? 'ඔබට කෙසේ උදව් කළ හැකිද?' : 'How can I help you?';
+
+    // schedule a fixed simple reply in the detected language
+    Future.delayed(const Duration(seconds: 1), () {
+      if (!mounted) return;
+      setState(() {
+        _messages.add(Message(text: botReply, fromUser: false));
+      });
+    });
   }
 
   @override
@@ -59,7 +109,10 @@ class _LearningModePageState extends State<LearningModePage> {
       body: Row(
         children: [
           if (isWide)
-            SizedBox(width: sidebarWidth, child: _Sidebar(theme: theme, searchController: _searchController)),
+            SizedBox(
+                width: sidebarWidth,
+                child: _Sidebar(
+                    theme: theme, searchController: _searchController)),
 
           // RIGHT SIDE
           Expanded(
@@ -68,8 +121,8 @@ class _LearningModePageState extends State<LearningModePage> {
               children: [
                 const Divider(height: 1),
 
-                // ===== Empty Chat =====
-                const Expanded(child: _EmptyChatView()),
+                // ===== Chat Body =====
+                Expanded(child: _ChatView(messages: _messages)),
 
                 const Divider(height: 1),
 
@@ -79,6 +132,9 @@ class _LearningModePageState extends State<LearningModePage> {
                   responseLevel: _responseLevel,
                   onResponseLevelChanged: (v) {
                     setState(() => _responseLevel = v);
+                  },
+                  onSend: (text, attachments) {
+                    _handleSendMessage(text, attachments);
                   },
                 ),
               ],
@@ -192,25 +248,123 @@ class _ChatListItem extends StatelessWidget {
   }
 }
 
-// =================================================================
-// ============================================================================
-class _EmptyChatView extends StatelessWidget {
-  const _EmptyChatView();
+// Replace previous _EmptyChatView with _ChatView that shows messages or empty prompt
+class _ChatView extends StatelessWidget {
+  const _ChatView({
+    Key? key,
+    required this.messages,
+  }) : super(key: key);
+
+  final List<Message> messages;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Fetch localized text for start_conversation
-          Text('start_conversation'.tr(), style: theme.textTheme.headlineSmall?.copyWith(color: Colors.grey[600], fontWeight: FontWeight.w600)),
-          const SizedBox(height: 10),
-          // Fetch localized text for type_question
-          Text('type_question'.tr(), style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[450])),
-        ],
-      ),
+
+    if (messages.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Fetch localized text for start_conversation
+            Text('start_conversation'.tr(),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                    color: Colors.grey[600], fontWeight: FontWeight.w600)),
+            const SizedBox(height: 10),
+            // Fetch localized text for type_question
+            Text('type_question'.tr(),
+                style: theme.textTheme.bodyLarge
+                    ?.copyWith(color: Colors.grey[450])),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: messages.length,
+      itemBuilder: (context, index) {
+        final m = messages[index];
+        final align = m.fromUser ? Alignment.centerRight : Alignment.centerLeft;
+        final bgColor =
+            m.fromUser ? const Color(0xFF1E63FF) : theme.colorScheme.surface;
+        final textColor =
+            m.fromUser ? Colors.white : theme.textTheme.bodyLarge?.color;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Align(
+            alignment: align,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.75),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: bgColor,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (m.text.isNotEmpty)
+                      Text(m.text,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: textColor)),
+                    // Render attachments (if any)
+                    if (m.attachments != null && m.attachments!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: m.attachments!.map((f) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: m.fromUser
+                                  ? Colors.white.withOpacity(0.06)
+                                  : theme.colorScheme.background,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.insert_drive_file, size: 16),
+                                const SizedBox(width: 6),
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                      maxWidth:
+                                          MediaQuery.of(context).size.width *
+                                              0.45),
+                                  child: Text(f.name,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(color: textColor)),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      MaterialLocalizations.of(context)
+                              .formatShortDate(m.time) +
+                          ' ' +
+                          TimeOfDay.fromDateTime(m.time).format(context),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: (textColor as Color?)?.withOpacity(0.7) ??
+                              Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -218,16 +372,183 @@ class _EmptyChatView extends StatelessWidget {
 // ============================================================================
 //                                  INPUT BAR
 // ============================================================================
-class _InputBar extends StatelessWidget {
+
+// Replace previous StatelessWidget _InputBar with a StatefulWidget so attachments can be shown
+class _InputBar extends StatefulWidget {
   const _InputBar({
     required this.controller,
     required this.responseLevel,
     required this.onResponseLevelChanged,
+    required this.onSend,
   });
 
   final TextEditingController controller;
   final String responseLevel;
   final ValueChanged<String> onResponseLevelChanged;
+  final void Function(String text, List<PlatformFile> attachments)
+      onSend; // changed
+
+  @override
+  State<_InputBar> createState() => _InputBarState();
+}
+
+class _InputBarState extends State<_InputBar>
+    with SingleTickerProviderStateMixin {
+  final List<PlatformFile> _attachedFiles = [];
+
+  String get responseLevel => widget.responseLevel;
+  TextEditingController get controller => widget.controller;
+
+  // recording state + animation
+  bool _isRecording = false;
+  late final AnimationController _animController;
+
+  @override
+  void initState() {
+    super.initState();
+    _animController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800));
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    super.dispose();
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  Future<void> _pickAndAttachFile() async {
+    final result = await FilePicker.platform
+        .pickFiles(allowMultiple: false, withData: true, type: FileType.any);
+    if (result == null) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File selection canceled')));
+      return;
+    }
+    final file = result.files.first;
+    await _savePickedFile(context, file);
+    if (!mounted) return;
+    setState(() => _attachedFiles.add(file));
+  }
+
+  void _startRecording() {
+    setState(() => _isRecording = true);
+    _animController.repeat();
+  }
+
+  void _stopRecording() {
+    _animController.stop();
+    setState(() => _isRecording = false);
+    // optional: you could add a message or attach recorded audio here
+  }
+
+  void _cancelRecording() {
+    _animController.stop();
+    setState(() => _isRecording = false);
+  }
+
+  void _send() {
+    final text = controller.text.trim();
+    if (text.isEmpty && _attachedFiles.isEmpty) return;
+    // pass a copy of attachments
+    widget.onSend(text, List<PlatformFile>.from(_attachedFiles));
+    setState(() {
+      controller.clear();
+      _attachedFiles.clear();
+    });
+  }
+
+  // small animated waveform widget used inside recording panel
+  Widget _waveform(BuildContext context) {
+    final barCount = 12;
+    final maxBarHeight = 28.0;
+    final minBarHeight = 6.0;
+
+    return AnimatedBuilder(
+      animation: _animController,
+      builder: (context, child) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(barCount, (i) {
+            final phase = (i / barCount) * math.pi * 2;
+            final t = (_animController.value * math.pi * 2) + phase;
+            final v = (math.sin(t) + 1) / 2; // 0..1
+            final h = minBarHeight + (v * (maxBarHeight - minBarHeight));
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+              child: Container(
+                width: 6,
+                height: h,
+                decoration: BoxDecoration(
+                  color: Colors.redAccent,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+
+  // recording panel UI (rounded with red waveform & controls)
+  Widget _recordingPanel(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: theme.brightness == Brightness.light
+            ? Colors.red.shade50
+            : Colors.red.shade900.withOpacity(0.16),
+        border: Border.all(color: Colors.red.withOpacity(0.22)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          // left red dot
+          Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                  color: Colors.red, shape: BoxShape.circle)),
+          const SizedBox(width: 12),
+
+          // waveform (center)
+          Expanded(
+            child: Center(child: _waveform(context)),
+          ),
+
+          // controls on the right
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: _cancelRecording,
+                icon: const Icon(Icons.close, size: 18, color: Colors.grey),
+                label: Text('Cancel',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: Colors.grey)),
+              ),
+              const SizedBox(width: 8),
+              TextButton.icon(
+                onPressed: _stopRecording,
+                icon: const Icon(Icons.mic_off, color: Colors.red),
+                label: Text('Stop',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: Colors.red)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -242,37 +563,102 @@ class _InputBar extends StatelessWidget {
         child: LayoutBuilder(builder: (context, constraints) {
           final narrow = constraints.maxWidth < 520;
 
+          // small chip row shown when there are attached files
+          Widget attachedFilesView() {
+            if (_attachedFiles.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 6,
+                children: _attachedFiles.map((f) {
+                  return Chip(
+                    label: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.insert_drive_file, size: 16),
+                        const SizedBox(width: 6),
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 160),
+                          child: Text('${f.name} • ${_formatSize(f.size)}',
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                      ],
+                    ),
+                    deleteIcon: const Icon(Icons.close, size: 18),
+                    onDeleted: () {
+                      setState(() => _attachedFiles.remove(f));
+                    },
+                    backgroundColor: theme.colorScheme.surface,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  );
+                }).toList(),
+              ),
+            );
+          }
+
+          // Replace the narrow-layout response_level Container with a more compact variant
           if (narrow) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
                   children: [
-                    Text('response_level'.tr(), style: theme.textTheme.bodySmall),
+                    Text('response_level'.tr(),
+                        style: theme.textTheme.bodySmall),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Container(
-                        padding: EdgeInsets.symmetric(horizontal: isSmallPhone ? 6 : 8),
+                        // smaller padding & radius
+                        padding: EdgeInsets.symmetric(
+                            horizontal: isSmallPhone ? 6 : 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.surface, // was Colors.white
-                          borderRadius: BorderRadius.circular(isSmallPhone ? 8 : 10),
-                          border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
+                          color: theme.colorScheme.surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                              color: theme.dividerColor.withOpacity(0.12)),
                         ),
                         child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: responseLevel,
-                            isExpanded: true,
-                            items: [
-                              DropdownMenuItem(value: 'grades_6_8', child: Text('grades_6_8'.tr())),
-                              DropdownMenuItem(value: 'grades_9_11', child: Text('grades_9_11'.tr())),
-                              DropdownMenuItem(value: 'grades_12_plus', child: Text('grades_12_plus'.tr())),
-                            ],
-                            onChanged: (v) => v != null ? onResponseLevelChanged(v) : null,
-                            selectedItemBuilder: (context) => [
-                              Text('grades_6_8'.tr()),
-                              Text('grades_9_11'.tr()),
-                              Text('grades_12_plus'.tr()),
-                            ],
+                          child: Align(
+                            alignment: Alignment.center,
+                            child: SizedBox(
+                              height: 34, // reduced height
+                              child: DropdownButton<String>(
+                                value: responseLevel,
+                                isExpanded: true,
+                                items: [
+                                  DropdownMenuItem(
+                                      value: 'grades_6_8',
+                                      child: Text('grades_6_8'.tr(),
+                                          textAlign: TextAlign.center)),
+                                  DropdownMenuItem(
+                                      value: 'grades_9_11',
+                                      child: Text('grades_9_11'.tr(),
+                                          textAlign: TextAlign.center)),
+                                  DropdownMenuItem(
+                                      value: 'grades_12_plus',
+                                      child: Text('grades_12_plus'.tr(),
+                                          textAlign: TextAlign.center)),
+                                ],
+                                onChanged: (v) => v != null
+                                    ? widget.onResponseLevelChanged(v)
+                                    : null,
+                                selectedItemBuilder: (context) => [
+                                  Center(
+                                      child: Text('grades_6_8'.tr(),
+                                          textAlign: TextAlign.center)),
+                                  Center(
+                                      child: Text('grades_9_11'.tr(),
+                                          textAlign: TextAlign.center)),
+                                  Center(
+                                      child: Text('grades_12_plus'.tr(),
+                                          textAlign: TextAlign.center)),
+                                ],
+                                dropdownColor: theme.colorScheme.surface,
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -280,6 +666,12 @@ class _InputBar extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
+
+                // show attached files as chips
+                attachedFilesView(),
+
+                // show recording panel if active
+                if (_isRecording) _recordingPanel(context),
 
                 // Input row with pill input + send button
                 Row(
@@ -289,7 +681,8 @@ class _InputBar extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surface, // was Colors.white
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
+                          border: Border.all(
+                              color: theme.dividerColor.withOpacity(0.12)),
                         ),
                         child: Row(
                           children: [
@@ -306,21 +699,23 @@ class _InputBar extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            // constrain suffix icon area so it can't overflow on tiny screens
                             SizedBox(
                               width: isSmallPhone ? 88 : 120,
-                              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                                IconButton(onPressed: () async {
-                                  final result = await FilePicker.platform.pickFiles(allowMultiple: false);
-                                  if (result == null) {
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File selection canceled')));
-                                    return;
-                                  }
-                                  final file = result.files.first;
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selected: ${file.name}')));
-                                }, icon: const Icon(Icons.attach_file)),
-                                IconButton(onPressed: () {}, icon: const Icon(Icons.mic_none)),
-                              ]),
+                              child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    IconButton(
+                                        onPressed: _pickAndAttachFile,
+                                        icon: const Icon(Icons.attach_file)),
+                                    IconButton(
+                                      onPressed: _isRecording
+                                          ? _stopRecording
+                                          : _startRecording,
+                                      icon: Icon(_isRecording
+                                          ? Icons.mic
+                                          : Icons.mic_none),
+                                    ),
+                                  ]),
                             ),
                           ],
                         ),
@@ -331,13 +726,15 @@ class _InputBar extends StatelessWidget {
                       height: 52,
                       width: 52,
                       child: ElevatedButton(
-                        onPressed: () {},
+                        onPressed: _send,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E63FF),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
                           padding: EdgeInsets.zero,
                         ),
-                        child: const Icon(Icons.send_rounded, color: Colors.white),
+                        child:
+                            const Icon(Icons.send_rounded, color: Colors.white),
                       ),
                     ),
                   ],
@@ -346,96 +743,195 @@ class _InputBar extends StatelessWidget {
             );
           }
 
-          // Wide layout
-          return Row(
+          // Wide layout (smaller/narrower response card)
+          return Column(
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                margin: const EdgeInsets.only(right: 10),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surface, // was Colors.white
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
-                ),
-                child: Row(
-                  children: [
-                    Text('response_level'.tr(), style: theme.textTheme.bodySmall),
-                    const SizedBox(width: 8),
-                    DropdownButton<String>(
-                      value: responseLevel,
-                      underline: const SizedBox.shrink(),
-                      items: [
-                        DropdownMenuItem(value: 'grades_6_8', child: Text('grades_6_8'.tr())),
-                        DropdownMenuItem(value: 'grades_9_11', child: Text('grades_9_11'.tr())),
-                        DropdownMenuItem(value: 'grades_12_plus', child: Text('grades_12_plus'.tr())),
-                      ],
-                      onChanged: (v) {
-                        if (v != null) onResponseLevelChanged(v);
-                      },
-                      selectedItemBuilder: (context) => [
-                        Text('grades_6_8'.tr()),
-                        Text('grades_9_11'.tr()),
-                        Text('grades_12_plus'.tr()),
-                      ],
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 6), // tighter padding
+                    margin: const EdgeInsets.only(right: 10),
+                    constraints: const BoxConstraints(
+                        minWidth: 110, maxWidth: 160), // narrower card
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: theme.dividerColor.withOpacity(0.12)),
                     ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface, // was Colors.white
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
-                    boxShadow: [if (theme.brightness == Brightness.light) BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 6)],
-                  ),
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: controller,
-                          minLines: 1,
-                          maxLines: 4,
-                          decoration: InputDecoration(
-                            hintText: 'ask_question_hint'.tr(),
-                            border: InputBorder.none,
-                            isDense: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('response_level'.tr(),
+                            style: theme.textTheme.bodySmall),
+                        const SizedBox(height: 4),
+                        SizedBox(
+                          height: 32, // reduced height
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: responseLevel,
+                              underline: const SizedBox.shrink(),
+                              isExpanded: true,
+                              items: [
+                                DropdownMenuItem(
+                                    value: 'grades_6_8',
+                                    child:
+                                        Center(child: Text('grades_6_8'.tr()))),
+                                DropdownMenuItem(
+                                    value: 'grades_9_11',
+                                    child: Center(
+                                        child: Text('grades_9_11'.tr()))),
+                                DropdownMenuItem(
+                                    value: 'grades_12_plus',
+                                    child: Center(
+                                        child: Text('grades_12_plus'.tr()))),
+                              ],
+                              onChanged: (v) {
+                                if (v != null) widget.onResponseLevelChanged(v);
+                              },
+                              selectedItemBuilder: (context) => [
+                                Center(
+                                    child: Text('grades_6_8'.tr(),
+                                        textAlign: TextAlign.center)),
+                                Center(
+                                    child: Text('grades_9_11'.tr(),
+                                        textAlign: TextAlign.center)),
+                                Center(
+                                    child: Text('grades_12_plus'.tr(),
+                                        textAlign: TextAlign.center)),
+                              ],
+                              dropdownColor: theme.colorScheme.surface,
+                              style: theme.textTheme.bodyMedium,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(onPressed: () async {
-                        final result = await FilePicker.platform.pickFiles(allowMultiple: false);
-                        if (result == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File selection canceled')));
-                          return;
-                        }
-                        final file = result.files.first;
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selected: ${file.name}')));
-                      }, icon: const Icon(Icons.attach_file)),
-                      IconButton(onPressed: () {}, icon: const Icon(Icons.mic_none)),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                  Expanded(
+                      child: Container()), // keep rest balanced horizontally
+                ],
               ),
-              const SizedBox(width: 12),
-              SizedBox(
-                height: 52,
-                width: 52,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1E63FF),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    padding: EdgeInsets.zero,
+
+              // attached files row
+              attachedFilesView(),
+
+              // show recording panel if active
+              if (_isRecording) _recordingPanel(context),
+
+              // main input row
+              Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: theme.dividerColor.withOpacity(0.12)),
+                        boxShadow: [
+                          if (theme.brightness == Brightness.light)
+                            BoxShadow(
+                                color: Colors.black.withOpacity(0.01),
+                                blurRadius: 6)
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: TextField(
+                              controller: controller,
+                              minLines: 1,
+                              maxLines: 4,
+                              decoration: InputDecoration(
+                                hintText: 'ask_question_hint'.tr(),
+                                border: InputBorder.none,
+                                isDense: true,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                              onPressed: _pickAndAttachFile,
+                              icon: const Icon(Icons.attach_file)),
+                          IconButton(
+                            onPressed:
+                                _isRecording ? _stopRecording : _startRecording,
+                            icon:
+                                Icon(_isRecording ? Icons.mic : Icons.mic_none),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: const Icon(Icons.send_rounded, color: Colors.white),
-                ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    height: 52,
+                    width: 52,
+                    child: ElevatedButton(
+                      onPressed: _send,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF1E63FF),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                        padding: EdgeInsets.zero,
+                      ),
+                      child:
+                          const Icon(Icons.send_rounded, color: Colors.white),
+                    ),
+                  ),
+                ],
               ),
             ],
           );
         }),
       ),
     );
+  }
+}
+
+// Add helper to save picked file bytes into local storage (SharedPreferences as base64)
+Future<void> _savePickedFile(BuildContext context, PlatformFile file) async {
+  try {
+    final bytes = file.bytes;
+    if (bytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to read file bytes')));
+      return;
+    }
+
+    final key =
+        'uploaded_${file.name}_${DateTime.now().millisecondsSinceEpoch}';
+    final base64Str = base64Encode(bytes);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, base64Str);
+
+    // maintain a simple manifest (list of uploaded files)
+    const manifestKey = 'uploaded_files_manifest';
+    final manifestJson = prefs.getString(manifestKey);
+    List<Map<String, dynamic>> manifest = [];
+    if (manifestJson != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(manifestJson);
+        manifest = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      } catch (_) {
+        manifest = [];
+      }
+    }
+    manifest.insert(0, {
+      'key': key,
+      'name': file.name,
+      'size': file.size,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+    await prefs.setString(manifestKey, jsonEncode(manifest));
+
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Saved ${file.name} locally')));
+  } catch (e) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Error saving file: $e')));
   }
 }

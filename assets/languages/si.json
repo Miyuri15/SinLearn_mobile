@@ -1,5 +1,5 @@
 {
-  "app_name": "සිංලර්න්",
+  "app_name": "SinhalaLearn",
 
   "settings": {
     "header": "සැකසීම්",
@@ -36,14 +36,17 @@
     "privacy_policy": "පෞද්ගලිකත්ව ප්\u200dරතිපත්තිය"
   },
 
-  "ai_subtitle": "AI-නිර්මාණය කරන ලද සිංහල අධ්‍යාපනික සහකරු",
+  "ai_subtitle": "AI-බලගැන්වූ සිංහල අධ්‍යාපන සහායකයා",
 
-  "sign_in": "පිවිසෙන්න",
+  "sign_in": "ඇතුළු වන්න",
   "sign_up": "ලියාපදිංචි වන්න",
-  "email": "ඊමේල්",
+  "email": "විද්‍යුත් තැපැල",
   "email_hint": "example@email.com",
   "password": "මුරපදය",
   "password_hint": "••••••••",
+  "user_type": "පරිශීලක වර්ගය",
+  "student": "ශිෂ්‍ය",
+  "teacher": "ගුරු",
   "name": "නම",
   "name_hint": "ඔබේ නම",
   "si_name": "සිංහල",
@@ -86,7 +89,7 @@
     "upload_success": "උඩුගත්: {0}",
     "upload_error": "ගොනුව තෝරා ගැනීමට බැරි විය",
     "delete_title": "පාඨමාලාව මකන්න",
-    "delete_confirm": "ඔබට \"{0}\" මකන්න යන්නට අවශ්‍යද? මෙය ආපසු ලබාගත නොහැක.",
+    "delete_confirm": "ඔබට \"{name}\" මකන්න යන්නට අවශ්‍යද? මෙය ආපසු ලබාගත නොහැක.",
     "delete": "මකන්න",
     "deleted": "මැකුවා: {0}",
     "file_subject_default": "උඩුගත් ගොනුව",
@@ -121,6 +124,9 @@
     "select_file_cancelled": "ගොනු තේරීම අවලංගු කරන ලදි",
     "upload_success": "උඩුගත්: {0}",
     "upload_error": "ගොනුව තෝරා ගැනීමට බැරි විය",
+    "delete_title": "ප්‍රශ්නා පත්‍රය මකන්න",
+    "delete_confirm": "ඔබට \"{name}\" මකන්න යන්නට අවශ්‍යද? මෙය ආපසු ලබාගත නොහැක.",
+    "delete": "මකන්න",
     "deleted": "මැකුවා: {0}",
     "select_rubric": "රුබ්රික් තෝරන්න",
     "standard_rubrics": "සම්මත රුබ්රික්",
@@ -163,7 +169,9 @@
     "total": "මුළු එකතුව",
     "submit": "ඇතුළත් කරන්න",
     "total_value_note": "එකතුව 100% විය යුතුය",
-    "total_error": "එකතුව 100% විය යුතුය"
+    "total_error": "එකතුව 100% විය යුතුය",
+    "view_rubric": "බලන්න",
+    "remove_rubric": "මකන්න"
   },
   "common": {
     "settings": "සැකසුම්",
@@ -205,6 +213,13 @@
     "attach": "ගොනුව",
     "marks": "ලකුණු",
     "send": "යවන්න",
-    "addAttachmentAndMarks": "සංවාදය ආරම්භ කිරීමට පෙර සංග්‍රහය සහ ලකුණු එක් කරන්න"
+    "addAttachmentAndMarks": "සංවාදය ආරම්භ කිරීමට පෙර සංග්‍රහය සහ ලකුණු එක් කරන්න",
+    "requiredQuestionsExceed": "අවශ්‍ය ප්‍රශ්න ගණන ප්‍රධාන ප්‍රශ්න ගණනට වඩා වැඩි විය නොහැක",
+    "fillAllSubQuestionMarks": "කරුණාකර සියලුම උපප්‍රශ්න සඳහා ලකුණු ඇතුළත් කරන්න",
+    "viewEditMarks": "ලකුණු බලන්න",
+    "removeData": "දත්ත ඉවත් කරන්න",
+    "dataRemoved": "දත්ත සාර්ථකව ඉවත් කරන ලදී",
+    "selectFileCancelled": "ගොනු තේරීම අවලංගු කරන ලදි",
+    "attachmentRemoved": "ඇමුණුම ඉවත් කරන ලදි"
   }
 }
