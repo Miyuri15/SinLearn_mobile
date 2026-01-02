@@ -520,14 +520,6 @@ class _ReplyInputBar extends StatefulWidget {
     required this.onRemoveAttachment,
     required this.onSend,
   });
-class _ReplyInputBar extends StatefulWidget {
-  const _ReplyInputBar({
-    required this.controller,
-    required this.attachedFileName,
-    required this.onAttach,
-    required this.onRemoveAttachment,
-    required this.onSend,
-  });
   final TextEditingController controller;
   final String? attachedFileName;
   final VoidCallback onAttach;

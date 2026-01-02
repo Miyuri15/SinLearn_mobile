@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'rubric_upload_form.dart';
 
 class TeachersRubricSidebar extends StatefulWidget {
@@ -328,16 +327,14 @@ void showTeachersRubricSidebar(BuildContext context) {
           color: Colors.transparent,
           child: Container(
             width: drawerWidth,
-          color: Colors.transparent,
-          child: Container(
-            width: drawerWidth,
             height: double.infinity,
             color: theme.colorScheme.surface,
             child: const TeachersRubricSidebar(),
           ),
         ),
       );
-    },
+            
+},
     transitionBuilder: (context, anim, secondaryAnim, child) {
       final offsetAnim = Tween<Offset>(
         begin: const Offset(1, 0),
@@ -346,7 +343,7 @@ void showTeachersRubricSidebar(BuildContext context) {
         parent: anim,
         curve: Curves.easeOutCubic,
       ));
-
+  
       return SlideTransition(position: offsetAnim, child: child);
     },
   );
