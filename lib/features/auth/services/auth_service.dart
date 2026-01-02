@@ -32,7 +32,7 @@ class AuthService {
   }) async {
     try {
       final response = await ApiClient.dio.post(
-        '/api/v1/auth/login',
+        '/api/v1/auth/signin',
         data: {
           "email": email,
           "password": password,
@@ -47,5 +47,4 @@ class AuthService {
       throw Exception('Network error');
     }
   }
-
 }

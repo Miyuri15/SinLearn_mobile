@@ -1,5 +1,5 @@
 {
-  "app_name": "සිංලර්න්",
+  "app_name": "SinhalaLearn",
 
   "settings": {
     "header": "සැකසීම්",
@@ -36,14 +36,17 @@
     "privacy_policy": "පෞද්ගලිකත්ව ප්\u200dරතිපත්තිය"
   },
 
-  "ai_subtitle": "AI-නිර්මාණය කරන ලද සිංහල අධ්‍යාපනික සහකරු",
+  "ai_subtitle": "AI-බලගැන්වූ සිංහල අධ්‍යාපන සහායකයා",
 
-  "sign_in": "පිවිසෙන්න",
+  "sign_in": "ඇතුළු වන්න",
   "sign_up": "ලියාපදිංචි වන්න",
-  "email": "ඊමේල්",
+  "email": "විද්‍යුත් තැපැල",
   "email_hint": "example@email.com",
   "password": "මුරපදය",
   "password_hint": "••••••••",
+  "user_type": "පරිශීලක වර්ගය",
+  "student": "ශිෂ්‍ය",
+  "teacher": "ගුරු",
   "name": "නම",
   "name_hint": "ඔබේ නම",
   "si_name": "සිංහල",

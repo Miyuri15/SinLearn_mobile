@@ -60,12 +60,15 @@ class _LearningModePageState extends State<LearningModePage> {
     if (trimmed.isEmpty && (attachments == null || attachments.isEmpty)) return;
 
     setState(() {
-      _messages.add(Message(text: trimmed, fromUser: true, attachments: attachments));
+      _messages.add(
+          Message(text: trimmed, fromUser: true, attachments: attachments));
     });
 
     // choose reply language based on content
     final bool isSinhala = _containsSinhala(trimmed);
-    final String botReply = isSinhala ? 'ඔබට කෙසේ උදව් කළ හැකිද?' : 'How can I help you?';
+
+    final String botReply =
+        isSinhala ? 'ඔබට කෙසේ උදව් කළ හැකිද?' : 'How can I help you?';
 
     // schedule a fixed simple reply in the detected language
     Future.delayed(const Duration(seconds: 1), () {
@@ -107,7 +110,10 @@ class _LearningModePageState extends State<LearningModePage> {
       body: Row(
         children: [
           if (isWide)
-            SizedBox(width: sidebarWidth, child: _Sidebar(theme: theme, searchController: _searchController)),
+            SizedBox(
+                width: sidebarWidth,
+                child: _Sidebar(
+                    theme: theme, searchController: _searchController)),
 
           // RIGHT SIDE
           Expanded(
@@ -262,10 +268,14 @@ class _ChatView extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Fetch localized text for start_conversation
-            Text('start_conversation'.tr(), style: theme.textTheme.headlineSmall?.copyWith(color: Colors.grey[600], fontWeight: FontWeight.w600)),
+            Text('start_conversation'.tr(),
+                style: theme.textTheme.headlineSmall?.copyWith(
+                    color: Colors.grey[600], fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
             // Fetch localized text for type_question
-            Text('type_question'.tr(), style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[450])),
+            Text('type_question'.tr(),
+                style: theme.textTheme.bodyLarge
+                    ?.copyWith(color: Colors.grey[450])),
           ],
         ),
       );
@@ -277,16 +287,20 @@ class _ChatView extends StatelessWidget {
       itemBuilder: (context, index) {
         final m = messages[index];
         final align = m.fromUser ? Alignment.centerRight : Alignment.centerLeft;
-        final bgColor = m.fromUser ? const Color(0xFF1E63FF) : theme.colorScheme.surface;
-        final textColor = m.fromUser ? Colors.white : theme.textTheme.bodyLarge?.color;
+        final bgColor =
+            m.fromUser ? const Color(0xFF1E63FF) : theme.colorScheme.surface;
+        final textColor =
+            m.fromUser ? Colors.white : theme.textTheme.bodyLarge?.color;
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Align(
             alignment: align,
             child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+              constraints: BoxConstraints(
+                  maxWidth: MediaQuery.of(context).size.width * 0.75),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
                   color: bgColor,
                   borderRadius: BorderRadius.circular(14),
@@ -295,7 +309,9 @@ class _ChatView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (m.text.isNotEmpty)
-                      Text(m.text, style: theme.textTheme.bodyMedium?.copyWith(color: textColor)),
+                      Text(m.text,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: textColor)),
                     // Render attachments (if any)
                     if (m.attachments != null && m.attachments!.isNotEmpty) ...[
                       const SizedBox(height: 8),
@@ -304,9 +320,12 @@ class _ChatView extends StatelessWidget {
                         runSpacing: 6,
                         children: m.attachments!.map((f) {
                           return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 6),
                             decoration: BoxDecoration(
-                              color: m.fromUser ? Colors.white.withOpacity(0.06) : theme.colorScheme.background,
+                              color: m.fromUser
+                                  ? Colors.white.withOpacity(0.06)
+                                  : theme.colorScheme.background,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -315,8 +334,14 @@ class _ChatView extends StatelessWidget {
                                 const Icon(Icons.insert_drive_file, size: 16),
                                 const SizedBox(width: 6),
                                 ConstrainedBox(
-                                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.45),
-                                  child: Text(f.name, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: textColor)),
+                                  constraints: BoxConstraints(
+                                      maxWidth:
+                                          MediaQuery.of(context).size.width *
+                                              0.45),
+                                  child: Text(f.name,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(color: textColor)),
                                 ),
                               ],
                             ),
@@ -326,8 +351,11 @@ class _ChatView extends StatelessWidget {
                     ],
                     const SizedBox(height: 6),
                     Text(
-                      MaterialLocalizations.of(context).formatShortDate(m.time) + ' ' + TimeOfDay.fromDateTime(m.time).format(context),
-                      style: theme.textTheme.bodySmall?.copyWith(color: (textColor as Color?)?.withOpacity(0.7) ?? Colors.grey),
+                      '${MaterialLocalizations.of(context).formatShortDate(m.time)} '
+                      '${TimeOfDay.fromDateTime(m.time).format(context)}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                          color: (textColor as Color?)?.withOpacity(0.7) ??
+                              Colors.grey),
                     ),
                   ],
                 ),
@@ -356,13 +384,15 @@ class _InputBar extends StatefulWidget {
   final TextEditingController controller;
   final String responseLevel;
   final ValueChanged<String> onResponseLevelChanged;
-  final void Function(String text, List<PlatformFile> attachments) onSend; // changed
+  final void Function(String text, List<PlatformFile> attachments)
+      onSend; // changed
 
   @override
   State<_InputBar> createState() => _InputBarState();
 }
 
-class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixin {
+class _InputBarState extends State<_InputBar>
+    with SingleTickerProviderStateMixin {
   final List<PlatformFile> _attachedFiles = [];
 
   String get responseLevel => widget.responseLevel;
@@ -375,7 +405,8 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 800));
+    _animController = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 800));
   }
 
   @override
@@ -391,11 +422,16 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
   }
 
   Future<void> _pickAndAttachFile() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: false, withData: true, type: FileType.any);
+    final result = await FilePicker.platform
+        .pickFiles(allowMultiple: false, withData: true, type: FileType.any);
     if (result == null) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('File selection canceled')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('File selection canceled')));
+      }
       return;
     }
+
     final file = result.files.first;
     await _savePickedFile(context, file);
     if (!mounted) return;
@@ -469,14 +505,25 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.brightness == Brightness.light ? Colors.red.shade50 : Colors.red.shade900.withOpacity(0.16),
+        color: theme.brightness == Brightness.light
+            ? Colors.red.shade50
+            : Colors.red.shade900.withOpacity(0.16),
         border: Border.all(color: Colors.red.withOpacity(0.22)),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
           // left red dot
-          Container(width: 10, height: 10, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
+          Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                  color: Colors.red, shape: BoxShape.circle)),
+          Container(
+              width: 10,
+              height: 10,
+              decoration: const BoxDecoration(
+                  color: Colors.red, shape: BoxShape.circle)),
           const SizedBox(width: 12),
 
           // waveform (center)
@@ -490,13 +537,17 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
               TextButton.icon(
                 onPressed: _cancelRecording,
                 icon: const Icon(Icons.close, size: 18, color: Colors.grey),
-                label: Text('Cancel', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey)),
+                label: Text('Cancel',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: Colors.grey)),
               ),
               const SizedBox(width: 8),
               TextButton.icon(
                 onPressed: _stopRecording,
                 icon: const Icon(Icons.mic_off, color: Colors.red),
-                label: Text('Stop', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.red)),
+                label: Text('Stop',
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: Colors.red)),
               ),
             ],
           ),
@@ -535,7 +586,8 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                         const SizedBox(width: 6),
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxWidth: 160),
-                          child: Text('${f.name} • ${_formatSize(f.size)}', overflow: TextOverflow.ellipsis),
+                          child: Text('${f.name} • ${_formatSize(f.size)}',
+                              overflow: TextOverflow.ellipsis),
                         ),
                       ],
                     ),
@@ -544,7 +596,8 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                       setState(() => _attachedFiles.remove(f));
                     },
                     backgroundColor: theme.colorScheme.surface,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
                   );
                 }).toList(),
               ),
@@ -558,16 +611,19 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
               children: [
                 Row(
                   children: [
-                    Text('response_level'.tr(), style: theme.textTheme.bodySmall),
+                    Text('response_level'.tr(),
+                        style: theme.textTheme.bodySmall),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Container(
                         // smaller padding & radius
-                        padding: EdgeInsets.symmetric(horizontal: isSmallPhone ? 6 : 8, vertical: 4),
+                        padding: EdgeInsets.symmetric(
+                            horizontal: isSmallPhone ? 6 : 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surface,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
+                          border: Border.all(
+                              color: theme.dividerColor.withOpacity(0.12)),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: Align(
@@ -578,15 +634,32 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                                 value: responseLevel,
                                 isExpanded: true,
                                 items: [
-                                  DropdownMenuItem(value: 'grades_6_8', child: Text('grades_6_8'.tr(), textAlign: TextAlign.center)),
-                                  DropdownMenuItem(value: 'grades_9_11', child: Text('grades_9_11'.tr(), textAlign: TextAlign.center)),
-                                  DropdownMenuItem(value: 'grades_12_plus', child: Text('grades_12_plus'.tr(), textAlign: TextAlign.center)),
+                                  DropdownMenuItem(
+                                      value: 'grades_6_8',
+                                      child: Text('grades_6_8'.tr(),
+                                          textAlign: TextAlign.center)),
+                                  DropdownMenuItem(
+                                      value: 'grades_9_11',
+                                      child: Text('grades_9_11'.tr(),
+                                          textAlign: TextAlign.center)),
+                                  DropdownMenuItem(
+                                      value: 'grades_12_plus',
+                                      child: Text('grades_12_plus'.tr(),
+                                          textAlign: TextAlign.center)),
                                 ],
-                                onChanged: (v) => v != null ? widget.onResponseLevelChanged(v) : null,
+                                onChanged: (v) => v != null
+                                    ? widget.onResponseLevelChanged(v)
+                                    : null,
                                 selectedItemBuilder: (context) => [
-                                  Center(child: Text('grades_6_8'.tr(), textAlign: TextAlign.center)),
-                                  Center(child: Text('grades_9_11'.tr(), textAlign: TextAlign.center)),
-                                  Center(child: Text('grades_12_plus'.tr(), textAlign: TextAlign.center)),
+                                  Center(
+                                      child: Text('grades_6_8'.tr(),
+                                          textAlign: TextAlign.center)),
+                                  Center(
+                                      child: Text('grades_9_11'.tr(),
+                                          textAlign: TextAlign.center)),
+                                  Center(
+                                      child: Text('grades_12_plus'.tr(),
+                                          textAlign: TextAlign.center)),
                                 ],
                                 dropdownColor: theme.colorScheme.surface,
                                 style: theme.textTheme.bodyMedium,
@@ -614,7 +687,8 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surface, // was Colors.white
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
+                          border: Border.all(
+                              color: theme.dividerColor.withOpacity(0.12)),
                         ),
                         child: Row(
                           children: [
@@ -633,13 +707,21 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                             ),
                             SizedBox(
                               width: isSmallPhone ? 88 : 120,
-                              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                                IconButton(onPressed: _pickAndAttachFile, icon: const Icon(Icons.attach_file)),
-                                IconButton(
-                                  onPressed: _isRecording ? _stopRecording : _startRecording,
-                                  icon: Icon(_isRecording ? Icons.mic : Icons.mic_none),
-                                ),
-                              ]),
+                              child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    IconButton(
+                                        onPressed: _pickAndAttachFile,
+                                        icon: const Icon(Icons.attach_file)),
+                                    IconButton(
+                                      onPressed: _isRecording
+                                          ? _stopRecording
+                                          : _startRecording,
+                                      icon: Icon(_isRecording
+                                          ? Icons.mic
+                                          : Icons.mic_none),
+                                    ),
+                                  ]),
                             ),
                           ],
                         ),
@@ -653,10 +735,12 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                         onPressed: _send,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF1E63FF),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
                           padding: EdgeInsets.zero,
                         ),
-                        child: const Icon(Icons.send_rounded, color: Colors.white),
+                        child:
+                            const Icon(Icons.send_rounded, color: Colors.white),
                       ),
                     ),
                   ],
@@ -671,18 +755,22 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6), // tighter padding
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 6), // tighter padding
                     margin: const EdgeInsets.only(right: 10),
-                    constraints: const BoxConstraints(minWidth: 110, maxWidth: 160), // narrower card
+                    constraints: const BoxConstraints(
+                        minWidth: 110, maxWidth: 160), // narrower card
                     decoration: BoxDecoration(
                       color: theme.colorScheme.surface,
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
+                      border: Border.all(
+                          color: theme.dividerColor.withOpacity(0.12)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('response_level'.tr(), style: theme.textTheme.bodySmall),
+                        Text('response_level'.tr(),
+                            style: theme.textTheme.bodySmall),
                         const SizedBox(height: 4),
                         SizedBox(
                           height: 32, // reduced height
@@ -692,17 +780,32 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                               underline: const SizedBox.shrink(),
                               isExpanded: true,
                               items: [
-                                DropdownMenuItem(value: 'grades_6_8', child: Center(child: Text('grades_6_8'.tr()))),
-                                DropdownMenuItem(value: 'grades_9_11', child: Center(child: Text('grades_9_11'.tr()))),
-                                DropdownMenuItem(value: 'grades_12_plus', child: Center(child: Text('grades_12_plus'.tr()))),
+                                DropdownMenuItem(
+                                    value: 'grades_6_8',
+                                    child:
+                                        Center(child: Text('grades_6_8'.tr()))),
+                                DropdownMenuItem(
+                                    value: 'grades_9_11',
+                                    child: Center(
+                                        child: Text('grades_9_11'.tr()))),
+                                DropdownMenuItem(
+                                    value: 'grades_12_plus',
+                                    child: Center(
+                                        child: Text('grades_12_plus'.tr()))),
                               ],
                               onChanged: (v) {
                                 if (v != null) widget.onResponseLevelChanged(v);
                               },
                               selectedItemBuilder: (context) => [
-                                Center(child: Text('grades_6_8'.tr(), textAlign: TextAlign.center)),
-                                Center(child: Text('grades_9_11'.tr(), textAlign: TextAlign.center)),
-                                Center(child: Text('grades_12_plus'.tr(), textAlign: TextAlign.center)),
+                                Center(
+                                    child: Text('grades_6_8'.tr(),
+                                        textAlign: TextAlign.center)),
+                                Center(
+                                    child: Text('grades_9_11'.tr(),
+                                        textAlign: TextAlign.center)),
+                                Center(
+                                    child: Text('grades_12_plus'.tr(),
+                                        textAlign: TextAlign.center)),
                               ],
                               dropdownColor: theme.colorScheme.surface,
                               style: theme.textTheme.bodyMedium,
@@ -712,7 +815,8 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                       ],
                     ),
                   ),
-                  Expanded(child: Container()), // keep rest balanced horizontally
+                  Expanded(
+                      child: Container()), // keep rest balanced horizontally
                 ],
               ),
 
@@ -730,8 +834,14 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                       decoration: BoxDecoration(
                         color: theme.colorScheme.surface,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: theme.dividerColor.withOpacity(0.12)),
-                        boxShadow: [if (theme.brightness == Brightness.light) BoxShadow(color: Colors.black.withOpacity(0.01), blurRadius: 6)],
+                        border: Border.all(
+                            color: theme.dividerColor.withOpacity(0.12)),
+                        boxShadow: [
+                          if (theme.brightness == Brightness.light)
+                            BoxShadow(
+                                color: Colors.black.withOpacity(0.01),
+                                blurRadius: 6)
+                        ],
                       ),
                       child: Row(
                         children: [
@@ -748,10 +858,14 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                               ),
                             ),
                           ),
-                          IconButton(onPressed: _pickAndAttachFile, icon: const Icon(Icons.attach_file)),
                           IconButton(
-                            onPressed: _isRecording ? _stopRecording : _startRecording,
-                            icon: Icon(_isRecording ? Icons.mic : Icons.mic_none),
+                              onPressed: _pickAndAttachFile,
+                              icon: const Icon(Icons.attach_file)),
+                          IconButton(
+                            onPressed:
+                                _isRecording ? _stopRecording : _startRecording,
+                            icon:
+                                Icon(_isRecording ? Icons.mic : Icons.mic_none),
                           ),
                         ],
                       ),
@@ -765,10 +879,12 @@ class _InputBarState extends State<_InputBar> with SingleTickerProviderStateMixi
                       onPressed: _send,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF1E63FF),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
                         padding: EdgeInsets.zero,
                       ),
-                      child: const Icon(Icons.send_rounded, color: Colors.white),
+                      child:
+                          const Icon(Icons.send_rounded, color: Colors.white),
                     ),
                   ),
                 ],
@@ -786,11 +902,13 @@ Future<void> _savePickedFile(BuildContext context, PlatformFile file) async {
   try {
     final bytes = file.bytes;
     if (bytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to read file bytes')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to read file bytes')));
       return;
     }
 
-    final key = 'uploaded_${file.name}_${DateTime.now().millisecondsSinceEpoch}';
+    final key =
+        'uploaded_${file.name}_${DateTime.now().millisecondsSinceEpoch}';
     final base64Str = base64Encode(bytes);
 
     final prefs = await SharedPreferences.getInstance();
@@ -816,8 +934,10 @@ Future<void> _savePickedFile(BuildContext context, PlatformFile file) async {
     });
     await prefs.setString(manifestKey, jsonEncode(manifest));
 
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved ${file.name} locally')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Saved ${file.name} locally')));
   } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving file: $e')));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text('Error saving file: $e')));
   }
 }

@@ -1,6 +1,6 @@
 name: sinlearn_mobile
 description: "SinLearn - Sinhala Educational Assistant (Mobile + Web)"
-publish_to: 'none'
+publish_to: "none"
 
 version: 1.0.0+1
 
@@ -49,15 +49,14 @@ dev_dependencies:
   flutter_lints: ^4.0.0
 
 flutter:
-
   uses-material-design: true
 
   # Asset folders for localization, fonts, images, icons
   assets:
-      - assets/languages/
-      - assets/fonts/
-      - assets/icons/
-      - assets/images/
+    - assets/languages/
+    - assets/fonts/
+    - assets/icons/
+    - assets/images/
 
   # Sinhala + English fonts (add actual font files later)
   fonts:
