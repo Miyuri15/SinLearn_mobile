@@ -434,8 +434,7 @@ void showTeachersRubricSidebar(BuildContext context, {VoidCallback? onRubricAppl
           ),
         ),
       );
-            
-},
+    },
     transitionBuilder: (context, anim, secondaryAnim, child) {
       final offsetAnim = Tween<Offset>(
         begin: const Offset(1, 0),
@@ -444,7 +443,7 @@ void showTeachersRubricSidebar(BuildContext context, {VoidCallback? onRubricAppl
         parent: anim,
         curve: Curves.easeOutCubic,
       ));
-  
+
       return SlideTransition(position: offsetAnim, child: child);
     },
   );

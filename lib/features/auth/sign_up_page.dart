@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'services/auth_service.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SignUpForm extends StatefulWidget {
   final VoidCallback onSignUpSuccess;
@@ -18,6 +20,10 @@ class _SignUpFormState extends State<SignUpForm> {
   final FocusNode _nameFocus = FocusNode();
   final FocusNode _emailFocus = FocusNode();
   final FocusNode _passwordFocus = FocusNode();
+
+  final AuthService _authService = AuthService();
+  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  bool _loading = false;
 
   @override
   void dispose() {
@@ -91,12 +97,65 @@ class _SignUpFormState extends State<SignUpForm> {
               backgroundColor: const Color(0xFF1E7EFF),
               elevation: 0,
             ),
-            onPressed: () {
-              FocusScope.of(context).unfocus();
-              ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Account Created! Please Sign In.')));
-              widget.onSignUpSuccess();
-            },
+            onPressed: _loading
+                ? null
+                : () async {
+                    FocusScope.of(context).unfocus();
+
+                    final name = _nameCtrl.text.trim();
+                    final email = _emailCtrl.text.trim();
+                    final password = _pwdCtrl.text;
+
+                    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please fill all fields')),
+                      );
+                      return;
+                    }
+
+                    setState(() => _loading = true);
+
+                    try {
+                      final result = await _authService.signUp(
+                        fullName: name,
+                        email: email,
+                        password: password,
+                      );
+
+                      // ✅ Tokens returned
+                      final accessToken = result['access_token'];
+                      final refreshToken = result['refresh_token'];
+
+                      // Persist tokens securely for later use
+                      try {
+                        if (accessToken != null) {
+                          await _secureStorage.write(
+                              key: 'access_token',
+                              value: accessToken.toString());
+                        }
+                        if (refreshToken != null) {
+                          await _secureStorage.write(
+                              key: 'refresh_token',
+                              value: refreshToken.toString());
+                        }
+                      } catch (e) {
+                        // If secure storage write fails, log and continue (user still created)
+                        // You may want to report this to analytics or show a non-blocking message
+                      }
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Account created successfully')),
+                      );
+                      widget.onSignUpSuccess();
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(e.toString())),
+                      );
+                    } finally {
+                      setState(() => _loading = false);
+                    }
+                  },
             child: Text(
               'sign_up'.tr(),
               style: TextStyle(
