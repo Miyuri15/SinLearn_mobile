@@ -205,6 +205,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         onMenuPressed: () {},
         onRightIconPressed: () {},
         onAddPressed: () {},
+        onRubricApplied: _loadAllData,
       ),
       drawer: const RecentChatsDrawer(),
       body: Row(

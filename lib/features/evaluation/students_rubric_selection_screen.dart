@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RubricSelectionSidebar extends StatefulWidget {
-  const RubricSelectionSidebar({super.key});
+  final VoidCallback? onRubricApplied;
+
+  const RubricSelectionSidebar({super.key, this.onRubricApplied});
 
   @override
   State<RubricSelectionSidebar> createState() => _RubricSelectionSidebarState();
@@ -10,6 +13,44 @@ class RubricSelectionSidebar extends StatefulWidget {
 
 class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
   String? _selectedRubric;
+  String? _appliedRubric;
+  bool _isCustomRubric = false;
+
+  static const String _rubricKey = 'hasRubric';
+  static const String _rubricNameKey = 'appliedRubricName';
+  static const String _isCustomRubricKey = 'isCustomRubric';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedRubric();
+  }
+
+  Future<void> _loadSavedRubric() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasRubric = prefs.getBool(_rubricKey) ?? false;
+    if (hasRubric) {
+      setState(() {
+        _appliedRubric = prefs.getString(_rubricNameKey);
+        _isCustomRubric = prefs.getBool(_isCustomRubricKey) ?? false;
+        // Also set the dropdown value if it's a standard rubric
+        if (!_isCustomRubric && _standardRubrics.contains(_appliedRubric)) {
+          _selectedRubric = _appliedRubric;
+        }
+      });
+    }
+  }
+
+  Future<void> _saveRubric(String name, bool isCustom) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_rubricKey, true);
+    await prefs.setString(_rubricNameKey, name);
+    await prefs.setBool(_isCustomRubricKey, isCustom);
+    
+    if (widget.onRubricApplied != null) {
+      widget.onRubricApplied!();
+    }
+  }
 
   // localization keys for standard rubrics (defined in JSON)
   final List<String> _standardRubrics = [
@@ -38,6 +79,10 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(theme),
+                if (_appliedRubric != null) ...[
+                  const SizedBox(height: 24),
+                  _buildAppliedRubricCard(theme),
+                ],
                 const SizedBox(height: 24),
                 Card(
                   elevation: theme.brightness == Brightness.light ? 2 : 0,
@@ -68,6 +113,8 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                         ),
                         const SizedBox(height: 12),
                         _buildRubricsDropdown(theme),
+                        const SizedBox(height: 16),
+                        _buildApplyButton(theme),
                       ],
                     ),
                   ),
@@ -226,17 +273,126 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
     );
   }
 
-  void _handleUpload() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('upload_message'.tr()),
-        backgroundColor: Theme.of(context).colorScheme.primary,
+  Widget _buildApplyButton(ThemeData theme) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: _selectedRubric != null
+            ? () async {
+                await _saveRubric(_selectedRubric!, false);
+                setState(() {
+                  _appliedRubric = _selectedRubric;
+                  _isCustomRubric = false;
+                });
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('question_paper.rubric_applied_success'.tr()),
+                      backgroundColor: theme.colorScheme.primary,
+                    ),
+                  );
+                }
+              }
+            : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+        child: Text(
+          'question_paper.apply_selected_rubric'.tr(),
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _handleUpload() async {
+    // Simulate file upload
+    const fileName = "Custom_Rubric.pdf";
+    await _saveRubric(fileName, true);
+    
+    setState(() {
+      _selectedRubric = fileName; // Example file name
+      _appliedRubric = _selectedRubric;
+      _isCustomRubric = true;
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('question_paper.upload_message'.tr()),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+        ),
+      );
+    }
+  }
+
+  Widget _buildAppliedRubricCard(ThemeData theme) {
+    return Card(
+      elevation: theme.brightness == Brightness.light ? 2 : 0,
+      color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: theme.colorScheme.primary.withOpacity(0.5),
+          width: 1,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'question_paper.applied_rubric'.tr(),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _isCustomRubric ? _appliedRubric! : _appliedRubric!.tr(),
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w500,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            if (_isCustomRubric) ...[
+              const SizedBox(height: 4),
+              Text(
+                'question_paper.custom_uploaded_file'.tr(),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontStyle: FontStyle.italic,
+                  color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 }
 
-void showRubricSelectionSidebar(BuildContext context) {
+void showRubricSelectionSidebar(BuildContext context, {VoidCallback? onRubricApplied}) {
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -256,7 +412,7 @@ void showRubricSelectionSidebar(BuildContext context) {
           child: SizedBox(
             width: drawerW,
             height: double.infinity,
-            child: const RubricSelectionSidebar(),
+            child: RubricSelectionSidebar(onRubricApplied: onRubricApplied),
           ),
         ),
       );
@@ -272,4 +428,3 @@ void showRubricSelectionSidebar(BuildContext context) {
     },
   );
 }
-

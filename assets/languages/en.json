@@ -174,7 +174,12 @@
     "remove_rubric": "Rubric",
     "delete_confirm": "Do you want to delete \"{name}\"? This cannot be undone.",
     "delete": "Delete",
-    "delete_title": "Delete Question Paper"
+    "delete_title": "Delete Question Paper",
+    "rubric_applied_success": "Rubric applied successfully",
+    "applied_rubric": "Applied Rubric",
+    "custom_uploaded_file": "Custom Uploaded File",
+    "apply_selected_rubric": "Apply Selected Rubric",
+    "applied_for_evaluation": "Applied for evaluation"
   },
    "common": {
     "settings": "Settings",

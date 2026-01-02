@@ -10,6 +10,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onMenuPressed;
   final VoidCallback onRightIconPressed;
   final VoidCallback onAddPressed;
+  final VoidCallback? onRubricApplied;
 
   const MainAppBar({
     super.key,
@@ -18,6 +19,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onMenuPressed,
     required this.onRightIconPressed,
     required this.onAddPressed,
+    this.onRubricApplied,
   });
 
   @override
@@ -91,7 +93,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                   icon: Icon(Icons.document_scanner, size: 20, color: theme.colorScheme.onSurface),
                   padding: const EdgeInsets.all(8),
                   splashRadius: 20,
-                  onPressed: () => showRubricSelectionSidebar(context),
+                  onPressed: () => showRubricSelectionSidebar(context, onRubricApplied: onRubricApplied),
                 ),
               ),
 

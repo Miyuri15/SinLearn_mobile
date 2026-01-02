@@ -4,7 +4,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'rubric_upload_form.dart';
 
 class TeachersRubricSidebar extends StatefulWidget {
-  const TeachersRubricSidebar({super.key});
+  final VoidCallback? onRubricApplied;
+
+  const TeachersRubricSidebar({super.key, this.onRubricApplied});
 
   @override
   State<TeachersRubricSidebar> createState() => _TeachersRubricSidebarState();
@@ -12,7 +14,13 @@ class TeachersRubricSidebar extends StatefulWidget {
 
 class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
   bool hasRubric = false;
+  String? appliedRubricName;
+  String? selectedRubricName;
   int? semantic, coverage, relevance;
+
+  // Custom rubric state
+  bool hasCustomRubric = false;
+  int? customSemantic, customCoverage, customRelevance;
 
   @override
   void initState() {
@@ -24,16 +32,54 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     final prefs = await SharedPreferences.getInstance();
 
     final exists = prefs.getBool('hasRubric') ?? false;
+    final customExists = prefs.getBool('hasCustomRubric') ?? false;
 
-    if (exists) {
-      setState(() {
+    setState(() {
+      if (exists) {
         hasRubric = true;
+        appliedRubricName = prefs.getString('rubricName');
         semantic = prefs.getInt('semantic') ?? 0;
         coverage = prefs.getInt('coverage') ?? 0;
         relevance = prefs.getInt('relevance') ?? 0;
-      });
+      }
+      
+      if (customExists) {
+        hasCustomRubric = true;
+        customSemantic = prefs.getInt('custom_semantic') ?? 0;
+        customCoverage = prefs.getInt('custom_coverage') ?? 0;
+        customRelevance = prefs.getInt('custom_relevance') ?? 0;
+      }
+    });
+  }
+
+  Future<void> _applyRubric(String name, int s, int c, int r) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('hasRubric', true);
+    await prefs.setString('rubricName', name);
+    await prefs.setInt('semantic', s);
+    await prefs.setInt('coverage', c);
+    await prefs.setInt('relevance', r);
+
+    setState(() {
+      hasRubric = true;
+      appliedRubricName = name;
+      semantic = s;
+      coverage = c;
+      relevance = r;
+      selectedRubricName = null; // Clear selection after applying
+    });
+
+    if (widget.onRubricApplied != null) {
+      widget.onRubricApplied!();
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('question_paper.rubric_applied_success'.tr())),
+      );
     }
   }
+
 
   Future<void> _removeRubric() async {
     final prefs = await SharedPreferences.getInstance();
@@ -46,9 +92,11 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
       hasRubric = false;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Rubric removed successfully")),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Rubric removed successfully")),
+      );
+    }
   }
 
   void _viewRubric() {
@@ -94,7 +142,36 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 const SizedBox(height: 20),
               ],
 
-              _buildUploadCard(theme),
+              if (hasCustomRubric) ...[
+                _buildRubricCard(
+                  theme,
+                  'Custom Rubric',
+                  'question_paper.content_semantic'.tr(),
+                  customSemantic ?? 0,
+                  'question_paper.content_coverage'.tr(),
+                  customCoverage ?? 0,
+                  'question_paper.content_relevance'.tr(),
+                  customRelevance ?? 0,
+                  isCustom: true,
+                ),
+                const SizedBox(height: 24),
+                // Option to upload a new one
+                Center(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => const RubricUploadForm(),
+                      ).then((_) => _loadRubric());
+                    },
+                    icon: const Icon(Icons.upload_file),
+                    label: Text('question_paper.or_upload_custom'.tr()),
+                  ),
+                ),
+              ] else ...[
+                _buildUploadCard(theme),
+              ],
+              
               const SizedBox(height: 24),
 
               // Normal Cards (unchanged)
@@ -102,11 +179,11 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 theme,
                 'question_paper.balanced_evaluation'.tr(),
                 'question_paper.balanced_semantic'.tr(),
-                'question_paper.marks_40'.tr(),
+                40,
                 'question_paper.balanced_coverage'.tr(),
-                'question_paper.marks_30'.tr(),
+                30,
                 'question_paper.balanced_relevance'.tr(),
-                'question_paper.marks_30'.tr(),
+                30,
               ),
 
               const SizedBox(height: 24),
@@ -115,11 +192,11 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 theme,
                 'question_paper.understanding_focused'.tr(),
                 'question_paper.understanding_semantic'.tr(),
-                'question_paper.marks_60'.tr(),
+                60,
                 'question_paper.understanding_coverage'.tr(),
-                'question_paper.marks_20'.tr(),
+                20,
                 'question_paper.understanding_relevance'.tr(),
-                'question_paper.marks_20'.tr(),
+                20,
               ),
 
               const SizedBox(height: 24),
@@ -128,11 +205,11 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 theme,
                 'question_paper.content_focused'.tr(),
                 'question_paper.content_semantic'.tr(),
-                'question_paper.marks_30'.tr(),
+                30,
                 'question_paper.content_coverage'.tr(),
-                'question_paper.marks_50'.tr(),
+                50,
                 'question_paper.content_relevance'.tr(),
-                'question_paper.marks_20'.tr(),
+                20,
               ),
             ],
           ),
@@ -212,20 +289,32 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     ThemeData theme,
     String rubricTitle,
     String semanticLabel,
-    String semanticMark,
+    int semanticMark,
     String coverageLabel,
-    String coverageMark,
+    int coverageMark,
     String relevanceLabel,
-    String relevanceMark,
-  ) {
+    int relevanceMark, {
+    bool isCustom = false,
+  }) {
+    final bool isApplied = hasRubric && appliedRubricName == rubricTitle;
+
     return Card(
-      elevation: 1,
+      elevation: isApplied ? 4 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isApplied 
+            ? BorderSide(color: theme.colorScheme.primary, width: 2)
+            : BorderSide.none,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(
             children: [
-              const Icon(Icons.description, color: Colors.blue),
+              Icon(
+                isCustom ? Icons.edit_document : Icons.description, 
+                color: isApplied ? theme.colorScheme.primary : Colors.blue
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -233,17 +322,45 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
+                    color: isApplied ? theme.colorScheme.primary : null,
                   ),
                 ),
               ),
+              if (isApplied)
+                Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 20),
             ],
           ),
           const SizedBox(height: 16),
-          _row(semanticLabel, semanticMark),
-          _row(coverageLabel, coverageMark),
-          _row(relevanceLabel, relevanceMark),
+          _row(semanticLabel, '$semanticMark%'),
+          _row(coverageLabel, '$coverageMark%'),
+          _row(relevanceLabel, '$relevanceMark%'),
           const Divider(),
           _row('question_paper.total'.tr(), 'question_paper.marks_100'.tr()),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: isApplied 
+                  ? null 
+                  : () => _applyRubric(
+                      rubricTitle,
+                      semanticMark,
+                      coverageMark,
+                      relevanceMark,
+                    ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
+                disabledBackgroundColor: theme.colorScheme.primaryContainer,
+                disabledForegroundColor: theme.colorScheme.primary,
+              ),
+              child: Text(
+                isApplied 
+                    ? 'question_paper.applied_for_evaluation'.tr()
+                    : 'question_paper.apply_selected_rubric'.tr()
+              ),
+            ),
+          ),
         ]),
       ),
     );
@@ -256,22 +373,6 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
         Text(labelText, style: const TextStyle(fontSize: 12)),
         Text(valueText, style: const TextStyle(fontSize: 12)),
       ]),
-    );
-  }
-
-  Widget _actionButton(String text, IconData icon, VoidCallback onTap,
-      {bool danger = false}) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: onTap,
-        icon: Icon(icon, size: 18),
-        label: Text(text),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: danger ? Colors.red : Colors.blue,
-          foregroundColor: Colors.white,
-        ),
-      ),
     );
   }
 
@@ -307,7 +408,7 @@ Widget _rubricButtonsRow() {
 
 }
 
-void showTeachersRubricSidebar(BuildContext context) {
+void showTeachersRubricSidebar(BuildContext context, {VoidCallback? onRubricApplied}) {
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -329,7 +430,7 @@ void showTeachersRubricSidebar(BuildContext context) {
             width: drawerWidth,
             height: double.infinity,
             color: theme.colorScheme.surface,
-            child: const TeachersRubricSidebar(),
+            child: TeachersRubricSidebar(onRubricApplied: onRubricApplied),
           ),
         ),
       );
