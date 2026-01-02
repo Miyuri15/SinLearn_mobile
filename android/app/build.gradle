@@ -1,27 +1,25 @@
 plugins {
     id "com.android.application"
-    id "kotlin-android"
+    id "org.jetbrains.kotlin.android"   // ✅ FIXED (MATCHES settings.gradle)
     id "dev.flutter.flutter-gradle-plugin"
 }
 
 android {
-    namespace = "com.example.sinlearn_mobile"
+    namespace "com.example.sinlearn_mobile"
 
-    // REQUIRED for flutter + record_android plugin
-    compileSdk = 35
+    compileSdk 35
 
     defaultConfig {
-        applicationId = "com.example.sinlearn_mobile"
-        minSdkVersion = flutter.minSdkVersion
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        applicationId "com.example.sinlearn_mobile"
+        minSdk flutter.minSdkVersion
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
     }
 
-    // REQUIRED for Gradle 8 + AGP 8
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
@@ -30,11 +28,11 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.debug
+            signingConfig signingConfigs.debug
         }
     }
 }
 
 flutter {
-    source = "../.."
+    source "../.."
 }
