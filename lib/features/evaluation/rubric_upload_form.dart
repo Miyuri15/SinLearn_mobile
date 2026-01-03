@@ -3,7 +3,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class RubricUploadForm extends StatefulWidget {
-  const RubricUploadForm({super.key});
+  final VoidCallback? onRubricApplied;
+
+  const RubricUploadForm({super.key, this.onRubricApplied});
 
   @override
   State<RubricUploadForm> createState() => _RubricUploadFormState();
@@ -101,8 +103,7 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
         labelText: 'question_paper.$key'.tr(),
         suffixText: '%',
         border: const OutlineInputBorder(),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) return 'required'.tr();
@@ -142,13 +143,6 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
     await prefs.setInt('custom_coverage', coverage);
     await prefs.setInt('custom_relevance', relevance);
     await prefs.setBool('hasCustomRubric', true);
-    
-    // Also apply it immediately
-    await prefs.setInt('semantic', semantic);
-    await prefs.setInt('coverage', coverage);
-    await prefs.setInt('relevance', relevance);
-    await prefs.setBool('hasRubric', true);
-    await prefs.setString('rubricName', 'Custom Rubric');
 
     Navigator.pop(context);
 

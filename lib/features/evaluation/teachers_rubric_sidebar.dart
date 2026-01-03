@@ -42,7 +42,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
         coverage = prefs.getInt('coverage') ?? 0;
         relevance = prefs.getInt('relevance') ?? 0;
       }
-      
+
       if (customExists) {
         hasCustomRubric = true;
         customSemantic = prefs.getInt('custom_semantic') ?? 0;
@@ -79,7 +79,6 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
       );
     }
   }
-
 
   Future<void> _removeRubric() async {
     final prefs = await SharedPreferences.getInstance();
@@ -161,7 +160,9 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                     onPressed: () {
                       showDialog(
                         context: context,
-                        builder: (_) => const RubricUploadForm(),
+                        builder: (_) => RubricUploadForm(
+                          onRubricApplied: widget.onRubricApplied,
+                        ),
                       ).then((_) => _loadRubric());
                     },
                     icon: const Icon(Icons.upload_file),
@@ -171,7 +172,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
               ] else ...[
                 _buildUploadCard(theme),
               ],
-              
+
               const SizedBox(height: 24),
 
               // Normal Cards (unchanged)
@@ -273,7 +274,9 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 onPressed: () {
                   showDialog(
                     context: context,
-                    builder: (_) => const RubricUploadForm(),
+                    builder: (_) => RubricUploadForm(
+                      onRubricApplied: widget.onRubricApplied,
+                    ),
                   ).then((_) => _loadRubric());
                 },
               ),
@@ -302,7 +305,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
       elevation: isApplied ? 4 : 1,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isApplied 
+        side: isApplied
             ? BorderSide(color: theme.colorScheme.primary, width: 2)
             : BorderSide.none,
       ),
@@ -311,10 +314,8 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(
             children: [
-              Icon(
-                isCustom ? Icons.edit_document : Icons.description, 
-                color: isApplied ? theme.colorScheme.primary : Colors.blue
-              ),
+              Icon(isCustom ? Icons.edit_document : Icons.description,
+                  color: isApplied ? theme.colorScheme.primary : Colors.blue),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -327,7 +328,8 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 ),
               ),
               if (isApplied)
-                Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 20),
+                Icon(Icons.check_circle,
+                    color: theme.colorScheme.primary, size: 20),
             ],
           ),
           const SizedBox(height: 16),
@@ -340,25 +342,23 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: isApplied 
-                  ? null 
+              onPressed: isApplied
+                  ? null
                   : () => _applyRubric(
-                      rubricTitle,
-                      semanticMark,
-                      coverageMark,
-                      relevanceMark,
-                    ),
+                        rubricTitle,
+                        semanticMark,
+                        coverageMark,
+                        relevanceMark,
+                      ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: theme.colorScheme.primary,
                 foregroundColor: theme.colorScheme.onPrimary,
                 disabledBackgroundColor: theme.colorScheme.primaryContainer,
                 disabledForegroundColor: theme.colorScheme.primary,
               ),
-              child: Text(
-                isApplied 
-                    ? 'question_paper.applied_for_evaluation'.tr()
-                    : 'question_paper.apply_selected_rubric'.tr()
-              ),
+              child: Text(isApplied
+                  ? 'question_paper.applied_for_evaluation'.tr()
+                  : 'question_paper.apply_selected_rubric'.tr()),
             ),
           ),
         ]),
@@ -376,39 +376,39 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     );
   }
 
-Widget _rubricButtonsRow() {
-  return Row(
-    children: [
-      Expanded(
-        child: ElevatedButton.icon(
-          onPressed: _viewRubric,
-          icon: const Icon(Icons.visibility, size: 18),
-          label: Text('question_paper.view_rubric'.tr()), // <-- localized
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.blue,
-            foregroundColor: Colors.white,
+  Widget _rubricButtonsRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _viewRubric,
+            icon: const Icon(Icons.visibility, size: 18),
+            label: Text('question_paper.view_rubric'.tr()), // <-- localized
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+            ),
           ),
         ),
-      ),
-      const SizedBox(width: 10),
-      Expanded(
-        child: ElevatedButton.icon(
-          onPressed: _removeRubric,
-          icon: const Icon(Icons.delete, size: 18),
-          label: Text('question_paper.remove_rubric'.tr()), // <-- localized
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red,
-            foregroundColor: Colors.white,
+        const SizedBox(width: 10),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _removeRubric,
+            icon: const Icon(Icons.delete, size: 18),
+            label: Text('question_paper.remove_rubric'.tr()), // <-- localized
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
           ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
-}
-
-void showTeachersRubricSidebar(BuildContext context, {VoidCallback? onRubricApplied}) {
+void showTeachersRubricSidebar(BuildContext context,
+    {VoidCallback? onRubricApplied}) {
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
