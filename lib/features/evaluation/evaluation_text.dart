@@ -7,8 +7,10 @@ import 'learning_mode.dart';
 import '../../widgets/teachers_main_app_bar.dart';
 import '../recent_chat/recent_chats_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../evaluation/evaluation_response.dart';
 import 'dart:convert';
+
+import '../../core/utils/json_cast.dart';
+import 'evaluation_process_page.dart';
 
 // NEW PAGE
 import 'paper_config_review_page.dart';
@@ -233,14 +235,14 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     if (!_hasProcessedDocuments || !_allDocumentsAvailable()) return;
 
     final legacyData = prefs.getString(_evaluationStorageKey);
-    final evalData = legacyData != null ? jsonDecode(legacyData) : {};
+    final decoded = legacyData != null ? jsonDecode(legacyData) : null;
+    final evalData = asStringKeyedMap(decoded);
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => EvaluationResponsePage(
+        builder: (_) => EvaluationProcessPage(
           chatSessionId: widget.chatSessionId,
-          initialMessageText: 'evaluation.evaluationStarted'.tr(),
           attachmentName: _attachedFileName,
           evaluationData: evalData,
         ),

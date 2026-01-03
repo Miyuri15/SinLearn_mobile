@@ -236,6 +236,12 @@
     "docStepSyllabusProcessing": "Syllabus processing",
     "docStepRubricSet": "Rubric set",
     "docStepPaperConfigSet": "Paper config set",
-    "evaluationStarted": "Evaluation started"
+    "evaluationStarted": "Evaluation started",
+    "evaluationInProgress": "Evaluation in progress",
+    "evalStepEvaluating": "Evaluating answer sheets",
+    "evalStepCalculatingMarks": "Calculating marks",
+    "evalStepGeneratingFeedback": "Generating feedback",
+    "evalStepPreparingReport": "Preparing report",
+    "viewResults": "View results"
   }
 }

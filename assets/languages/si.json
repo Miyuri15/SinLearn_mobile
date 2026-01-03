@@ -228,6 +228,12 @@
     "docStepSyllabusProcessing": "විෂය නිර්දේශ සැකසීම",
     "docStepRubricSet": "රුබ්‍රික් සකස් කිරීම",
     "docStepPaperConfigSet": "පත්‍ර සැකසුම් සකස් කිරීම",
-    "evaluationStarted": "ඇගයීම ආරම්භ විය"
+    "evaluationStarted": "ඇගයීම ආරම්භ විය",
+    "evaluationInProgress": "ඇගයීම සිදුවෙමින් පවතී",
+    "evalStepEvaluating": "පිළිතුරු පත්‍ර ඇගයීම",
+    "evalStepCalculatingMarks": "ලකුණු ගණනය කිරීම",
+    "evalStepGeneratingFeedback": "ප්‍රතිචාර සකස් කිරීම",
+    "evalStepPreparingReport": "වාර්තාව සකස් කිරීම",
+    "viewResults": "ප්‍රතිඵල බලන්න"
   }
 }
