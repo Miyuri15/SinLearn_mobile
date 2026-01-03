@@ -81,6 +81,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
   bool _needsReprocess = false;
 
   int _runToken = 0;
+  int _currentEvaluationRunId = 0;
   Timer? _docWatchTimer;
   Map<String, String>? _lastObservedTokens;
 
@@ -180,6 +181,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
 
     if (!mounted || runId != _runToken) return;
     setState(() {
+      _currentEvaluationRunId = DateTime.now().microsecondsSinceEpoch;
       _isEvaluating = true;
     });
     await _runEvaluation(runId: runId);
@@ -223,6 +225,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
     if (_docsReady && !_needsReprocess) {
       final runId = ++_runToken;
       setState(() {
+        _currentEvaluationRunId = DateTime.now().microsecondsSinceEpoch;
         _isEvaluating = true;
         _evaluationDone = false;
         _resetEvaluationStates();
@@ -447,7 +450,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
           initialMessageText: 'evaluation.evaluationStarted'.tr(),
           attachmentName: widget.attachmentName,
           evaluationData: widget.evaluationData,
-          evaluationRunId: _runToken,
+          evaluationRunId: _currentEvaluationRunId,
         ),
       ),
     );

@@ -34,8 +34,6 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
 
   static String _historyKey(String chatSessionId) =>
       'evaluation_chat_history_v1_$chatSessionId';
-  static String _historyLastRunKey(String chatSessionId) =>
-      'evaluation_chat_history_last_run_v1_$chatSessionId';
 
   final ScrollController _scrollController = ScrollController();
   List<_EvalChatEntry> _history = <_EvalChatEntry>[];
@@ -74,19 +72,18 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
       }
     }
 
-    var changed = false;
     final runId = widget.evaluationRunId;
-    if (runId != null) {
-      final lastRunKey = _historyLastRunKey(widget.chatSessionId);
-      final lastSavedRun = prefs.getInt(lastRunKey);
-
-      if (lastSavedRun != runId) {
+    var appended = false;
+    if (runId != null && runId != 0) {
+      final alreadyHasRun = loaded.any((e) => e.runId == runId);
+      if (!alreadyHasRun) {
         final now = DateTime.now();
 
         if (widget.attachmentName != null &&
             widget.attachmentName!.trim().isNotEmpty) {
           loaded.add(
             _EvalChatEntry.user(
+              runId: runId,
               text: 'evaluation.attachedAnswerSheet'
                   .tr(args: [widget.attachmentName!]),
               attachmentName: widget.attachmentName,
@@ -100,6 +97,7 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
             widget.initialMessageText!.trim().isNotEmpty) {
           loaded.add(
             _EvalChatEntry.assistantText(
+              runId: runId,
               text: widget.initialMessageText!,
               attachmentName: widget.attachmentName,
               createdAtIso: now.toIso8601String(),
@@ -110,6 +108,7 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
 
         loaded.add(
           _EvalChatEntry.assistantReport(
+            runId: runId,
             text: 'evaluation.evaluationResultFor'
                 .tr(args: [widget.attachmentName ?? '']),
             attachmentName: widget.attachmentName,
@@ -118,12 +117,11 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
           ),
         );
 
-        await prefs.setInt(lastRunKey, runId);
         await prefs.setString(
           historyKey,
           jsonEncode(loaded.map((e) => e.toJson()).toList()),
         );
-        changed = true;
+        appended = true;
       }
     }
 
@@ -134,7 +132,7 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
     });
 
     // Scroll to bottom after first layout.
-    if (changed || _history.isNotEmpty) {
+    if (appended || _history.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_scrollController.hasClients) return;
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
@@ -319,6 +317,7 @@ enum _EvalChatEntryKind { user, assistantText, assistantReport }
 
 class _EvalChatEntry {
   const _EvalChatEntry({
+    required this.runId,
     required this.kind,
     required this.text,
     required this.createdAtIso,
@@ -327,12 +326,14 @@ class _EvalChatEntry {
   });
 
   factory _EvalChatEntry.user({
+    required int? runId,
     required String text,
     required String createdAtIso,
     required String? attachmentName,
     required Map<String, dynamic>? evaluationData,
   }) {
     return _EvalChatEntry(
+      runId: runId,
       kind: _EvalChatEntryKind.user,
       text: text,
       createdAtIso: createdAtIso,
@@ -342,12 +343,14 @@ class _EvalChatEntry {
   }
 
   factory _EvalChatEntry.assistantText({
+    required int? runId,
     required String text,
     required String createdAtIso,
     required String? attachmentName,
     required Map<String, dynamic>? evaluationData,
   }) {
     return _EvalChatEntry(
+      runId: runId,
       kind: _EvalChatEntryKind.assistantText,
       text: text,
       createdAtIso: createdAtIso,
@@ -357,12 +360,14 @@ class _EvalChatEntry {
   }
 
   factory _EvalChatEntry.assistantReport({
+    required int? runId,
     required String text,
     required String createdAtIso,
     required String? attachmentName,
     required Map<String, dynamic>? evaluationData,
   }) {
     return _EvalChatEntry(
+      runId: runId,
       kind: _EvalChatEntryKind.assistantReport,
       text: text,
       createdAtIso: createdAtIso,
@@ -379,6 +384,7 @@ class _EvalChatEntry {
       _ => _EvalChatEntryKind.user,
     };
     return _EvalChatEntry(
+      runId: (json['runId'] is int) ? json['runId'] as int : null,
       kind: kind,
       text: (json['text'] ?? '').toString(),
       createdAtIso: (json['createdAtIso'] ?? '').toString(),
@@ -389,6 +395,7 @@ class _EvalChatEntry {
     );
   }
 
+  final int? runId;
   final _EvalChatEntryKind kind;
   final String text;
   final String createdAtIso;
@@ -402,6 +409,7 @@ class _EvalChatEntry {
       _EvalChatEntryKind.user => 'user',
     };
     return <String, dynamic>{
+      'runId': runId,
       'kind': kindString,
       'text': text,
       'createdAtIso': createdAtIso,
