@@ -228,6 +228,14 @@
     "removeData": "Remove Data",
     "dataRemoved": "Data removed successfully",
     "selectFileCancelled": "File selection cancelled",
-    "attachmentRemoved": "Attachment removed"
+    "attachmentRemoved": "Attachment removed",
+    "processDocuments": "Process Documents",
+    "alreadyProcessed": "Already processed",
+    "docStepAnswerSheetsProcessing": "Answer sheets processing",
+    "docStepQuestionPaperProcessing": "Question paper processing",
+    "docStepSyllabusProcessing": "Syllabus processing",
+    "docStepRubricSet": "Rubric set",
+    "docStepPaperConfigSet": "Paper config set",
+    "evaluationStarted": "Evaluation started"
   }
 }

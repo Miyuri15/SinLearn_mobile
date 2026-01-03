@@ -220,6 +220,14 @@
     "removeData": "දත්ත ඉවත් කරන්න",
     "dataRemoved": "දත්ත සාර්ථකව ඉවත් කරන ලදී",
     "selectFileCancelled": "ගොනු තේරීම අවලංගු කරන ලදි",
-    "attachmentRemoved": "ඇමුණුම ඉවත් කරන ලදි"
+    "attachmentRemoved": "ඇමුණුම ඉවත් කරන ලදි",
+    "processDocuments": "ලේඛන සැකසන්න",
+    "alreadyProcessed": "දැනටමත් සකස් කර ඇත",
+    "docStepAnswerSheetsProcessing": "පිළිතුරු පත්‍ර සැකසීම",
+    "docStepQuestionPaperProcessing": "ප්‍රශ්නා පත්‍ර සැකසීම",
+    "docStepSyllabusProcessing": "විෂය නිර්දේශ සැකසීම",
+    "docStepRubricSet": "රුබ්‍රික් සකස් කිරීම",
+    "docStepPaperConfigSet": "පත්‍ර සැකසුම් සකස් කිරීම",
+    "evaluationStarted": "ඇගයීම ආරම්භ විය"
   }
 }
