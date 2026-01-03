@@ -447,6 +447,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
           initialMessageText: 'evaluation.evaluationStarted'.tr(),
           attachmentName: widget.attachmentName,
           evaluationData: widget.evaluationData,
+          evaluationRunId: _runToken,
         ),
       ),
     );

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'dart:math' as math;
 
+import '../../core/utils/json_cast.dart';
 import 'evaluation_process_page.dart';
 import 'evaluation_text.dart';
 
@@ -14,12 +16,14 @@ class EvaluationResponsePage extends StatefulWidget {
     this.initialMessageText,
     this.attachmentName,
     this.evaluationData,
+    this.evaluationRunId,
   });
 
   final String chatSessionId;
   final String? initialMessageText;
   final String? attachmentName;
   final Map<String, dynamic>? evaluationData;
+  final int? evaluationRunId;
 
   @override
   State<EvaluationResponsePage> createState() => _EvaluationResponsePageState();
@@ -27,17 +31,115 @@ class EvaluationResponsePage extends StatefulWidget {
 
 class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
   static const String _answerSheetAttachmentKey = 'evaluation_attachment';
-  String? _lastAttachedAnswerSheet;
+
+  static String _historyKey(String chatSessionId) =>
+      'evaluation_chat_history_v1_$chatSessionId';
+  static String _historyLastRunKey(String chatSessionId) =>
+      'evaluation_chat_history_last_run_v1_$chatSessionId';
+
+  final ScrollController _scrollController = ScrollController();
+  List<_EvalChatEntry> _history = <_EvalChatEntry>[];
+  bool _historyLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    _lastAttachedAnswerSheet = widget.attachmentName;
+    _initHistory();
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  Future<void> _initHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    final historyKey = _historyKey(widget.chatSessionId);
+    final raw = prefs.getString(historyKey);
+
+    final loaded = <_EvalChatEntry>[];
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          for (final item in decoded) {
+            if (item is Map) {
+              loaded.add(_EvalChatEntry.fromJson(asStringKeyedMap(item)));
+            }
+          }
+        }
+      } catch (_) {
+        // Ignore malformed stored history.
+      }
+    }
+
+    var changed = false;
+    final runId = widget.evaluationRunId;
+    if (runId != null) {
+      final lastRunKey = _historyLastRunKey(widget.chatSessionId);
+      final lastSavedRun = prefs.getInt(lastRunKey);
+
+      if (lastSavedRun != runId) {
+        final now = DateTime.now();
+
+        if (widget.attachmentName != null &&
+            widget.attachmentName!.trim().isNotEmpty) {
+          loaded.add(
+            _EvalChatEntry.user(
+              text: 'evaluation.attachedAnswerSheet'
+                  .tr(args: [widget.attachmentName!]),
+              attachmentName: widget.attachmentName,
+              createdAtIso: now.toIso8601String(),
+              evaluationData: null,
+            ),
+          );
+        }
+
+        if (widget.initialMessageText != null &&
+            widget.initialMessageText!.trim().isNotEmpty) {
+          loaded.add(
+            _EvalChatEntry.assistantText(
+              text: widget.initialMessageText!,
+              attachmentName: widget.attachmentName,
+              createdAtIso: now.toIso8601String(),
+              evaluationData: null,
+            ),
+          );
+        }
+
+        loaded.add(
+          _EvalChatEntry.assistantReport(
+            text: 'evaluation.evaluationResultFor'
+                .tr(args: [widget.attachmentName ?? '']),
+            attachmentName: widget.attachmentName,
+            createdAtIso: now.toIso8601String(),
+            evaluationData: widget.evaluationData,
+          ),
+        );
+
+        await prefs.setInt(lastRunKey, runId);
+        await prefs.setString(
+          historyKey,
+          jsonEncode(loaded.map((e) => e.toJson()).toList()),
+        );
+        changed = true;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _history = loaded;
+      _historyLoaded = true;
+    });
+
+    // Scroll to bottom after first layout.
+    if (changed || _history.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_scrollController.hasClients) return;
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      });
+    }
   }
 
   Future<void> _attachAnotherAnswerSheet() async {
@@ -53,9 +155,6 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
     final file = result.files.first;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_answerSheetAttachmentKey, file.name);
-
-    if (!mounted) return;
-    setState(() => _lastAttachedAnswerSheet = file.name);
 
     // Re-run evaluation using the already processed documents.
     Navigator.pushReplacement(
@@ -93,23 +192,92 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
         child: Column(
           children: [
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (_lastAttachedAnswerSheet != null) ...[
-                      InputChip(
-                        label: Text(_lastAttachedAnswerSheet!),
-                        avatar: const Icon(Icons.attach_file, size: 18),
-                        onDeleted: null,
-                      ),
-                      const SizedBox(height: 12),
-                    ],
-                    _EvaluationReportCard(theme: theme),
-                  ],
-                ),
-              ),
+              child: !_historyLoaded
+                  ? const SizedBox.shrink()
+                  : _history.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.chat_bubble_outline,
+                                  size: 44,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.45),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'evaluation.noPreviousEvaluations'.tr(),
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.75),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _history.length,
+                          itemBuilder: (context, index) {
+                            final msg = _history[index];
+                            final time = _formatTime(msg.createdAtIso);
+
+                            if (msg.kind ==
+                                _EvalChatEntryKind.assistantReport) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 14),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxWidth:
+                                          MediaQuery.of(context).size.width *
+                                              0.92,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          msg.text,
+                                          style: theme.textTheme.titleSmall
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        _EvaluationReportCard(theme: theme),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          time,
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                            color: theme.hintColor,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: _MessageBubble(
+                                time: time,
+                                text: msg.text,
+                                fromUser: msg.kind == _EvalChatEntryKind.user,
+                              ),
+                            );
+                          },
+                        ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
@@ -143,13 +311,111 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
   }
 }
 
-// Simple message model for this page
-class _ChatMessage {
-  _ChatMessage(
-      {required this.text, required this.fromUser, this.attachmentName});
+enum _EvalChatEntryKind { user, assistantText, assistantReport }
+
+class _EvalChatEntry {
+  const _EvalChatEntry({
+    required this.kind,
+    required this.text,
+    required this.createdAtIso,
+    required this.attachmentName,
+    required this.evaluationData,
+  });
+
+  factory _EvalChatEntry.user({
+    required String text,
+    required String createdAtIso,
+    required String? attachmentName,
+    required Map<String, dynamic>? evaluationData,
+  }) {
+    return _EvalChatEntry(
+      kind: _EvalChatEntryKind.user,
+      text: text,
+      createdAtIso: createdAtIso,
+      attachmentName: attachmentName,
+      evaluationData: evaluationData,
+    );
+  }
+
+  factory _EvalChatEntry.assistantText({
+    required String text,
+    required String createdAtIso,
+    required String? attachmentName,
+    required Map<String, dynamic>? evaluationData,
+  }) {
+    return _EvalChatEntry(
+      kind: _EvalChatEntryKind.assistantText,
+      text: text,
+      createdAtIso: createdAtIso,
+      attachmentName: attachmentName,
+      evaluationData: evaluationData,
+    );
+  }
+
+  factory _EvalChatEntry.assistantReport({
+    required String text,
+    required String createdAtIso,
+    required String? attachmentName,
+    required Map<String, dynamic>? evaluationData,
+  }) {
+    return _EvalChatEntry(
+      kind: _EvalChatEntryKind.assistantReport,
+      text: text,
+      createdAtIso: createdAtIso,
+      attachmentName: attachmentName,
+      evaluationData: evaluationData,
+    );
+  }
+
+  factory _EvalChatEntry.fromJson(Map<String, dynamic> json) {
+    final kindRaw = (json['kind'] ?? '').toString();
+    final kind = switch (kindRaw) {
+      'assistantReport' => _EvalChatEntryKind.assistantReport,
+      'assistantText' => _EvalChatEntryKind.assistantText,
+      _ => _EvalChatEntryKind.user,
+    };
+    return _EvalChatEntry(
+      kind: kind,
+      text: (json['text'] ?? '').toString(),
+      createdAtIso: (json['createdAtIso'] ?? '').toString(),
+      attachmentName: (json['attachmentName'] as String?),
+      evaluationData: (json['evaluationData'] is Map)
+          ? asStringKeyedMap(json['evaluationData'])
+          : null,
+    );
+  }
+
+  final _EvalChatEntryKind kind;
   final String text;
-  final bool fromUser;
+  final String createdAtIso;
   final String? attachmentName;
+  final Map<String, dynamic>? evaluationData;
+
+  Map<String, dynamic> toJson() {
+    final kindString = switch (kind) {
+      _EvalChatEntryKind.assistantReport => 'assistantReport',
+      _EvalChatEntryKind.assistantText => 'assistantText',
+      _EvalChatEntryKind.user => 'user',
+    };
+    return <String, dynamic>{
+      'kind': kindString,
+      'text': text,
+      'createdAtIso': createdAtIso,
+      'attachmentName': attachmentName,
+      'evaluationData': evaluationData,
+    };
+  }
+}
+
+String _formatTime(String createdAtIso) {
+  try {
+    final dt = DateTime.parse(createdAtIso);
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  } catch (_) {
+    return '';
+  }
 }
 
 class _EvaluationReportCard extends StatelessWidget {
