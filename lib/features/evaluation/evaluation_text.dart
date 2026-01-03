@@ -11,6 +11,7 @@ import 'dart:convert';
 
 import '../../core/utils/json_cast.dart';
 import 'evaluation_process_page.dart';
+import 'evaluation_doc_tokens.dart';
 
 // NEW PAGE
 import 'paper_config_review_page.dart';
@@ -95,8 +96,13 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     final syllabusItems = prefs.getStringList(_syllabusKey);
     _hasSyllabus = syllabusItems != null && syllabusItems.isNotEmpty;
 
-    // Any time we reload external state, require re-processing.
-    _hasProcessedDocuments = false;
+    // Documents are considered processed only if the current token snapshot
+    // matches the last processed snapshot.
+    final currentTokens = EvalDocTokens.buildCurrent(prefs);
+    final processedTokens = EvalDocTokens.loadProcessed(prefs);
+    _hasProcessedDocuments = _allDocumentsAvailable() &&
+        processedTokens != null &&
+        EvalDocTokens.equals(currentTokens, processedTokens);
 
     if (mounted) setState(() {});
   }
@@ -198,6 +204,12 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       _isProcessing = false;
       _hasProcessedDocuments = ok;
     });
+
+    if (ok) {
+      final prefs = await SharedPreferences.getInstance();
+      await EvalDocTokens.saveProcessed(
+          prefs, EvalDocTokens.buildCurrent(prefs));
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -232,7 +244,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   Future<void> _sendToChat() async {
     final prefs = await SharedPreferences.getInstance();
 
-    if (!_hasProcessedDocuments || !_allDocumentsAvailable()) return;
+    if (!_allDocumentsAvailable() || !_hasProcessedDocuments) return;
 
     final legacyData = prefs.getString(_evaluationStorageKey);
     final decoded = legacyData != null ? jsonDecode(legacyData) : null;
