@@ -169,7 +169,11 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
     );
   }
 
-  void _endEvaluation() {
+  Future<void> _endEvaluation() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_answerSheetAttachmentKey);
+
+    if (!mounted) return;
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
@@ -296,7 +300,7 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                   SizedBox(
                     height: 52,
                     child: FilledButton.icon(
-                      onPressed: _endEvaluation,
+                      onPressed: () => _endEvaluation(),
                       icon: const Icon(Icons.flag_outlined),
                       label: Text('evaluation.endEvaluation'.tr()),
                     ),
