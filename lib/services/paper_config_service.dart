@@ -8,12 +8,31 @@ class PaperConfigService {
   PaperConfigService(this.baseUrl);
 
   Future<List<PaperConfig>> fetchConfigs(String sessionId) async {
-    final res = await http.get(
-      Uri.parse('$baseUrl/evaluation/sessions/$sessionId/paper-config'),
-    );
+    try {
+      final res = await http.get(
+        Uri.parse('$baseUrl/evaluation/sessions/$sessionId/paper-config'),
+      );
 
-    final data = jsonDecode(res.body) as List;
-    return data.map((e) => PaperConfig.fromJson(e)).toList();
+      if (res.statusCode == 200) {
+        // Check if body is empty
+        if (res.body.isEmpty) return [];
+
+        try {
+          final decoded = jsonDecode(res.body);
+          if (decoded is List) {
+            return decoded.map((e) => PaperConfig.fromJson(e)).toList();
+          }
+        } catch (e) {
+          // If JSON decode fails (e.g. HTML response), return empty list
+          print('Error decoding paper config: $e');
+          return [];
+        }
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching paper config: $e');
+      return [];
+    }
   }
 
   Future<void> confirmConfigs(

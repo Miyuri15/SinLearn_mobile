@@ -134,14 +134,15 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
   }
 
   void _create(ChatType type) {
+    final entry = ChatEntry(
+      title: type == ChatType.learning
+          ? 'recent_chats.new_learning'.tr()
+          : 'recent_chats.new_evaluation'.tr(),
+      type: type,
+      createdAt: DateTime.now(),
+    );
+
     setState(() {
-      final entry = ChatEntry(
-        title: type == ChatType.learning
-            ? 'recent_chats.new_learning'.tr()
-            : 'recent_chats.new_evaluation'.tr(),
-        type: type,
-        createdAt: DateTime.now(),
-      );
       _all.insert(0, entry);
       _activeId = entry.id;
     });
@@ -154,7 +155,7 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
           .push(MaterialPageRoute(builder: (_) => const LearningModePage()));
     } else {
       Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const EvaluationTextPage()));
+          .push(MaterialPageRoute(builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
     }
   }
 
@@ -415,7 +416,7 @@ class _RecentItem extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const LearningModePage()));
         } else {
           Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const EvaluationTextPage()));
+              MaterialPageRoute(builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
         }
       },
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

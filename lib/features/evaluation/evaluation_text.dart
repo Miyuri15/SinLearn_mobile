@@ -117,6 +117,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       context,
       MaterialPageRoute(
         builder: (_) => EvaluationResponsePage(
+          chatSessionId: widget.chatSessionId,
           initialMessageText: 'Evaluation started',
           attachmentName: _attachedFileName,
           evaluationData: evalData,

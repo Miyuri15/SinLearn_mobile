@@ -295,6 +295,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_storageKey, json.encode(evaluationData));
+    await prefs.setBool('paper_config_confirmed', true);
     
     setState(() {
       _isDataSaved = true;

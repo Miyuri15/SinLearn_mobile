@@ -101,9 +101,13 @@ class _LearningModePageState extends State<LearningModePage> {
           setState(() => _selectedSegment = index);
 
           if (index == 1) {
+            // Generate a new session ID for evaluation
+            final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => const EvaluationTextPage()),
+              MaterialPageRoute(
+                  builder: (_) =>
+                      EvaluationTextPage(chatSessionId: newSessionId)),
             );
           }
         },

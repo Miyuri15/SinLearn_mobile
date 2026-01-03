@@ -1,12 +1,12 @@
 class PaperConfig {
   final String id;
-  final String paperPart;
   final String subjectName;
   final String medium;
-  int totalMarks;
-  int totalMainQuestions;
-  SelectionRules selectionRules;
-  bool isConfirmed;
+  String paperPart;                
+  int totalMarks;                  
+  int totalMainQuestions;          
+  SelectionRules selectionRules;   
+  bool isConfirmed;  
   List<QuestionStructure> questions;
 
   PaperConfig({

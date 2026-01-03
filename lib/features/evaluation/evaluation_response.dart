@@ -7,11 +7,13 @@ import 'dart:math' as math;
 class EvaluationResponsePage extends StatefulWidget {
   const EvaluationResponsePage({
     super.key,
+    required this.chatSessionId,
     this.initialMessageText,
     this.attachmentName,
     this.evaluationData,
   });
 
+  final String chatSessionId;
   final String? initialMessageText;
   final String? attachmentName;
   final Map<String, dynamic>? evaluationData;
