@@ -242,6 +242,8 @@
     "evalStepCalculatingMarks": "Calculating marks",
     "evalStepGeneratingFeedback": "Generating feedback",
     "evalStepPreparingReport": "Preparing report",
-    "viewResults": "View results"
+    "viewResults": "View results",
+    "attachAnotherAnswerSheet": "Attach another answer sheet",
+    "endEvaluation": "End evaluation"
   }
 }

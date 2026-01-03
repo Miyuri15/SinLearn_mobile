@@ -4,6 +4,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:math' as math;
 
+import 'evaluation_process_page.dart';
+import 'evaluation_text.dart';
+
 class EvaluationResponsePage extends StatefulWidget {
   const EvaluationResponsePage({
     super.key,
@@ -23,278 +26,115 @@ class EvaluationResponsePage extends StatefulWidget {
 }
 
 class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
-  final List<_ChatMessage> _messages = [];
-  final TextEditingController _replyController = TextEditingController();
-  String? _attachedFileName; // reply input attachment
-  static const String _replyAttachmentKey = 'evaluation_response_attachment';
+  static const String _answerSheetAttachmentKey = 'evaluation_attachment';
+  String? _lastAttachedAnswerSheet;
 
   @override
   void initState() {
     super.initState();
-    // seed initial message + attachment from navigation payload
-    if (widget.initialMessageText != null || widget.attachmentName != null) {
-      _messages.add(_ChatMessage(
-        text: widget.initialMessageText ?? '',
-        fromUser: true,
-        attachmentName: widget.attachmentName,
-      ));
-    }
-    _loadReplyAttachment();
+    _lastAttachedAnswerSheet = widget.attachmentName;
   }
 
   @override
   void dispose() {
-    _replyController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadReplyAttachment() async {
-    final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString(_replyAttachmentKey);
-    if (name != null && mounted) {
-      setState(() => _attachedFileName = name);
-    }
-  }
-
-  Future<void> _pickReplyAttachment() async {
+  Future<void> _attachAnotherAnswerSheet() async {
     final result = await FilePicker.platform.pickFiles(allowMultiple: false);
     if (result == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('evaluation.selectFileCancelled'.tr())),
       );
       return;
     }
+
     final file = result.files.first;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_replyAttachmentKey, file.name);
-    if (mounted) {
-      setState(() => _attachedFileName = file.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('evaluation.fileUploaded'.tr())),
+    await prefs.setString(_answerSheetAttachmentKey, file.name);
+
+    if (!mounted) return;
+    setState(() => _lastAttachedAnswerSheet = file.name);
+
+    // Re-run evaluation using the already processed documents.
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EvaluationProcessPage(
+          chatSessionId: widget.chatSessionId,
+          attachmentName: file.name,
+          evaluationData: widget.evaluationData,
+        ),
+      ),
     );
   }
 
-  void _removeReplyAttachment() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_replyAttachmentKey);
-    if (mounted) {
-      setState(() => _attachedFileName = null);
-    }
-  }
-
-  bool _containsSinhala(String s) {
-    return RegExp(r'[\u0D80-\u0DFF]').hasMatch(s);
-  }
-
-  void _sendReply() {
-    final text = _replyController.text.trim();
-    if (text.isEmpty && _attachedFileName == null) return;
-
-    // Add user message
-    setState(() {
-      _messages.add(_ChatMessage(
-        text: text,
-        fromUser: true,
-        attachmentName: _attachedFileName,
-      ));
-      _replyController.clear();
-      _attachedFileName = null;
-    });
-    _removeReplyAttachment(); // clear persisted attachment
-
-    // Single bot reply (Sinhala or English)
-    final isSinhala = _containsSinhala(text);
-    final botReply =
-        isSinhala ? 'ඔබට කෙසේ උදව් කළ හැකිද?' : 'How can I help you?';
-    setState(() {
-      _messages.add(_ChatMessage(text: botReply, fromUser: false));
-    });
+  void _endEvaluation() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EvaluationTextPage(chatSessionId: widget.chatSessionId),
+      ),
+      (route) => false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isCompact = MediaQuery.of(context).size.width < 420;
-    final _initialMessage =
-        _messages.isNotEmpty ? _messages.first : null; // added
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('evaluation_mode'.tr()),
-        actions: isCompact
-            ? [
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'rubric':
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Rubric selected')),
-                        );
-                        break;
-                      case 'syllabus':
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Syllabus selected')),
-                        );
-                        break;
-                      case 'question':
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Question Paper selected')),
-                        );
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(value: 'rubric', child: Text('Rubric')),
-                    PopupMenuItem(value: 'syllabus', child: Text('Syllabus')),
-                    PopupMenuItem(
-                        value: 'question', child: Text('Question Paper')),
-                  ],
-                ),
-              ]
-            : [
-                TextButton(onPressed: () {}, child: const Text('Rubric')),
-                const SizedBox(width: 8),
-                TextButton(onPressed: () {}, child: const Text('Syllabus')),
-                const SizedBox(width: 8),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.add),
-                  onSelected: (value) {
-                    if (value == 'question') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Question Paper selected')),
-                      );
-                    } else if (value == 'rubric') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Rubric selected')),
-                      );
-                    }
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                        value: 'question', child: Text('Question Paper')),
-                    PopupMenuItem(value: 'rubric', child: Text('Rubric')),
-                  ],
-                ),
-                const SizedBox(width: 8),
-              ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Initial message (if any) at the very top
-            if (_initialMessage != null) ...[
-              _MessageBubble(
-                time: TimeOfDay.now().format(context),
-                text: _initialMessage.text,
-                fromUser: _initialMessage.fromUser,
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (_lastAttachedAnswerSheet != null) ...[
+                      InputChip(
+                        label: Text(_lastAttachedAnswerSheet!),
+                        avatar: const Icon(Icons.attach_file, size: 18),
+                        onDeleted: null,
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                    _EvaluationReportCard(theme: theme),
+                  ],
+                ),
               ),
-              if (_initialMessage.attachmentName != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Align(
-                    alignment: _initialMessage.fromUser
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-                    child: Column(
-                      crossAxisAlignment: _initialMessage.fromUser
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
-                      children: [
-                        InputChip(
-                          label: Text(_initialMessage.attachmentName!),
-                          avatar: const Icon(Icons.attach_file, size: 18),
-                          onDeleted: null,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          TimeOfDay.now()
-                              .format(context), // time under attachment
-                          textAlign: _initialMessage.fromUser
-                              ? TextAlign.right
-                              : TextAlign.left,
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Theme.of(context).hintColor,
-                                  ),
-                        ),
-                      ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: _attachAnotherAnswerSheet,
+                      icon: const Icon(Icons.attach_file),
+                      label: Text('evaluation.attachAnotherAnswerSheet'.tr()),
                     ),
                   ),
-                ),
-              const SizedBox(height: 12),
-            ],
-
-            // Evaluation report next
-            _EvaluationReportCard(theme: theme),
-            const SizedBox(height: 16),
-
-            // Subsequent chat messages (skip the initial one)
-            ..._messages.skip(1).map((m) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _MessageBubble(
-                        time: TimeOfDay.now().format(context),
-                        text: m.text,
-                        fromUser: m.fromUser,
-                      ),
-                      if (m.attachmentName != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Align(
-                            alignment: m.fromUser
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Column(
-                              crossAxisAlignment: m.fromUser
-                                  ? CrossAxisAlignment.end
-                                  : CrossAxisAlignment.start,
-                              children: [
-                                InputChip(
-                                  label: Text(m.attachmentName!),
-                                  avatar:
-                                      const Icon(Icons.attach_file, size: 18),
-                                  onDeleted: null,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  TimeOfDay.now()
-                                      .format(context), // time under attachment
-                                  textAlign: m.fromUser
-                                      ? TextAlign.right
-                                      : TextAlign.left,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelSmall
-                                      ?.copyWith(
-                                        color: Theme.of(context).hintColor,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                    ],
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 52,
+                    child: FilledButton.icon(
+                      onPressed: _endEvaluation,
+                      icon: const Icon(Icons.flag_outlined),
+                      label: Text('evaluation.endEvaluation'.tr()),
+                    ),
                   ),
-                )),
-
-            const SizedBox(height: 16),
-
-            // Reply input stays at bottom
-            _ReplyInputBar(
-              controller: _replyController,
-              attachedFileName: _attachedFileName,
-              onAttach: _pickReplyAttachment,
-              onRemoveAttachment: _removeReplyAttachment,
-              onSend: _sendReply,
+                ],
+              ),
             ),
           ],
         ),

@@ -234,6 +234,8 @@
     "evalStepCalculatingMarks": "ලකුණු ගණනය කිරීම",
     "evalStepGeneratingFeedback": "ප්‍රතිචාර සකස් කිරීම",
     "evalStepPreparingReport": "වාර්තාව සකස් කිරීම",
-    "viewResults": "ප්‍රතිඵල බලන්න"
+    "viewResults": "ප්‍රතිඵල බලන්න",
+    "attachAnotherAnswerSheet": "තවත් පිළිතුරු පත්‍රයක් අමුණන්න",
+    "endEvaluation": "ඇගයීම අවසන් කරන්න"
   }
 }
