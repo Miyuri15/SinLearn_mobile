@@ -13,9 +13,12 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:math' as math;
+import '../../services/message_service.dart';
+
 
 class LearningModePage extends StatefulWidget {
   const LearningModePage({super.key});
+
 
   @override
   State<LearningModePage> createState() => _LearningModePageState();
@@ -38,13 +41,14 @@ class Message {
 class _LearningModePageState extends State<LearningModePage> {
   int _selectedSegment = 0; // 0 = Learning, 1 = Evaluation
   // store the localization key (display shows .tr())
+  String? _activeSessionId;
+  bool _isSending = false;
+  List<Message> _messages = [];
   String _responseLevel = 'grades_9_11';
 
   final TextEditingController _inputController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
 
-  // new: messages list
-  final List<Message> _messages = [];
 
   @override
   void dispose() {
@@ -82,6 +86,74 @@ class _LearningModePageState extends State<LearningModePage> {
       });
     });
   }
+
+  Future<void> _handleSendFromInputBar(
+      String text,
+      List<PlatformFile> attachments,
+      ) async {
+    if (_isSending) return;
+
+    setState(() {
+      _isSending = true;
+
+      // 1️⃣ Optimistic UI
+      _messages.add(
+        Message(
+          text: text,
+          fromUser: true,
+          attachments: attachments,
+        ),
+      );
+    });
+
+    try {
+      final payload = {
+        "content": text,
+        "modality": "text",
+        "grade_level": _responseLevel,
+      };
+
+      final resp = await MessageService.postMessage(
+        sessionId: _activeSessionId,
+        payload: payload,
+      );
+
+      // 2️⃣ Capture session id
+      final newSessionId =
+          resp["session_id"] ??
+              resp["session"]?["id"] ??
+              resp["chat_id"] ??
+              resp["id"];
+
+      if (_activeSessionId == null && newSessionId != null) {
+        _activeSessionId = newSessionId;
+      }
+
+      // 3️⃣ Append assistant reply
+      if (resp["assistant_message"] != null) {
+        setState(() {
+          _messages.add(
+            Message(
+              text: resp["assistant_message"]["content"].toString(),
+              fromUser: false,
+            ),
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint("❌ Send failed: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Failed to send message")),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSending = false);
+      }
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -142,9 +214,7 @@ class _LearningModePageState extends State<LearningModePage> {
                   onResponseLevelChanged: (v) {
                     setState(() => _responseLevel = v);
                   },
-                  onSend: (text, attachments) {
-                    _handleSendMessage(text, attachments);
-                  },
+                  onSend: _handleSendFromInputBar,
                 ),
               ],
             ),
@@ -467,13 +537,19 @@ class _InputBarState extends State<_InputBar>
   void _send() {
     final text = controller.text.trim();
     if (text.isEmpty && _attachedFiles.isEmpty) return;
-    // pass a copy of attachments
-    widget.onSend(text, List<PlatformFile>.from(_attachedFiles));
+
+    widget.onSend(
+      text,
+      List<PlatformFile>.from(_attachedFiles),
+    );
+
     setState(() {
       controller.clear();
       _attachedFiles.clear();
     });
   }
+
+
 
   // small animated waveform widget used inside recording panel
   Widget _waveform(BuildContext context) {
