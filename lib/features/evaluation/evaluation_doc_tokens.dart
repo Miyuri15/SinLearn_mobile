@@ -28,8 +28,7 @@ class EvalDocKeys {
 /// Generates and compares stable "tokens" for uploaded documents.
 ///
 /// If any token changes (new answer sheet, new question paper, syllabus edits,
-/// rubric/marks changes), the documents must be processed again before
-/// evaluating.
+/// the documents must be processed again before evaluating.
 class EvalDocTokens {
   static Map<String, String> buildCurrent(
     SharedPreferences prefs, {
@@ -53,34 +52,10 @@ class EvalDocTokens {
         prefs.getStringList(syllabusKey ?? EvalDocKeys.syllabusItems) ??
             const <String>[];
 
-    final rubricSnapshot = <String, Object?>{
-      'hasRubric': prefs.getBool(EvalDocKeys.hasRubric) ?? false,
-      // Teacher flow
-      'rubricName': prefs.getString(EvalDocKeys.rubricNameTeacher) ?? '',
-      'semantic': prefs.getInt(EvalDocKeys.semantic),
-      'coverage': prefs.getInt(EvalDocKeys.coverage),
-      'relevance': prefs.getInt(EvalDocKeys.relevance),
-      // Student flow
-      'appliedRubricName': prefs.getString(EvalDocKeys.rubricNameStudent) ?? '',
-      'isCustomRubric': prefs.getBool(EvalDocKeys.isCustomRubric) ?? false,
-      // Custom rubric upload flow
-      'hasCustomRubric': prefs.getBool(EvalDocKeys.hasCustomRubric) ?? false,
-      'custom_semantic': prefs.getInt(EvalDocKeys.customSemantic),
-      'custom_coverage': prefs.getInt(EvalDocKeys.customCoverage),
-      'custom_relevance': prefs.getInt(EvalDocKeys.customRelevance),
-    };
-    final rubricToken = _fnv1a32Hex(jsonEncode(rubricSnapshot));
-
-    final legacyMarks = prefs.getString(EvalDocKeys.evaluationData) ?? '';
-    final paperConfirmed =
-        (prefs.getBool(EvalDocKeys.paperConfigConfirmed) ?? false).toString();
-
     return <String, String>{
       'answerSheets': _fnv1a32Hex(answerSheetToken),
       'questionPaper': _fnv1a32Hex(questionPaperRaw),
       'syllabus': _fnv1a32Hex(jsonEncode(syllabus)),
-      'rubric': rubricToken,
-      'paperConfig': _fnv1a32Hex('$legacyMarks|$paperConfirmed'),
     };
   }
 

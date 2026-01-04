@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 import '../../core/utils/json_cast.dart';
+import '../../models/chat_session_details.dart';
 import 'evaluation_process_page.dart';
 import 'evaluation_doc_tokens.dart';
 import '../../services/chat_service.dart';
@@ -67,12 +68,12 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   bool _isProcessing = false;
   bool _hasProcessedDocuments = false;
 
+  List<_UploadedDoc> _answerSheetDocs = const <_UploadedDoc>[];
+
   final Map<_DocStep, _DocStepState> _docSteps = {
     _DocStep.answerSheets: const _DocStepState(),
     _DocStep.questionPaper: const _DocStepState(),
     _DocStep.syllabus: const _DocStepState(),
-    _DocStep.rubric: const _DocStepState(),
-    _DocStep.paperConfig: const _DocStepState(),
   };
 
   @override
@@ -105,21 +106,65 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       _hasSyllabus = details.syllabus != null;
       _hasRubrics = (details.rubricId != null && details.rubricId!.isNotEmpty);
 
-      final answerSheets = details.answerSheets;
+      // Answer sheets: allow many to exist in backend, but for evaluation we
+      // always use the latest uploaded one.
+      final answerSheets = details.answerSheets
+          .where((e) => e.resourceId.isNotEmpty)
+          .toList(growable: false);
       _hasAttachment = answerSheets.isNotEmpty;
-      if (_hasAttachment) {
-        final firstName = answerSheets.first.filename;
-        if (firstName.isNotEmpty) {
-          _attachedFileName = firstName;
+
+      SessionResource? latestAnswer;
+      if (answerSheets.isNotEmpty) {
+        // Prefer backend timestamps when available.
+        try {
+          final sessionResources =
+              await ResourceService.fetchChatSessionResources(
+                  widget.chatSessionId);
+          final createdAtById = <String, DateTime>{};
+          for (final item in sessionResources) {
+            final id = (item['id'] ?? item['resource_id'])?.toString() ?? '';
+            final createdRaw = item['created_at']?.toString() ?? '';
+            if (id.isEmpty || createdRaw.isEmpty) continue;
+            final dt = DateTime.tryParse(createdRaw);
+            if (dt != null) createdAtById[id] = dt.toUtc();
+          }
+
+          if (createdAtById.isNotEmpty) {
+            answerSheets.sort((a, b) {
+              final da = createdAtById[a.resourceId] ??
+                  DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+              final db = createdAtById[b.resourceId] ??
+                  DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+              return da.compareTo(db);
+            });
+          }
+        } catch (_) {
+          // ignore - fallback to backend order
         }
-        // Persist IDs locally for downstream processing.
+
+        // Fallback assumption: backend list order is chronological.
+        latestAnswer = answerSheets.isNotEmpty ? answerSheets.last : null;
+      }
+
+      if (latestAnswer != null) {
+        final name = latestAnswer.filename.isNotEmpty
+            ? latestAnswer.filename
+            : 'Resource ${latestAnswer.resourceId}';
+        _answerSheetDocs = <_UploadedDoc>[
+          _UploadedDoc(
+            id: latestAnswer.resourceId,
+            name: name,
+            sizeBytes: latestAnswer.sizeBytes,
+            mimeType: latestAnswer.mimeType,
+          ),
+        ];
+        _attachedFileName = name;
+
+        // Persist only the latest ID locally for downstream processing.
         await prefs.setStringList(
-          _answerSheetIdsKey,
-          answerSheets
-              .map((e) => e.resourceId)
-              .where((e) => e.isNotEmpty)
-              .toList(),
-        );
+            _answerSheetIdsKey, <String>[latestAnswer.resourceId]);
+      } else {
+        _answerSheetDocs = const <_UploadedDoc>[];
       }
 
       // Some backends may not include answer sheets in session resources yet.
@@ -129,6 +174,22 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         final ids = prefs.getStringList(_answerSheetIdsKey);
         if (ids != null && ids.isNotEmpty) {
           _hasAttachment = true;
+
+          final latestId = ids.where((e) => e.isNotEmpty).isNotEmpty
+              ? ids.where((e) => e.isNotEmpty).last
+              : '';
+          if (latestId.isNotEmpty) {
+            // Show placeholder when we only have the ID locally.
+            _answerSheetDocs = <_UploadedDoc>[
+              _UploadedDoc(
+                id: latestId,
+                name: 'Resource $latestId',
+                sizeBytes: 0,
+                mimeType: '',
+              ),
+            ];
+            _attachedFileName ??= 'Resource $latestId';
+          }
         }
       }
     } catch (_) {
@@ -138,6 +199,20 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
 
       final ids = prefs.getStringList(_answerSheetIdsKey);
       _hasAttachment = (ids != null && ids.isNotEmpty) || _hasAttachment;
+
+      final filtered =
+          (ids ?? const <String>[]).where((e) => e.isNotEmpty).toList();
+      final latestId = filtered.isNotEmpty ? filtered.last : '';
+      _answerSheetDocs = latestId.isNotEmpty
+          ? <_UploadedDoc>[
+              _UploadedDoc(
+                id: latestId,
+                name: 'Resource $latestId',
+                sizeBytes: 0,
+                mimeType: '',
+              ),
+            ]
+          : const <_UploadedDoc>[];
 
       final questionPaperRaw = prefs.getString(_questionPaperKey);
       _hasQuestionPaper =
@@ -189,10 +264,6 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         return _hasQuestionPaper;
       case _DocStep.syllabus:
         return _hasSyllabus;
-      case _DocStep.rubric:
-        return _hasRubrics;
-      case _DocStep.paperConfig:
-        return _hasMarks;
     }
   }
 
@@ -204,11 +275,12 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         return 'evaluation.docStepQuestionPaperProcessing'.tr();
       case _DocStep.syllabus:
         return 'evaluation.docStepSyllabusProcessing'.tr();
-      case _DocStep.rubric:
-        return 'evaluation.docStepRubricSet'.tr();
-      case _DocStep.paperConfig:
-        return 'evaluation.docStepPaperConfigSet'.tr();
     }
+  }
+
+  bool _canProcessDocuments() {
+    // Only these docs are processed: Answer sheets + Question paper + Syllabus.
+    return _hasAttachment && _hasQuestionPaper && _hasSyllabus;
   }
 
   Future<void> _processDocuments() async {
@@ -233,20 +305,28 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     final prefs = await SharedPreferences.getInstance();
     final answerIds =
         prefs.getStringList(_answerSheetIdsKey) ?? const <String>[];
+    final latestAnswerId = answerIds.where((e) => e.isNotEmpty).isNotEmpty
+        ? answerIds.where((e) => e.isNotEmpty).last
+        : '';
 
     // ignore: avoid_print
-    print('ProcessDocuments answer_resource_ids: $answerIds');
+    print('ProcessDocuments latest answer_resource_id: $latestAnswerId');
 
-    // If other docs are missing, still allow processing of answer sheets.
-    // Evaluation later remains gated by _allDocumentsAvailable().
-    final ok = _allDocumentsAvailable();
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Some required docs are missing; processing anyway')),
-      );
+    // Hard gate: we only process when question paper + syllabus + answer sheets exist.
+    if (!_hasQuestionPaper || !_hasSyllabus) {
+      setState(() {
+        _isProcessing = false;
+        _hasProcessedDocuments = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Missing question paper or syllabus upload')),
+        );
+      }
+      return;
     }
-    if (answerIds.isEmpty) {
+    if (latestAnswerId.isEmpty) {
       setState(() {
         _isProcessing = false;
         _hasProcessedDocuments = false;
@@ -270,7 +350,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     try {
       await EvaluationService.processDocumentsStream(
         chatSessionId: widget.chatSessionId,
-        answerResourceIds: answerIds,
+        answerResourceIds: <String>[latestAnswerId],
       );
 
       await EvalDocTokens.saveProcessed(
@@ -334,12 +414,31 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         chatSessionId: widget.chatSessionId,
       );
 
+      final latestId = uploads
+              .map((u) => u.resourceId)
+              .where((id) => id.isNotEmpty)
+              .isNotEmpty
+          ? uploads.map((u) => u.resourceId).where((id) => id.isNotEmpty).last
+          : '';
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_attachmentKey, file.name);
-      await prefs.setStringList(
-        _answerSheetIdsKey,
-        uploads.map((u) => u.resourceId).where((id) => id.isNotEmpty).toList(),
-      );
+      if (latestId.isNotEmpty) {
+        // Keep only the latest answer sheet per evaluation session.
+        await prefs.setStringList(_answerSheetIdsKey, <String>[latestId]);
+        if (mounted) {
+          setState(() {
+            _answerSheetDocs = <_UploadedDoc>[
+              _UploadedDoc(
+                id: latestId,
+                name: file.name,
+                sizeBytes: file.size,
+                mimeType: _guessMimeTypeFromName(file.name),
+              ),
+            ];
+          });
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -365,7 +464,18 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     setState(() {
       _attachedFileName = null;
       _hasAttachment = false;
+      _answerSheetDocs = const <_UploadedDoc>[];
     });
+  }
+
+  String _guessMimeTypeFromName(String filename) {
+    final lower = filename.toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.doc')) return 'application/msword';
+    if (lower.endsWith('.docx')) {
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    }
+    return '';
   }
 
   // ---------------------------------------------------------------------------
@@ -446,10 +556,58 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                         ],
                       ),
                       const SizedBox(height: 22),
+
+                      // Uploaded answer sheets details
+                      Card(
+                        elevation: 0,
+                        color: theme.colorScheme.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(
+                            color: theme.dividerColor.withOpacity(0.35),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Uploaded Answer Sheets',
+                                style: theme.textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 10),
+                              if (_answerSheetDocs.isEmpty)
+                                Text(
+                                  'No answer sheets uploaded',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.7),
+                                  ),
+                                )
+                              else
+                                ..._answerSheetDocs.map(
+                                  (d) => Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 6),
+                                    child: _UploadedDocRow(doc: d),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
                       SizedBox(
                         height: 56,
                         child: FilledButton.icon(
-                          onPressed: _isProcessing ? null : _processDocuments,
+                          onPressed: _isProcessing
+                              ? null
+                              : (_canProcessDocuments()
+                                  ? _processDocuments
+                                  : null),
                           icon: const Icon(Icons.auto_awesome),
                           label: Text('evaluation.processDocuments'.tr()),
                         ),
@@ -474,8 +632,6 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                                   _DocStep.answerSheets,
                                   _DocStep.questionPaper,
                                   _DocStep.syllabus,
-                                  _DocStep.rubric,
-                                  _DocStep.paperConfig,
                                 ])
                                   _DocStepRow(
                                     title: _stepTitle(step),
@@ -536,8 +692,97 @@ enum _DocStep {
   answerSheets,
   questionPaper,
   syllabus,
-  rubric,
-  paperConfig,
+}
+
+class _UploadedDoc {
+  final String id;
+  final String name;
+  final int sizeBytes;
+  final String mimeType;
+
+  const _UploadedDoc({
+    required this.id,
+    required this.name,
+    required this.sizeBytes,
+    required this.mimeType,
+  });
+
+  String metaText() {
+    final type = _typeLabel(mimeType, name);
+    final size = _formatBytes(sizeBytes);
+    if (type.isEmpty && size.isEmpty) return '';
+    if (type.isNotEmpty && size.isNotEmpty) return '$type • $size';
+    return type.isNotEmpty ? type : size;
+  }
+}
+
+class _UploadedDocRow extends StatelessWidget {
+  const _UploadedDocRow({required this.doc});
+
+  final _UploadedDoc doc;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final meta = doc.metaText();
+
+    return Row(
+      children: [
+        Icon(
+          Icons.article_outlined,
+          size: 18,
+          color: theme.colorScheme.primary,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                doc.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium,
+              ),
+              if (meta.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  meta,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.65),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _typeLabel(String mimeType, String filename) {
+  final mt = mimeType.toLowerCase();
+  if (mt.contains('pdf')) return 'PDF';
+  if (mt.contains('word') || mt.contains('officedocument')) return 'DOC';
+
+  final dot = filename.lastIndexOf('.');
+  if (dot == -1 || dot == filename.length - 1) return '';
+  return filename.substring(dot + 1).toUpperCase();
+}
+
+String _formatBytes(int bytes) {
+  if (bytes <= 0) return '';
+  const unit = 1024;
+  if (bytes < unit) return '$bytes B';
+  if (bytes < unit * unit) {
+    final kb = bytes / unit;
+    return '${kb.toStringAsFixed(kb >= 10 ? 0 : 1)} KB';
+  }
+  final mb = bytes / (unit * unit);
+  return '${mb.toStringAsFixed(mb >= 10 ? 0 : 1)} MB';
 }
 
 enum _DocStepStatus {

@@ -15,8 +15,6 @@ enum _DocStep {
   answerSheets,
   questionPaper,
   syllabus,
-  rubric,
-  paperConfig,
 }
 
 class _DocStepState {
@@ -90,8 +88,6 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
     _DocStep.answerSheets: const _DocStepState(),
     _DocStep.questionPaper: const _DocStepState(),
     _DocStep.syllabus: const _DocStepState(),
-    _DocStep.rubric: const _DocStepState(),
-    _DocStep.paperConfig: const _DocStepState(),
   };
 
   bool _isEvaluating = false;
@@ -197,10 +193,6 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
         return 'evaluation.docStepQuestionPaperProcessing'.tr();
       case _DocStep.syllabus:
         return 'evaluation.docStepSyllabusProcessing'.tr();
-      case _DocStep.rubric:
-        return 'evaluation.docStepRubricSet'.tr();
-      case _DocStep.paperConfig:
-        return 'evaluation.docStepPaperConfigSet'.tr();
     }
   }
 
@@ -212,10 +204,6 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
         return 'questionPaper';
       case _DocStep.syllabus:
         return 'syllabus';
-      case _DocStep.rubric:
-        return 'rubric';
-      case _DocStep.paperConfig:
-        return 'paperConfig';
     }
   }
 
@@ -285,8 +273,6 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
       _DocStep.answerSheets,
       _DocStep.questionPaper,
       _DocStep.syllabus,
-      _DocStep.rubric,
-      _DocStep.paperConfig,
     ];
 
     final nextStates = <_DocStep, _DocStepState>{};
@@ -349,8 +335,6 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
       _DocStep.answerSheets,
       _DocStep.questionPaper,
       _DocStep.syllabus,
-      _DocStep.rubric,
-      _DocStep.paperConfig,
     ];
 
     final stepsNeedingWork = <_DocStep>[];
@@ -384,9 +368,13 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
         final answerIds =
             prefs.getStringList('answer_sheet_ids:${widget.chatSessionId}') ??
                 const <String>[];
+        final latest = answerIds.where((e) => e.isNotEmpty).isNotEmpty
+            ? answerIds.where((e) => e.isNotEmpty).last
+            : '';
         await EvaluationService.processDocumentsStream(
           chatSessionId: widget.chatSessionId,
-          answerResourceIds: answerIds,
+          answerResourceIds:
+              latest.isEmpty ? const <String>[] : <String>[latest],
         );
       } catch (e) {
         // ignore: avoid_print
@@ -579,8 +567,6 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
                         _DocStep.answerSheets,
                         _DocStep.questionPaper,
                         _DocStep.syllabus,
-                        _DocStep.rubric,
-                        _DocStep.paperConfig,
                       ])
                         _RowStep(
                           title: _docTitle(step),
