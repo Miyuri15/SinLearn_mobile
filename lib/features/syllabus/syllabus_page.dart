@@ -15,11 +15,15 @@ class SyllabusItem {
   final String subject;
   final String date;
   final String tags;
+  final int sizeBytes;
+  final String mimeType;
   SyllabusItem(
       {required this.title,
       required this.subject,
       required this.date,
-      required this.tags});
+      required this.tags,
+      this.sizeBytes = 0,
+      this.mimeType = ''});
 
   // add serialization for local persistence
   Map<String, dynamic> toJson() => {
@@ -27,6 +31,8 @@ class SyllabusItem {
         'subject': subject,
         'date': date,
         'tags': tags,
+        'sizeBytes': sizeBytes,
+        'mimeType': mimeType,
       };
 
   factory SyllabusItem.fromJson(Map<String, dynamic> json) => SyllabusItem(
@@ -34,6 +40,9 @@ class SyllabusItem {
         subject: json['subject'] ?? '',
         date: json['date'] ?? '',
         tags: json['tags'] ?? '',
+        sizeBytes:
+            (json['sizeBytes'] is num) ? (json['sizeBytes'] as num).toInt() : 0,
+        mimeType: (json['mimeType'] ?? '').toString(),
       );
 }
 
@@ -74,16 +83,21 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
 
     try {
       final details = await ChatService.getChatSessionDetails(sessionId);
-      final backendItems = details.resources
-          .where((r) => (r.resourceType ?? '').toLowerCase() == 'syllabus')
+      final backendItems = details
+          .allByType('syllabus')
           .map(
             (r) => SyllabusItem(
-              title: r.filename,
+              title: r.filename.isNotEmpty
+                  ? r.filename
+                  : (r.resourceId.isNotEmpty ? 'Resource ${r.resourceId}' : ''),
               subject: tr('syllabus.file_subject_default'),
               date: '',
               tags: '',
+              sizeBytes: r.sizeBytes,
+              mimeType: r.mimeType,
             ),
           )
+          .where((e) => e.title.isNotEmpty)
           .toList();
 
       if (!mounted) return;
@@ -241,6 +255,8 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
               subject: tr('syllabus.file_subject_default'),
               date: date,
               tags: '',
+              sizeBytes: f.size,
+              mimeType: _mimeTypeFromExtension(f.extension),
             ),
           );
         }
@@ -501,6 +517,7 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
 
   Widget _buildSyllabusItem(SyllabusItem item, int index) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final meta = _formatMeta(item.mimeType, item.title, item.sizeBytes);
 
     return Container(
       width: double.infinity,
@@ -529,6 +546,18 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
               onPressed: () => _deleteItem(index),
               color: isDark ? Color(0xFFCC6666) : Color(0xFFFF4444)),
         ]),
+        if (meta.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            meta,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Color(0xFF888888) : Color(0xFF888888),
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
         const SizedBox(height: 8),
         Text(item.subject,
             style: TextStyle(
@@ -546,6 +575,52 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                 color: isDark ? Color(0xFFAAAAAA) : Color(0xFF666666))),
       ]),
     );
+  }
+
+  String _mimeTypeFromExtension(String? ext) {
+    final v = (ext ?? '').toLowerCase();
+    switch (v) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      default:
+        return '';
+    }
+  }
+
+  String _formatMeta(String mimeType, String filename, int sizeBytes) {
+    final type = _typeLabel(mimeType, filename);
+    final size = _formatBytes(sizeBytes);
+
+    if (type.isEmpty && size.isEmpty) return '';
+    if (type.isNotEmpty && size.isNotEmpty) return '$type • $size';
+    return type.isNotEmpty ? type : size;
+  }
+
+  String _typeLabel(String mimeType, String filename) {
+    final mt = mimeType.toLowerCase();
+    if (mt.contains('pdf')) return 'PDF';
+    if (mt.contains('word') || mt.contains('officedocument')) return 'DOC';
+
+    final dot = filename.lastIndexOf('.');
+    if (dot == -1 || dot == filename.length - 1) return '';
+    final ext = filename.substring(dot + 1).toUpperCase();
+    return ext;
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '';
+    const unit = 1024;
+    if (bytes < unit) return '$bytes B';
+    if (bytes < unit * unit) {
+      final kb = bytes / unit;
+      return '${kb.toStringAsFixed(kb >= 10 ? 0 : 1)} KB';
+    }
+    final mb = bytes / (unit * unit);
+    return '${mb.toStringAsFixed(mb >= 10 ? 0 : 1)} MB';
   }
 }
 

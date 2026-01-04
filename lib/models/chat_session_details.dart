@@ -13,6 +13,21 @@ class SessionResource {
     this.resourceType,
   });
 
+  SessionResource copyWith({
+    String? filename,
+    int? sizeBytes,
+    String? mimeType,
+    String? resourceType,
+  }) {
+    return SessionResource(
+      resourceId: resourceId,
+      filename: filename ?? this.filename,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      mimeType: mimeType ?? this.mimeType,
+      resourceType: resourceType ?? this.resourceType,
+    );
+  }
+
   factory SessionResource.fromJson(Map<String, dynamic> json) {
     final Map<String, dynamic>? nestedResource = (json['resource'] is Map)
         ? Map<String, dynamic>.from(json['resource'])
@@ -85,17 +100,47 @@ class ChatSessionDetails {
     this.rubricId,
   });
 
+  static String _canonicalType(String? raw) {
+    final v = (raw ?? '').trim().toLowerCase();
+    if (v.isEmpty) return '';
+
+    // Normalize separators.
+    final normalized = v
+        .replaceAll('-', '_')
+        .replaceAll(' ', '_')
+        .replaceAll('__', '_');
+
+    // Coarse canonical mapping by containment.
+    if (normalized.contains('syllabus')) return 'syllabus';
+    if (normalized.contains('question') && normalized.contains('paper')) {
+      return 'question_paper';
+    }
+    if (normalized.contains('answer') &&
+        (normalized.contains('sheet') || normalized.contains('script'))) {
+      return 'answer_sheet';
+    }
+
+    // Common exact/legacy variants.
+    if (normalized == 'answer_sheets') return 'answer_sheet';
+    if (normalized == 'answer_sheet') return 'answer_sheet';
+    if (normalized == 'questionpaper') return 'question_paper';
+    if (normalized == 'question_papers') return 'question_paper';
+
+    return normalized;
+  }
+
   SessionResource? firstByType(String type) {
+    final target = _canonicalType(type);
     for (final r in resources) {
-      if ((r.resourceType ?? '').toLowerCase() == type.toLowerCase()) return r;
+      if (_canonicalType(r.resourceType) == target) return r;
     }
     return null;
   }
 
   List<SessionResource> allByType(String type) {
-    final target = type.toLowerCase();
+    final target = _canonicalType(type);
     return resources
-        .where((r) => (r.resourceType ?? '').toLowerCase() == target)
+      .where((r) => _canonicalType(r.resourceType) == target)
         .toList();
   }
 
@@ -103,9 +148,7 @@ class ChatSessionDetails {
   SessionResource? get syllabus => firstByType('syllabus');
 
   List<SessionResource> get answerSheets {
-    final a = allByType('answer_sheet');
-    if (a.isNotEmpty) return a;
-    return allByType('answer_sheets');
+    return allByType('answer_sheet');
   }
 
   factory ChatSessionDetails.fromJson(Map<String, dynamic> json) {

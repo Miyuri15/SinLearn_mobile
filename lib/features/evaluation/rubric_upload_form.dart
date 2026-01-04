@@ -4,8 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class RubricUploadForm extends StatefulWidget {
   final VoidCallback? onRubricApplied;
+  final String? chatSessionId;
 
-  const RubricUploadForm({super.key, this.onRubricApplied});
+  const RubricUploadForm({
+    super.key,
+    this.onRubricApplied,
+    this.chatSessionId,
+  });
 
   @override
   State<RubricUploadForm> createState() => _RubricUploadFormState();
@@ -139,14 +144,26 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
     // Save rubric to local storage
     final prefs = await SharedPreferences.getInstance();
     // Save as custom rubric data
+    final sid = widget.chatSessionId;
+    if (sid != null && sid.isNotEmpty) {
+      await prefs.setInt('custom_semantic:$sid', semantic);
+      await prefs.setInt('custom_coverage:$sid', coverage);
+      await prefs.setInt('custom_relevance:$sid', relevance);
+      await prefs.setBool('hasCustomRubric:$sid', true);
+    }
+
+    // Legacy (non-session) keys
     await prefs.setInt('custom_semantic', semantic);
     await prefs.setInt('custom_coverage', coverage);
     await prefs.setInt('custom_relevance', relevance);
     await prefs.setBool('hasCustomRubric', true);
 
+    if (!mounted) return;
     Navigator.pop(context);
+    widget.onRubricApplied?.call();
 
-    ScaffoldMessenger.of(Navigator.of(context).context).showSnackBar(
+    // Use current context before the dialog is disposed.
+    ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('upload_message'.tr())),
     );
   }

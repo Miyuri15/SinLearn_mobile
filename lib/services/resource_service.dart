@@ -3,6 +3,114 @@ import '../../core/network/api_client.dart';
 import '../models/resource_models.dart';
 
 class ResourceService {
+  /// Fetch resource metadata list for a chat session.
+  ///
+  /// Backend endpoint:
+  /// GET /api/v1/chat/sessions/{chat_session_id}/resources
+  /// Response is a list of resource objects including id, original_filename,
+  /// mime_type, size_bytes, etc.
+  static Future<List<Map<String, dynamic>>> fetchChatSessionResources(
+    String chatSessionId,
+  ) async {
+    if (chatSessionId.isEmpty) return const <Map<String, dynamic>>[];
+
+    final pathsToTry = <String>[
+      '/api/v1/chat/sessions/$chatSessionId/resources',
+      '/chat/sessions/$chatSessionId/resources',
+    ];
+
+    DioException? last404;
+    for (final path in pathsToTry) {
+      try {
+        final res = await ApiClient.dio.get(path);
+        if (res.statusCode != 200) continue;
+
+        final data = res.data;
+        if (data is List) {
+          return data
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+
+        // Support envelope.
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data);
+          final inner = map['data'] ?? map['resources'] ?? map['result'];
+          if (inner is List) {
+            return inner
+                .whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList();
+          }
+        }
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          last404 = e;
+          continue;
+        }
+        // ignore: avoid_print
+        print(
+            'fetchChatSessionResources error (${e.response?.statusCode}): ${e.response?.data}');
+        rethrow;
+      }
+    }
+
+    // ignore: avoid_print
+    print(
+        'fetchChatSessionResources endpoint not found: ${last404?.message}');
+    return const <Map<String, dynamic>>[];
+  }
+
+  /// Fetch resource metadata (filename, size, mime) by resource id.
+  ///
+  /// Some session-detail responses only include `resource_id` + `label`,
+  /// so the UI must hydrate the display name via this endpoint.
+  static Future<Map<String, dynamic>?> fetchResourceMetadata(
+    String resourceId,
+  ) async {
+    if (resourceId.isEmpty) return null;
+
+    final pathsToTry = <String>[
+      '/api/v1/resources/$resourceId',
+      '/api/v1/resources/$resourceId/metadata',
+      '/api/v1/resources/$resourceId/meta',
+      '/resources/$resourceId',
+    ];
+
+    DioException? last404;
+    for (final path in pathsToTry) {
+      try {
+        final res = await ApiClient.dio.get(path);
+        if (res.statusCode != 200) continue;
+
+        final data = res.data;
+        if (data is Map) {
+          final map = Map<String, dynamic>.from(data);
+
+          // Support envelope formats.
+          final dynamic inner = map['data'] ?? map['resource'] ?? map['result'];
+          if (inner is Map) {
+            return Map<String, dynamic>.from(inner);
+          }
+          return map;
+        }
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          last404 = e;
+          continue;
+        }
+        // ignore: avoid_print
+        print(
+            'fetchResourceMetadata error (${e.response?.statusCode}): ${e.response?.data}');
+        rethrow;
+      }
+    }
+
+    // ignore: avoid_print
+    print('fetchResourceMetadata not found for $resourceId: ${last404?.message}');
+    return null;
+  }
   static Future<List<ResourceUploadResponse>> uploadResources(
       List<MultipartFile> files) async {
     final formData = FormData.fromMap({

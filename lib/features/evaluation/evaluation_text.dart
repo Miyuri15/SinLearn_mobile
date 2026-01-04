@@ -42,7 +42,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
 
   static const String _attachmentKey = 'evaluation_attachment';
   static const String _evaluationStorageKey = 'evaluation_data';
-  static const String _rubricKey = 'hasRubric';
+  static const String _rubricKeyPrefix = 'hasRubric:';
   static const String _paperConfigConfirmedKey = 'paper_config_confirmed';
 
   // Question paper + syllabus are persisted per chat session.
@@ -55,6 +55,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   String get _syllabusKey => '${_syllabusKeyPrefix}${widget.chatSessionId}';
   String get _answerSheetIdsKey =>
       '${_answerSheetIdsKeyPrefix}${widget.chatSessionId}';
+  String get _rubricKey => '${_rubricKeyPrefix}${widget.chatSessionId}';
 
   bool _hasRubrics = false;
   bool _hasMarks = false;
@@ -132,7 +133,8 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       }
     } catch (_) {
       // Fallback to legacy local state if backend fetch fails.
-      _hasRubrics = prefs.getBool(_rubricKey) ?? false;
+      _hasRubrics = (prefs.getBool(_rubricKey) ?? false) ||
+          (prefs.getBool('hasRubric') ?? false);
 
       final ids = prefs.getStringList(_answerSheetIdsKey);
       _hasAttachment = (ids != null && ids.isNotEmpty) || _hasAttachment;

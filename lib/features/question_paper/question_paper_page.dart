@@ -19,6 +19,7 @@ class QuestionPaperPage extends StatefulWidget {
 class _QuestionPaperPageState extends State<QuestionPaperPage> {
   PlatformFile? _file;
   String? _resourceId;
+  String? _mimeType;
   static const Set<String> _allowed = {'pdf', 'doc', 'docx'};
   static const _prefsKeyPrefix = 'question_paper_file:';
 
@@ -43,11 +44,19 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
     try {
       final details = await ChatService.getChatSessionDetails(sessionId);
       final qp = details.questionPaper;
-      if (qp != null && qp.filename.isNotEmpty) {
+      if (qp != null) {
+        final displayName = qp.filename.isNotEmpty
+            ? qp.filename
+            : (qp.resourceId.isNotEmpty ? 'Resource ${qp.resourceId}' : '');
+        if (displayName.isEmpty) {
+          await _loadSavedFile();
+          return;
+        }
         setState(() {
           _resourceId = qp.resourceId.isNotEmpty ? qp.resourceId : null;
+          _mimeType = qp.mimeType;
           _file = PlatformFile(
-            name: qp.filename,
+            name: displayName,
             size: qp.sizeBytes,
           );
         });
@@ -72,6 +81,8 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
       // Hydrate minimal PlatformFile for UI display (no 'extension' named arg)
       setState(() {
         _resourceId = data['resourceId']?.toString();
+        _mimeType = (data['mimeType'] as String?) ??
+            _mimeTypeFromExtension(data['ext']?.toString());
         _file = PlatformFile(
           name: name,
           size: (data['size'] as int?) ?? 0,
@@ -90,6 +101,7 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
       'ext': file.extension,
       'size': file.size,
       'resourceId': _resourceId,
+      'mimeType': _mimeType,
       // 'path': file.path, // optional: uncomment if you need to persist path
       'savedAt': DateTime.now().toIso8601String(),
     });
@@ -146,6 +158,7 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
             chatSessionId: widget.chatSessionId!,
           );
           _resourceId = res.resourceId;
+          _mimeType = _mimeTypeFromExtension(picked.extension);
         } else {
           print('Skipping upload: File bytes/path missing. Web: $kIsWeb');
         }
@@ -203,6 +216,7 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
     final ok = await _confirmDelete(name);
     if (!ok) return;
     setState(() => _file = null);
+    _mimeType = null;
     await _clearSavedFile();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(tr('question_paper.deleted', args: [name]))),
@@ -212,6 +226,9 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final meta = _file == null
+        ? ''
+        : _formatMeta(_mimeType ?? '', _file!.name, _file!.size);
 
     return Container(
       width: double.infinity, // fit sidebar width (304)
@@ -417,16 +434,36 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
                                     color: Color(0xFF0066FF), size: 18),
                                 const SizedBox(width: 10),
                                 Expanded(
-                                  child: Text(
-                                    _file!.name,
-                                    style: TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark
-                                            ? Colors.white
-                                            : const Color(0xFF1A1A1A)),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _file!.name,
+                                        style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDark
+                                                ? Colors.white
+                                                : const Color(0xFF1A1A1A)),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      if (meta.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          meta,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: isDark
+                                                ? const Color(0xFF888888)
+                                                : const Color(0xFF888888),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                                 IconButton(
@@ -481,6 +518,52 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
         ),
       ),
     );
+  }
+
+  String _mimeTypeFromExtension(String? ext) {
+    final v = (ext ?? '').toLowerCase();
+    switch (v) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      default:
+        return '';
+    }
+  }
+
+  String _formatMeta(String mimeType, String filename, int sizeBytes) {
+    final type = _typeLabel(mimeType, filename);
+    final size = _formatBytes(sizeBytes);
+
+    if (type.isEmpty && size.isEmpty) return '';
+    if (type.isNotEmpty && size.isNotEmpty) return '$type • $size';
+    return type.isNotEmpty ? type : size;
+  }
+
+  String _typeLabel(String mimeType, String filename) {
+    final mt = mimeType.toLowerCase();
+    if (mt.contains('pdf')) return 'PDF';
+    if (mt.contains('word') || mt.contains('officedocument')) return 'DOC';
+
+    final dot = filename.lastIndexOf('.');
+    if (dot == -1 || dot == filename.length - 1) return '';
+    final ext = filename.substring(dot + 1).toUpperCase();
+    return ext;
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '';
+    const unit = 1024;
+    if (bytes < unit) return '$bytes B';
+    if (bytes < unit * unit) {
+      final kb = bytes / unit;
+      return '${kb.toStringAsFixed(kb >= 10 ? 0 : 1)} KB';
+    }
+    final mb = bytes / (unit * unit);
+    return '${mb.toStringAsFixed(mb >= 10 ? 0 : 1)} MB';
   }
 }
 
