@@ -92,8 +92,21 @@ class ChatSessionDetails {
     return null;
   }
 
+  List<SessionResource> allByType(String type) {
+    final target = type.toLowerCase();
+    return resources
+        .where((r) => (r.resourceType ?? '').toLowerCase() == target)
+        .toList();
+  }
+
   SessionResource? get questionPaper => firstByType('question_paper');
   SessionResource? get syllabus => firstByType('syllabus');
+
+  List<SessionResource> get answerSheets {
+    final a = allByType('answer_sheet');
+    if (a.isNotEmpty) return a;
+    return allByType('answer_sheets');
+  }
 
   factory ChatSessionDetails.fromJson(Map<String, dynamic> json) {
     final id = json['id']?.toString() ?? '';

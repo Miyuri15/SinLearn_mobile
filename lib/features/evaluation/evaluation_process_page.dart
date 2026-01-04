@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/teachers_main_app_bar.dart';
 import 'evaluation_response.dart';
 import 'evaluation_doc_tokens.dart';
+import '../../services/evaluation_service.dart';
 
 enum _StepStatus { pending, inProgress, done }
 
@@ -126,7 +127,8 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
     _docWatchTimer =
         Timer.periodic(const Duration(milliseconds: 900), (_) async {
       final prefs = await SharedPreferences.getInstance();
-      final current = EvalDocTokens.buildCurrent(prefs);
+      final current = EvalDocTokens.buildCurrent(prefs,
+          chatSessionId: widget.chatSessionId);
 
       final last = _lastObservedTokens;
       _lastObservedTokens = current;
@@ -241,12 +243,22 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
   }
 
   bool _allDocumentsAvailable(SharedPreferences prefs) {
-    final hasAttachment =
+    final answerIds =
+        prefs.getStringList('answer_sheet_ids:${widget.chatSessionId}') ??
+            const <String>[];
+    final hasAttachment = answerIds.isNotEmpty ||
         (prefs.getString(EvalDocKeys.attachment) ?? '').isNotEmpty;
+
     final hasQuestionPaper =
-        (prefs.getString(EvalDocKeys.questionPaperFile) ?? '').isNotEmpty;
+        (prefs.getString('question_paper_file:${widget.chatSessionId}') ??
+                prefs.getString(EvalDocKeys.questionPaperFile) ??
+                '')
+            .isNotEmpty;
+
     final hasSyllabus =
-        (prefs.getStringList(EvalDocKeys.syllabusItems) ?? const <String>[])
+        (prefs.getStringList('syllabus_items:${widget.chatSessionId}') ??
+                prefs.getStringList(EvalDocKeys.syllabusItems) ??
+                const <String>[])
             .isNotEmpty;
     final hasRubric = prefs.getBool(EvalDocKeys.hasRubric) ?? false;
 
@@ -264,7 +276,8 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
 
   Future<void> _refreshDocStatus() async {
     final prefs = await SharedPreferences.getInstance();
-    final currentTokens = EvalDocTokens.buildCurrent(prefs);
+    final currentTokens =
+        EvalDocTokens.buildCurrent(prefs, chatSessionId: widget.chatSessionId);
     final processedTokens = EvalDocTokens.loadProcessed(prefs);
 
     final docsAvailable = _allDocumentsAvailable(prefs);
@@ -316,7 +329,8 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
 
   Future<bool> _processChangedDocuments({required int runId}) async {
     final prefs = await SharedPreferences.getInstance();
-    final currentTokens = EvalDocTokens.buildCurrent(prefs);
+    final currentTokens =
+        EvalDocTokens.buildCurrent(prefs, chatSessionId: widget.chatSessionId);
     final processedTokens = EvalDocTokens.loadProcessed(prefs);
 
     final docsAvailable = _allDocumentsAvailable(prefs);
@@ -364,6 +378,28 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
       _docSteps = nextStates;
       _isProcessingDocs = stepsNeedingWork.isNotEmpty;
     });
+
+    if (stepsNeedingWork.isNotEmpty) {
+      try {
+        final answerIds =
+            prefs.getStringList('answer_sheet_ids:${widget.chatSessionId}') ??
+                const <String>[];
+        await EvaluationService.processDocumentsStream(
+          chatSessionId: widget.chatSessionId,
+          answerResourceIds: answerIds,
+        );
+      } catch (e) {
+        // ignore: avoid_print
+        print('Process documents failed: $e');
+        if (!mounted || runId != _runToken) return false;
+        setState(() {
+          _isProcessingDocs = false;
+          _docsReady = false;
+          _needsReprocess = true;
+        });
+        return false;
+      }
+    }
 
     // Process only the changed steps.
     for (final step in ordered) {

@@ -124,4 +124,56 @@ class ResourceService {
             ResourceUploadResponse.fromJson(Map<String, dynamic>.from(e)))
         .toList();
   }
+
+  static Future<List<ResourceUploadResponse>> uploadAnswerSheets({
+    required List<MultipartFile> files,
+    required String chatSessionId,
+  }) async {
+    final formData = FormData.fromMap({
+      // Backend expects a list field named "files"
+      'files': files,
+    });
+
+    final res = await ApiClient.dio.post(
+      '/api/v1/resources/upload',
+      queryParameters: {
+        'resource_type': 'answer_sheet',
+        'chat_session_id': chatSessionId,
+      },
+      options: Options(
+        receiveTimeout: Duration(minutes: 3),
+        sendTimeout: Duration(minutes: 2),
+      ),
+      data: formData,
+    );
+
+    final data = res.data;
+    // ignore: avoid_print
+    print('uploadAnswerSheets response: $data');
+
+    List<dynamic>? list;
+    if (data is List) {
+      list = data;
+    } else if (data is Map) {
+      final map = Map<String, dynamic>.from(data);
+      final dynamic maybe = map['uploads'] ??
+          map['data'] ??
+          map['resources'] ??
+          map['uploaded_resources'] ??
+          map['uploaded'];
+      if (maybe is List) {
+        list = maybe;
+      }
+    }
+
+    if (list == null) {
+      throw StateError('Unexpected upload response shape: ${data.runtimeType}');
+    }
+
+    return list
+        .whereType<Map>()
+        .map((e) =>
+            ResourceUploadResponse.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
 }

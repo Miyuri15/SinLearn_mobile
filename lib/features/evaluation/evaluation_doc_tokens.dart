@@ -31,12 +31,27 @@ class EvalDocKeys {
 /// rubric/marks changes), the documents must be processed again before
 /// evaluating.
 class EvalDocTokens {
-  static Map<String, String> buildCurrent(SharedPreferences prefs) {
-    final answerSheetName = prefs.getString(EvalDocKeys.attachment) ?? '';
+  static Map<String, String> buildCurrent(
+    SharedPreferences prefs, {
+    String? chatSessionId,
+  }) {
+    final answerSheetIdsKey =
+        chatSessionId == null ? null : 'answer_sheet_ids:$chatSessionId';
+    final questionPaperKey =
+        chatSessionId == null ? null : 'question_paper_file:$chatSessionId';
+    final syllabusKey =
+        chatSessionId == null ? null : 'syllabus_items:$chatSessionId';
+
+    final answerSheetToken = (answerSheetIdsKey != null)
+        ? jsonEncode(prefs.getStringList(answerSheetIdsKey) ?? const <String>[])
+        : (prefs.getString(EvalDocKeys.attachment) ?? '');
+
     final questionPaperRaw =
-        prefs.getString(EvalDocKeys.questionPaperFile) ?? '';
+        prefs.getString(questionPaperKey ?? EvalDocKeys.questionPaperFile) ??
+            '';
     final syllabus =
-        prefs.getStringList(EvalDocKeys.syllabusItems) ?? const <String>[];
+        prefs.getStringList(syllabusKey ?? EvalDocKeys.syllabusItems) ??
+            const <String>[];
 
     final rubricSnapshot = <String, Object?>{
       'hasRubric': prefs.getBool(EvalDocKeys.hasRubric) ?? false,
@@ -61,7 +76,7 @@ class EvalDocTokens {
         (prefs.getBool(EvalDocKeys.paperConfigConfirmed) ?? false).toString();
 
     return <String, String>{
-      'answerSheets': answerSheetName,
+      'answerSheets': _fnv1a32Hex(answerSheetToken),
       'questionPaper': _fnv1a32Hex(questionPaperRaw),
       'syllabus': _fnv1a32Hex(jsonEncode(syllabus)),
       'rubric': rubricToken,

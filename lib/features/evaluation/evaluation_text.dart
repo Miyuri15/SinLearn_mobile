@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:easy_localization/easy_localization.dart';
 import 'learning_mode.dart';
 import '../../widgets/teachers_main_app_bar.dart';
@@ -13,6 +15,8 @@ import '../../core/utils/json_cast.dart';
 import 'evaluation_process_page.dart';
 import 'evaluation_doc_tokens.dart';
 import '../../services/chat_service.dart';
+import '../../services/resource_service.dart';
+import '../../services/evaluation_service.dart';
 
 // NEW PAGE
 import 'paper_config_review_page.dart';
@@ -44,10 +48,13 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   // Question paper + syllabus are persisted per chat session.
   static const String _questionPaperKeyPrefix = 'question_paper_file:';
   static const String _syllabusKeyPrefix = 'syllabus_items:';
+  static const String _answerSheetIdsKeyPrefix = 'answer_sheet_ids:';
 
   String get _questionPaperKey =>
       '${_questionPaperKeyPrefix}${widget.chatSessionId}';
   String get _syllabusKey => '${_syllabusKeyPrefix}${widget.chatSessionId}';
+  String get _answerSheetIdsKey =>
+      '${_answerSheetIdsKeyPrefix}${widget.chatSessionId}';
 
   bool _hasRubrics = false;
   bool _hasMarks = false;
@@ -96,9 +103,39 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       _hasQuestionPaper = details.questionPaper != null;
       _hasSyllabus = details.syllabus != null;
       _hasRubrics = (details.rubricId != null && details.rubricId!.isNotEmpty);
+
+      final answerSheets = details.answerSheets;
+      _hasAttachment = answerSheets.isNotEmpty;
+      if (_hasAttachment) {
+        final firstName = answerSheets.first.filename;
+        if (firstName.isNotEmpty) {
+          _attachedFileName = firstName;
+        }
+        // Persist IDs locally for downstream processing.
+        await prefs.setStringList(
+          _answerSheetIdsKey,
+          answerSheets
+              .map((e) => e.resourceId)
+              .where((e) => e.isNotEmpty)
+              .toList(),
+        );
+      }
+
+      // Some backends may not include answer sheets in session resources yet.
+      // If we have locally cached answer sheet IDs for this chat, treat them
+      // as attached so processing can proceed.
+      if (!_hasAttachment) {
+        final ids = prefs.getStringList(_answerSheetIdsKey);
+        if (ids != null && ids.isNotEmpty) {
+          _hasAttachment = true;
+        }
+      }
     } catch (_) {
       // Fallback to legacy local state if backend fetch fails.
       _hasRubrics = prefs.getBool(_rubricKey) ?? false;
+
+      final ids = prefs.getStringList(_answerSheetIdsKey);
+      _hasAttachment = (ids != null && ids.isNotEmpty) || _hasAttachment;
 
       final questionPaperRaw = prefs.getString(_questionPaperKey);
       _hasQuestionPaper =
@@ -118,7 +155,8 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
 
     // Documents are considered processed only if the current token snapshot
     // matches the last processed snapshot.
-    final currentTokens = EvalDocTokens.buildCurrent(prefs);
+    final currentTokens =
+        EvalDocTokens.buildCurrent(prefs, chatSessionId: widget.chatSessionId);
     final processedTokens = EvalDocTokens.loadProcessed(prefs);
     _hasProcessedDocuments = _allDocumentsAvailable() &&
         processedTokens != null &&
@@ -174,6 +212,10 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   Future<void> _processDocuments() async {
     if (_isProcessing) return;
 
+    // ignore: avoid_print
+    print(
+        'ProcessDocuments clicked for chatSessionId: ${widget.chatSessionId}');
+
     setState(() {
       _showProcessing = true;
       _isProcessing = true;
@@ -186,49 +228,76 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     // Refresh current availability before starting.
     await _loadAllData();
 
-    final List<_DocStep> orderedSteps = [
-      _DocStep.answerSheets,
-      _DocStep.questionPaper,
-      _DocStep.syllabus,
-      _DocStep.rubric,
-      _DocStep.paperConfig,
-    ];
+    final prefs = await SharedPreferences.getInstance();
+    final answerIds =
+        prefs.getStringList(_answerSheetIdsKey) ?? const <String>[];
 
-    for (final step in orderedSteps) {
-      final wasAvailable = _isStepAvailable(step);
+    // ignore: avoid_print
+    print('ProcessDocuments answer_resource_ids: $answerIds');
 
+    // If other docs are missing, still allow processing of answer sheets.
+    // Evaluation later remains gated by _allDocumentsAvailable().
+    final ok = _allDocumentsAvailable();
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Some required docs are missing; processing anyway')),
+      );
+    }
+    if (answerIds.isEmpty) {
       setState(() {
-        _docSteps[step] = _DocStepState(
-          status: _DocStepStatus.inProgress,
-          alreadyProcessed: false,
-        );
+        _isProcessing = false;
+        _hasProcessedDocuments = false;
       });
-
-      // Small delay so the user can see progression.
-      await Future.delayed(const Duration(milliseconds: 450));
-
-      // Re-check availability after the delay.
-      await _loadAllData();
-      final isAvailable = _isStepAvailable(step);
-
-      setState(() {
-        _docSteps[step] = _DocStepState(
-          status: isAvailable ? _DocStepStatus.done : _DocStepStatus.pending,
-          alreadyProcessed: wasAvailable && isAvailable,
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Missing answer sheet upload')),
         );
-      });
+      }
+      return;
     }
 
-    final ok = _allDocumentsAvailable();
+    // Show all steps as in-progress while backend processes.
     setState(() {
-      _isProcessing = false;
-      _hasProcessedDocuments = ok;
+      for (final step in _docSteps.keys) {
+        _docSteps[step] =
+            const _DocStepState(status: _DocStepStatus.inProgress);
+      }
     });
 
-    if (ok) {
-      final prefs = await SharedPreferences.getInstance();
+    try {
+      await EvaluationService.processDocumentsStream(
+        chatSessionId: widget.chatSessionId,
+        answerResourceIds: answerIds,
+      );
+
       await EvalDocTokens.saveProcessed(
-          prefs, EvalDocTokens.buildCurrent(prefs));
+        prefs,
+        EvalDocTokens.buildCurrent(prefs, chatSessionId: widget.chatSessionId),
+      );
+
+      if (!mounted) return;
+      setState(() {
+        for (final step in _docSteps.keys) {
+          _docSteps[step] = const _DocStepState(status: _DocStepStatus.done);
+        }
+        _isProcessing = false;
+        _hasProcessedDocuments = true;
+      });
+    } catch (e) {
+      // ignore: avoid_print
+      print('Process documents failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _isProcessing = false;
+        _hasProcessedDocuments = false;
+        for (final step in _docSteps.keys) {
+          _docSteps[step] = const _DocStepState(status: _DocStepStatus.pending);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to process documents')),
+      );
     }
   }
 
@@ -239,18 +308,57 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     final result = await FilePicker.platform.pickFiles(allowMultiple: false);
     if (result == null) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_attachmentKey, result.files.first.name);
+    final file = result.files.first;
+    final bytes = file.bytes;
+    // On web, PlatformFile.path throws; use bytes instead.
+    final String? path = kIsWeb ? null : file.path;
 
     setState(() {
-      _attachedFileName = result.files.first.name;
+      _attachedFileName = file.name;
       _hasAttachment = true;
     });
+
+    try {
+      if (bytes == null && (path == null || path.isEmpty)) {
+        throw StateError('Unable to read file bytes/path');
+      }
+
+      final multipart = bytes != null
+          ? MultipartFile.fromBytes(bytes, filename: file.name)
+          : await MultipartFile.fromFile(path!, filename: file.name);
+
+      final uploads = await ResourceService.uploadAnswerSheets(
+        files: [multipart],
+        chatSessionId: widget.chatSessionId,
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_attachmentKey, file.name);
+      await prefs.setStringList(
+        _answerSheetIdsKey,
+        uploads.map((u) => u.resourceId).where((id) => id.isNotEmpty).toList(),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('upload_success'.tr(args: [file.name]))),
+        );
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('Failed to upload answer sheet: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('upload_error'.tr())),
+        );
+      }
+    }
   }
 
   Future<void> _removeAttachment() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_attachmentKey);
+    await prefs.remove(_answerSheetIdsKey);
 
     setState(() {
       _attachedFileName = null;
