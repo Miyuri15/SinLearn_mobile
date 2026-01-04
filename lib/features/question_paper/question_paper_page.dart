@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
 import '../../services/resource_service.dart';
+import '../../services/chat_service.dart';
 
 class QuestionPaperPage extends StatefulWidget {
   final String? chatSessionId;
@@ -17,14 +18,47 @@ class QuestionPaperPage extends StatefulWidget {
 
 class _QuestionPaperPageState extends State<QuestionPaperPage> {
   PlatformFile? _file;
+  String? _resourceId;
   static const Set<String> _allowed = {'pdf', 'doc', 'docx'};
-  static const _prefsKey = 'question_paper_file';
+  static const _prefsKeyPrefix = 'question_paper_file:';
+
+  String get _prefsKey =>
+      '${_prefsKeyPrefix}${widget.chatSessionId ?? 'no-session'}';
 
   @override
   void initState() {
     super.initState();
-    print('QuestionPaperPage initialized with chatSessionId: ${widget.chatSessionId}');
-    _loadSavedFile();
+    print(
+        'QuestionPaperPage initialized with chatSessionId: ${widget.chatSessionId}');
+    _loadFromBackend();
+  }
+
+  Future<void> _loadFromBackend() async {
+    final sessionId = widget.chatSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      await _loadSavedFile();
+      return;
+    }
+
+    try {
+      final details = await ChatService.getChatSessionDetails(sessionId);
+      final qp = details.questionPaper;
+      if (qp != null && qp.filename.isNotEmpty) {
+        setState(() {
+          _resourceId = qp.resourceId.isNotEmpty ? qp.resourceId : null;
+          _file = PlatformFile(
+            name: qp.filename,
+            size: qp.sizeBytes,
+          );
+        });
+        return;
+      }
+    } catch (e) {
+      // ignore and fall back to local cache
+      print('Failed to load question paper from backend: $e');
+    }
+
+    await _loadSavedFile();
   }
 
   Future<void> _loadSavedFile() async {
@@ -37,6 +71,7 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
       if (name.isEmpty) return;
       // Hydrate minimal PlatformFile for UI display (no 'extension' named arg)
       setState(() {
+        _resourceId = data['resourceId']?.toString();
         _file = PlatformFile(
           name: name,
           size: (data['size'] as int?) ?? 0,
@@ -54,6 +89,7 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
       'name': file.name,
       'ext': file.extension,
       'size': file.size,
+      'resourceId': _resourceId,
       // 'path': file.path, // optional: uncomment if you need to persist path
       'savedAt': DateTime.now().toIso8601String(),
     });
@@ -90,25 +126,28 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
 
       if (widget.chatSessionId != null) {
         MultipartFile? multipartFile;
-        
+
         if (kIsWeb) {
           if (picked.bytes != null) {
-            multipartFile = MultipartFile.fromBytes(picked.bytes!, filename: picked.name);
+            multipartFile =
+                MultipartFile.fromBytes(picked.bytes!, filename: picked.name);
           }
         } else {
           if (picked.path != null) {
-            multipartFile = await MultipartFile.fromFile(picked.path!, filename: picked.name);
+            multipartFile = await MultipartFile.fromFile(picked.path!,
+                filename: picked.name);
           }
         }
 
         if (multipartFile != null) {
           print('Uploading file with chatSessionId: ${widget.chatSessionId}');
-          await ResourceService.uploadQuestionPaper(
+          final res = await ResourceService.uploadQuestionPaper(
             file: multipartFile,
             chatSessionId: widget.chatSessionId!,
           );
+          _resourceId = res.resourceId;
         } else {
-           print('Skipping upload: File bytes/path missing. Web: $kIsWeb');
+          print('Skipping upload: File bytes/path missing. Web: $kIsWeb');
         }
       } else {
         print('Skipping upload: chatSessionId is null');
@@ -117,7 +156,9 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
       setState(() => _file = picked);
       await _saveFile(picked);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr('question_paper.upload_success', args: [picked.name]))),
+        SnackBar(
+            content:
+                Text(tr('question_paper.upload_success', args: [picked.name]))),
       );
     } catch (e, stack) {
       print('Error picking/uploading file: $e');
@@ -138,11 +179,17 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return AlertDialog(
           backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          title: Text(tr('question_paper.delete_title', args: [])), // optional title key if present
-          content: Text(tr('question_paper.delete_confirm', namedArgs: {'name': name})),
+          title: Text(tr('question_paper.delete_title',
+              args: [])), // optional title key if present
+          content: Text(
+              tr('question_paper.delete_confirm', namedArgs: {'name': name})),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(tr('question_paper.cancel'))),
-            ElevatedButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text(tr('question_paper.delete'))),
+            TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: Text(tr('question_paper.cancel'))),
+            ElevatedButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: Text(tr('question_paper.delete'))),
           ],
         );
       },
@@ -177,16 +224,19 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
         ),
       ),
       child: DefaultTextStyle.merge(
-        style: const TextStyle(decoration: TextDecoration.none), // remove underline globally
+        style: const TextStyle(
+            decoration: TextDecoration.none), // remove underline globally
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header (same style as syllabus)
             Row(
               children: [
-                Icon(Icons.description_outlined, color: const Color(0xFF0066FF), size: 22),
+                Icon(Icons.description_outlined,
+                    color: const Color(0xFF0066FF), size: 22),
                 const SizedBox(width: 12),
-                Expanded( // allow title to shrink and ellipsize
+                Expanded(
+                  // allow title to shrink and ellipsize
                   child: Text(
                     tr('question_paper.header'),
                     style: TextStyle(
@@ -202,7 +252,8 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
                   icon: const Icon(Icons.close, size: 20),
                   onPressed: () => Navigator.of(context).maybePop(),
                   color: isDark ? Colors.white : const Color(0xFF666666),
-                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40), // compact
+                  constraints: const BoxConstraints(
+                      minWidth: 40, minHeight: 40), // compact
                   padding: EdgeInsets.zero,
                 ),
               ],
@@ -214,7 +265,8 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
               tr('question_paper.intro'),
               style: TextStyle(
                 fontSize: 14,
-                color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF666666),
+                color:
+                    isDark ? const Color(0xFFAAAAAA) : const Color(0xFF666666),
                 height: 1.5,
               ),
             ),
@@ -225,56 +277,88 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FA),
+                color:
+                    isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FA),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: isDark ? const Color(0xFF404040) : const Color(0xFFE5E5E5)),
-                boxShadow: isDark ? null : [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+                border: Border.all(
+                    color: isDark
+                        ? const Color(0xFF404040)
+                        : const Color(0xFFE5E5E5)),
+                boxShadow: isDark
+                    ? null
+                    : [
+                        BoxShadow(
+                            color: Colors.black.withOpacity(0.03),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2))
+                      ],
               ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(
-                  tr('question_paper.upload_title'),
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF1A1A1A)),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  tr('question_paper.upload_subtitle'),
-                  style: TextStyle(fontSize: 14, color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF666666)),
-                ),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: _pickFile,
-                  child: Container(
-                    height: 160,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isDark ? const Color(0xFF404040) : const Color(0xFFDCE6F2), width: 1.5),
-                      color: isDark ? const Color(0xFF222222) : Colors.white,
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tr('question_paper.upload_title'),
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              isDark ? Colors.white : const Color(0xFF1A1A1A)),
                     ),
-                    child: Center(
-                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                        // use main app's upload icon
-                        Icon(
-                          Icons.file_upload_outlined,
-                          size: 48,
-                          color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF6B7A95),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          _file == null
-                              ? tr('question_paper.click_to_upload')
-                              : tr('question_paper.replace_file'),
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF6B7A95),
-                            // decoration removed globally by DefaultTextStyle
-                          ),
-                        ),
-                      ]),
+                    const SizedBox(height: 8),
+                    Text(
+                      tr('question_paper.upload_subtitle'),
+                      style: TextStyle(
+                          fontSize: 14,
+                          color: isDark
+                              ? const Color(0xFFAAAAAA)
+                              : const Color(0xFF666666)),
                     ),
-                  ),
-                ),
-              ]),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: _pickFile,
+                      child: Container(
+                        height: 160,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF404040)
+                                  : const Color(0xFFDCE6F2),
+                              width: 1.5),
+                          color:
+                              isDark ? const Color(0xFF222222) : Colors.white,
+                        ),
+                        child: Center(
+                          child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // use main app's upload icon
+                                Icon(
+                                  Icons.file_upload_outlined,
+                                  size: 48,
+                                  color: isDark
+                                      ? const Color(0xFFAAAAAA)
+                                      : const Color(0xFF6B7A95),
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  _file == null
+                                      ? tr('question_paper.click_to_upload')
+                                      : tr('question_paper.replace_file'),
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: isDark
+                                        ? const Color(0xFFAAAAAA)
+                                        : const Color(0xFF6B7A95),
+                                    // decoration removed globally by DefaultTextStyle
+                                  ),
+                                ),
+                              ]),
+                        ),
+                      ),
+                    ),
+                  ]),
             ),
             const SizedBox(height: 18),
 
@@ -285,49 +369,87 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FA),
+                    color: isDark
+                        ? const Color(0xFF2A2A2A)
+                        : const Color(0xFFF8F9FA),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isDark ? const Color(0xFF404040) : const Color(0xFFE5E5E5)),
+                    border: Border.all(
+                        color: isDark
+                            ? const Color(0xFF404040)
+                            : const Color(0xFFE5E5E5)),
                   ),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(tr('question_paper.uploaded_section_title'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF1A1A1A))),
-                    const SizedBox(height: 6),
-                    Text(tr('question_paper.uploaded_section_subtitle'), style: TextStyle(fontSize: 13, color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF666666))),
-                    const SizedBox(height: 12),
-                    if (_file != null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1F1F1F) : Colors.white,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: isDark ? const Color(0xFF404040) : const Color(0xFFECEFF1)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.article_outlined, color: Color(0xFF0066FF), size: 18),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                _file!.name,
-                                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isDark ? Colors.white : const Color(0xFF1A1A1A)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(tr('question_paper.uploaded_section_title'),
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF1A1A1A))),
+                        const SizedBox(height: 6),
+                        Text(tr('question_paper.uploaded_section_subtitle'),
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: isDark
+                                    ? const Color(0xFFAAAAAA)
+                                    : const Color(0xFF666666))),
+                        const SizedBox(height: 12),
+                        if (_file != null)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF1F1F1F)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF404040)
+                                      : const Color(0xFFECEFF1)),
                             ),
-                            IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              icon: const Icon(Icons.delete_outline, size: 20),
-                              onPressed: _deleteFile,
-                              color: isDark ? const Color(0xFFCC6666) : const Color(0xFFFF4444),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.article_outlined,
+                                    color: Color(0xFF0066FF), size: 18),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _file!.name,
+                                    style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF1A1A1A)),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  icon: const Icon(Icons.delete_outline,
+                                      size: 20),
+                                  onPressed: _deleteFile,
+                                  color: isDark
+                                      ? const Color(0xFFCC6666)
+                                      : const Color(0xFFFF4444),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      )
-                    else
-                      Text(tr('question_paper.no_file'), style: TextStyle(fontSize: 13, color: isDark ? const Color(0xFFAAAAAA) : const Color(0xFF666666))),
-                  ]),
+                          )
+                        else
+                          Text(tr('question_paper.no_file'),
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  color: isDark
+                                      ? const Color(0xFFAAAAAA)
+                                      : const Color(0xFF666666))),
+                      ]),
                 ),
               ),
             ),
@@ -339,13 +461,18 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
               height: 48,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: isDark ? const Color(0xFF404040) : const Color(0xFFE5E5E5)),
+                border: Border.all(
+                    color: isDark
+                        ? const Color(0xFF404040)
+                        : const Color(0xFFE5E5E5)),
               ),
               child: TextButton(
                 onPressed: () => Navigator.of(context).maybePop(),
                 style: TextButton.styleFrom(
-                  foregroundColor: isDark ? Colors.white : const Color(0xFF1A1A1A),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  foregroundColor:
+                      isDark ? Colors.white : const Color(0xFF1A1A1A),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
                 child: Text(tr('question_paper.cancel')),
               ),
@@ -356,6 +483,7 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
     );
   }
 }
+
 void showQuestionPaperSidebar(BuildContext context, {String? chatSessionId}) {
   showGeneralDialog(
     context: context,
@@ -363,7 +491,8 @@ void showQuestionPaperSidebar(BuildContext context, {String? chatSessionId}) {
     barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
     barrierColor: Colors.black45,
     transitionDuration: const Duration(milliseconds: 200),
-    pageBuilder: (BuildContext buildContext, Animation<double> animation, Animation<double> secondaryAnimation) {
+    pageBuilder: (BuildContext buildContext, Animation<double> animation,
+        Animation<double> secondaryAnimation) {
       final theme = Theme.of(buildContext);
       return Align(
         alignment: Alignment.centerRight,
@@ -382,7 +511,8 @@ void showQuestionPaperSidebar(BuildContext context, {String? chatSessionId}) {
     },
     transitionBuilder: (_, anim, __, child) {
       return SlideTransition(
-        position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero).animate(anim),
+        position: Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero)
+            .animate(anim),
         child: child,
       );
     },

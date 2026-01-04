@@ -1,6 +1,6 @@
-import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../models/chat_models.dart';
+import '../models/chat_session_details.dart';
 
 class ChatService {
   /// CREATE CHAT SESSION
@@ -30,16 +30,26 @@ class ChatService {
   /// LIST CHAT SESSIONS
   static Future<List<ChatSession>> listChatSessions() async {
     final res = await ApiClient.dio.get("/api/v1/chat/sessions");
-    return (res.data as List)
-        .map((e) => ChatSession.fromJson(e))
-        .toList();
+    return (res.data as List).map((e) => ChatSession.fromJson(e)).toList();
+  }
+
+  /// GET CHAT SESSION DETAILS (including attached resources)
+  static Future<ChatSessionDetails> getChatSessionDetails(
+      String sessionId) async {
+    final res = await ApiClient.dio.get("/api/v1/chat/sessions/$sessionId");
+    if (res.data is Map) {
+      return ChatSessionDetails.fromJson(
+          Map<String, dynamic>.from(res.data as Map));
+    }
+    throw StateError(
+        'Unexpected session details response: ${res.data.runtimeType}');
   }
 
   /// UPDATE CHAT TITLE
   static Future<ChatSession> updateChatSession(
-      String sessionId, {
-        String? title,
-      }) async {
+    String sessionId, {
+    String? title,
+  }) async {
     final res = await ApiClient.dio.put(
       "/api/v1/chat/sessions/$sessionId",
       data: {
