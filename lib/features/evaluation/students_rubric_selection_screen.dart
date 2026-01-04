@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../services/chat_service.dart';
+import '../../services/rubric_service.dart';
+
 class RubricSelectionSidebar extends StatefulWidget {
   final VoidCallback? onRubricApplied;
+  final String? chatSessionId;
 
-  const RubricSelectionSidebar({super.key, this.onRubricApplied});
+  const RubricSelectionSidebar(
+      {super.key, this.onRubricApplied, this.chatSessionId});
 
   @override
   State<RubricSelectionSidebar> createState() => _RubricSelectionSidebarState();
@@ -46,7 +51,25 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
     await prefs.setBool(_rubricKey, true);
     await prefs.setString(_rubricNameKey, name);
     await prefs.setBool(_isCustomRubricKey, isCustom);
-    
+
+    // Best-effort: persist to backend for this chat session
+    if (widget.chatSessionId != null) {
+      try {
+        final displayName = isCustom ? name : name.tr();
+        final rubricId = await RubricService.createRubric(
+          name: displayName,
+          source: isCustom ? 'custom' : 'standard',
+        );
+        await ChatService.attachRubricToSession(
+          chatSessionId: widget.chatSessionId!,
+          rubricId: rubricId,
+        );
+      } catch (e) {
+        // ignore: avoid_print
+        print('Failed to attach rubric to session: $e');
+      }
+    }
+
     if (widget.onRubricApplied != null) {
       widget.onRubricApplied!();
     }
@@ -287,7 +310,8 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('question_paper.rubric_applied_success'.tr()),
+                      content:
+                          Text('question_paper.rubric_applied_success'.tr()),
                       backgroundColor: theme.colorScheme.primary,
                     ),
                   );
@@ -317,7 +341,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
     // Simulate file upload
     const fileName = "Custom_Rubric.pdf";
     await _saveRubric(fileName, true);
-    
+
     setState(() {
       _selectedRubric = fileName; // Example file name
       _appliedRubric = _selectedRubric;
@@ -392,7 +416,8 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
   }
 }
 
-void showRubricSelectionSidebar(BuildContext context, {VoidCallback? onRubricApplied}) {
+void showRubricSelectionSidebar(BuildContext context,
+    {VoidCallback? onRubricApplied, String? chatSessionId}) {
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -412,7 +437,10 @@ void showRubricSelectionSidebar(BuildContext context, {VoidCallback? onRubricApp
           child: SizedBox(
             width: drawerW,
             height: double.infinity,
-            child: RubricSelectionSidebar(onRubricApplied: onRubricApplied),
+            child: RubricSelectionSidebar(
+              onRubricApplied: onRubricApplied,
+              chatSessionId: chatSessionId,
+            ),
           ),
         ),
       );

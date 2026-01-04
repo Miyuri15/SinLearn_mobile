@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../features/evaluation/students_rubric_selection_screen.dart';
-import '../features/recent_chat/recent_chats_page.dart';
 import '../features/syllabus/syllabus_page.dart';
 import '../features/question_paper/question_paper_page.dart';
 
@@ -39,7 +38,8 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           color: theme.colorScheme.surface, // was Colors.white
-          border: Border(bottom: BorderSide(color: theme.dividerColor, width: 1)),
+          border:
+              Border(bottom: BorderSide(color: theme.dividerColor, width: 1)),
         ),
         child: Row(
           children: [
@@ -47,7 +47,8 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             Builder(
               builder: (ctx) {
                 return IconButton(
-                  icon: Icon(Icons.menu, size: 24, color: theme.colorScheme.onSurface),
+                  icon: Icon(Icons.menu,
+                      size: 24, color: theme.colorScheme.onSurface),
                   onPressed: () => Scaffold.of(ctx).openDrawer(),
                   padding: const EdgeInsets.all(8),
                   splashRadius: 20,
@@ -61,7 +62,8 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant.withOpacity(0.5), // was 0xFFF7F9FC
+                color: theme.colorScheme.surfaceVariant
+                    .withOpacity(0.5), // was 0xFFF7F9FC
                 borderRadius: BorderRadius.circular(28),
               ),
               child: Row(
@@ -92,10 +94,13 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  icon: Icon(Icons.document_scanner, size: 20, color: theme.colorScheme.onSurface),
+                  icon: Icon(Icons.document_scanner,
+                      size: 20, color: theme.colorScheme.onSurface),
                   padding: const EdgeInsets.all(8),
                   splashRadius: 20,
-                  onPressed: () => showRubricSelectionSidebar(context, onRubricApplied: onRubricApplied),
+                  onPressed: () => showRubricSelectionSidebar(context,
+                      onRubricApplied: onRubricApplied,
+                      chatSessionId: chatSessionId),
                 ),
               ),
 
@@ -109,10 +114,12 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: Icon(Icons.book, size: 20, color: theme.colorScheme.onSurface),
+                    icon: Icon(Icons.book,
+                        size: 20, color: theme.colorScheme.onSurface),
                     padding: const EdgeInsets.all(8),
                     splashRadius: 20,
-                    onPressed: () => showSyllabusSidebar(ctx), // opens as right panel
+                    onPressed: () => showSyllabusSidebar(ctx,
+                        chatSessionId: chatSessionId), // opens as right panel
                   ),
                 );
               },
@@ -124,10 +131,12 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             Builder(
               builder: (ctx) {
                 return IconButton(
-                  icon: Icon(Icons.add, size: 22, color: theme.colorScheme.onSurface),
+                  icon: Icon(Icons.add,
+                      size: 22, color: theme.colorScheme.onSurface),
                   padding: const EdgeInsets.all(8),
                   splashRadius: 20,
-                  onPressed: () => showQuestionPaperSidebar(ctx, chatSessionId: chatSessionId), // opens as right panel
+                  onPressed: () => showQuestionPaperSidebar(ctx,
+                      chatSessionId: chatSessionId), // opens as right panel
                 );
               },
             ),
@@ -161,10 +170,21 @@ class _SegmentButton extends StatelessWidget {
           color: isSelected ? theme.cardColor : Colors.transparent, // was white
           borderRadius: BorderRadius.circular(22),
           boxShadow: isSelected
-              ? [if (theme.brightness == Brightness.light) BoxShadow(color: Colors.black.withOpacity(0.06), spreadRadius: 1, blurRadius: 6, offset: const Offset(0, 2))]
+              ? [
+                  if (theme.brightness == Brightness.light)
+                    BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        spreadRadius: 1,
+                        blurRadius: 6,
+                        offset: const Offset(0, 2))
+                ]
               : [],
         ),
-        child: Icon(icon, size: 20, color: isSelected ? theme.colorScheme.onSurface : theme.iconTheme.color),
+        child: Icon(icon,
+            size: 20,
+            color: isSelected
+                ? theme.colorScheme.onSurface
+                : theme.iconTheme.color),
       ),
     );
   }

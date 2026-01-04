@@ -49,15 +49,47 @@ class ChatService {
   static Future<ChatSession> updateChatSession(
     String sessionId, {
     String? title,
+    String? rubricId,
   }) async {
+    final payload = <String, dynamic>{
+      if (title != null) "title": title,
+      if (rubricId != null) "rubric_id": rubricId,
+    };
+
+    // ignore: avoid_print
+    print(
+        'updateChatSession PUT /api/v1/chat/sessions/$sessionId payload: $payload');
+
     final res = await ApiClient.dio.put(
       "/api/v1/chat/sessions/$sessionId",
-      data: {
-        "title": title,
-      },
+      data: payload,
     );
 
+    // ignore: avoid_print
+    print('updateChatSession response: ${res.data}');
+
     return ChatSession.fromJson(res.data);
+  }
+
+  /// ATTACH RUBRIC TO CHAT SESSION
+  /// Backend accepts: { "rubric_id": "<uuid>" }
+  static Future<ChatSession> attachRubricToSession({
+    required String chatSessionId,
+    required String rubricId,
+  }) async {
+    final updated = await updateChatSession(chatSessionId, rubricId: rubricId);
+
+    // Verify backend persisted the association.
+    try {
+      final details = await getChatSessionDetails(chatSessionId);
+      // ignore: avoid_print
+      print('attachRubricToSession verify GET rubric_id: ${details.rubricId}');
+    } catch (e) {
+      // ignore: avoid_print
+      print('attachRubricToSession verify GET failed: $e');
+    }
+
+    return updated;
   }
 
   /// DELETE CHAT

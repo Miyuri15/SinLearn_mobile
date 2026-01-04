@@ -58,7 +58,8 @@ class ResourceService {
       final dynamic list1 = map['data'] ??
           map['resources'] ??
           map['uploaded_resources'] ??
-          map['uploaded'];
+          map['uploaded'] ??
+          map['uploads'];
       if (list1 is List && list1.isNotEmpty && list1.first is Map) {
         candidate = Map<String, dynamic>.from(list1.first as Map);
       } else {
@@ -70,5 +71,57 @@ class ResourceService {
       throw StateError('Unexpected upload response shape: ${data.runtimeType}');
     }
     return ResourceUploadResponse.fromJson(candidate);
+  }
+
+  static Future<List<ResourceUploadResponse>> uploadSyllabus({
+    required List<MultipartFile> files,
+    required String chatSessionId,
+  }) async {
+    final formData = FormData.fromMap({
+      // Backend expects a list field named "files"
+      "files": files,
+    });
+
+    final res = await ApiClient.dio.post(
+      "/api/v1/resources/upload",
+      queryParameters: {
+        "resource_type": "syllabus",
+        "chat_session_id": chatSessionId,
+      },
+      options: Options(
+        receiveTimeout: Duration(minutes: 3),
+        sendTimeout: Duration(minutes: 2),
+      ),
+      data: formData,
+    );
+
+    final data = res.data;
+    // ignore: avoid_print
+    print('uploadSyllabus response: $data');
+
+    List<dynamic>? list;
+    if (data is List) {
+      list = data;
+    } else if (data is Map) {
+      final map = Map<String, dynamic>.from(data);
+      final dynamic maybe = map['uploads'] ??
+          map['data'] ??
+          map['resources'] ??
+          map['uploaded_resources'] ??
+          map['uploaded'];
+      if (maybe is List) {
+        list = maybe;
+      }
+    }
+
+    if (list == null) {
+      throw StateError('Unexpected upload response shape: ${data.runtimeType}');
+    }
+
+    return list
+        .whereType<Map>()
+        .map((e) =>
+            ResourceUploadResponse.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
   }
 }

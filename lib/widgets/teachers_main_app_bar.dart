@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../features/evaluation/teachers_rubric_sidebar.dart';
-import '../features/recent_chat/recent_chats_page.dart';
 import '../features/syllabus/syllabus_page.dart';
 import '../features/question_paper/question_paper_page.dart';
 
@@ -86,22 +85,25 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 
                 const Spacer(),
 
-            // TEACHERS RUBRIC -> right-side sidebar
-            // show rubric icon only in Evaluation mode (selectedIndex == 1)
-            if (selectedIndex == 1)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: Icon(Icons.document_scanner, size: 20, color: theme.colorScheme.onSurface),
-                  padding: const EdgeInsets.all(8),
-                  splashRadius: 20,
-                  onPressed: () => showTeachersRubricSidebar(context, onRubricApplied: onRubricApplied),
-                ),
-              ),
+                // TEACHERS RUBRIC -> right-side sidebar
+                // show rubric icon only in Evaluation mode (selectedIndex == 1)
+                if (selectedIndex == 1)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.document_scanner,
+                          size: 20, color: theme.colorScheme.onSurface),
+                      padding: const EdgeInsets.all(8),
+                      splashRadius: 20,
+                      onPressed: () => showTeachersRubricSidebar(context,
+                          onRubricApplied: onRubricApplied,
+                          chatSessionId: chatSessionId),
+                    ),
+                  ),
 
                 // BOOK ICON -> Syllabus (sidebar)
                 Builder(
@@ -118,8 +120,9 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                             size: 20, color: theme.colorScheme.onSurface),
                         padding: const EdgeInsets.all(8),
                         splashRadius: 20,
-                        onPressed: () =>
-                            showSyllabusSidebar(ctx), // opens as right panel
+                        onPressed: () => showSyllabusSidebar(ctx,
+                            chatSessionId:
+                                chatSessionId), // opens as right panel
                       ),
                     );
                   },
@@ -135,8 +138,8 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                           size: 22, color: theme.colorScheme.onSurface),
                       padding: const EdgeInsets.all(8),
                       splashRadius: 20,
-                      onPressed: () =>
-                          showQuestionPaperSidebar(ctx, chatSessionId: chatSessionId), // opens as right panel
+                      onPressed: () => showQuestionPaperSidebar(ctx,
+                          chatSessionId: chatSessionId), // opens as right panel
                     );
                   },
                 ),

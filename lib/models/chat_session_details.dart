@@ -14,16 +14,48 @@ class SessionResource {
   });
 
   factory SessionResource.fromJson(Map<String, dynamic> json) {
-    final dynamic idRaw =
-        json['resource_id'] ?? json['id'] ?? json['resourceId'] ?? json['resourceID'];
-    final dynamic filenameRaw =
-        json['filename'] ?? json['file_name'] ?? json['name'] ?? json['original_filename'];
-    final dynamic sizeRaw =
-        json['size_bytes'] ?? json['size'] ?? json['bytes'] ?? json['file_size'];
-    final dynamic mimeRaw =
-        json['mime_type'] ?? json['content_type'] ?? json['mimeType'] ?? json['mimetype'];
-    final dynamic typeRaw =
-        json['resource_type'] ?? json['type'] ?? json['document_type'] ?? json['kind'];
+    final Map<String, dynamic>? nestedResource = (json['resource'] is Map)
+        ? Map<String, dynamic>.from(json['resource'])
+        : null;
+
+    final dynamic idRaw = json['resource_id'] ??
+        json['id'] ??
+        json['resourceId'] ??
+        json['resourceID'];
+    final dynamic filenameRaw = json['filename'] ??
+        json['file_name'] ??
+        json['name'] ??
+        json['original_filename'] ??
+        nestedResource?['filename'] ??
+        nestedResource?['file_name'] ??
+        nestedResource?['name'] ??
+        nestedResource?['original_filename'];
+    final dynamic sizeRaw = json['size_bytes'] ??
+        json['size'] ??
+        json['bytes'] ??
+        json['file_size'] ??
+        nestedResource?['size_bytes'] ??
+        nestedResource?['size'] ??
+        nestedResource?['bytes'] ??
+        nestedResource?['file_size'];
+    final dynamic mimeRaw = json['mime_type'] ??
+        json['content_type'] ??
+        json['mimeType'] ??
+        json['mimetype'] ??
+        nestedResource?['mime_type'] ??
+        nestedResource?['content_type'] ??
+        nestedResource?['mimeType'] ??
+        nestedResource?['mimetype'];
+    final dynamic typeRaw = json['resource_type'] ??
+        json['type'] ??
+        json['document_type'] ??
+        json['kind'] ??
+        json['label'] ??
+        nestedResource?['resource_type'] ??
+        nestedResource?['type'] ??
+        nestedResource?['document_type'] ??
+        nestedResource?['kind'] ??
+        nestedResource?['label'];
 
     int parseSize(dynamic value) {
       if (value is int) return value;
@@ -45,10 +77,12 @@ class SessionResource {
 class ChatSessionDetails {
   final String id;
   final List<SessionResource> resources;
+  final String? rubricId;
 
   const ChatSessionDetails({
     required this.id,
     required this.resources,
+    this.rubricId,
   });
 
   SessionResource? firstByType(String type) {
@@ -63,6 +97,12 @@ class ChatSessionDetails {
 
   factory ChatSessionDetails.fromJson(Map<String, dynamic> json) {
     final id = json['id']?.toString() ?? '';
+    final rubricId = (json['rubric_id'] ??
+            json['rubricId'] ??
+            (json['rubric'] is Map
+                ? (json['rubric']['id'] ?? json['rubric']['rubric_id'])
+                : null))
+        ?.toString();
 
     List<dynamic>? list;
     final dynamic candidate = json['resources'] ??
@@ -101,6 +141,6 @@ class ChatSessionDetails {
       resources.add(SessionResource.fromJson(map));
     }
 
-    return ChatSessionDetails(id: id, resources: resources);
+    return ChatSessionDetails(id: id, resources: resources, rubricId: rubricId);
   }
 }

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
 // add JSON helpers
 import 'dart:convert';
+
+import '../../services/resource_service.dart';
+import '../../services/chat_service.dart';
 
 class SyllabusItem {
   final String title;
@@ -35,51 +40,106 @@ class SyllabusItem {
 class TeacherSyllabusContent extends StatefulWidget {
   final VoidCallback? onToggleTheme;
   final VoidCallback? onToggleLocale;
+  final String? chatSessionId;
 
   const TeacherSyllabusContent(
-      {super.key, this.onToggleTheme, this.onToggleLocale});
+      {super.key, this.onToggleTheme, this.onToggleLocale, this.chatSessionId});
 
   @override
   State<TeacherSyllabusContent> createState() => _TeacherSyllabusContentState();
 }
 
 class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
-  final List<SyllabusItem> _items = [
-    // initial examples (optional)
-    SyllabusItem(
-        title: 'Grade 10 Science Syllabus',
-        subject: 'Science • Grade 10',
-        date: '15/01/2024',
-        tags: 'Physics, Chemistry, Biology'),
-    SyllabusItem(
-        title: 'Grade 11 Mathematics Syllabus',
-        subject: 'Mathematics • Grade 11',
-        date: '20/02/2024',
-        tags: 'Algebra, Geometry, Trigonometry'),
-  ];
+  final List<SyllabusItem> _items = [];
 
-  static const _prefsKey = 'syllabus_items';
+  static const _prefsKeyPrefix = 'syllabus_items:';
+  static const _legacyPrefsKey = 'syllabus_items';
+  static const Set<String> _allowed = {'pdf', 'doc', 'docx'};
+
+  String get _prefsKey =>
+      '$_prefsKeyPrefix${widget.chatSessionId ?? 'no-session'}';
 
   @override
   void initState() {
     super.initState();
-    _loadItems();
+    _loadFromBackendThenCache();
+  }
+
+  Future<void> _loadFromBackendThenCache() async {
+    final sessionId = widget.chatSessionId;
+    if (sessionId == null || sessionId.isEmpty) {
+      await _loadItems();
+      return;
+    }
+
+    try {
+      final details = await ChatService.getChatSessionDetails(sessionId);
+      final backendItems = details.resources
+          .where((r) => (r.resourceType ?? '').toLowerCase() == 'syllabus')
+          .map(
+            (r) => SyllabusItem(
+              title: r.filename,
+              subject: tr('syllabus.file_subject_default'),
+              date: '',
+              tags: '',
+            ),
+          )
+          .toList();
+
+      if (!mounted) return;
+
+      if (backendItems.isNotEmpty) {
+        setState(() {
+          _items
+            ..clear()
+            ..addAll(backendItems);
+        });
+        await _saveItems();
+        return;
+      }
+    } catch (e) {
+      // ignore and fall back to local cache
+      // ignore: avoid_print
+      print('Failed to load syllabus from backend: $e');
+    }
+
+    await _loadItems();
   }
 
   Future<void> _loadItems() async {
     final prefs = await SharedPreferences.getInstance();
-    final listJson = prefs.getStringList(_prefsKey);
+    var listJson = prefs.getStringList(_prefsKey);
+    // Migration fallback: older builds stored syllabus list globally.
+    listJson ??= prefs.getStringList(_legacyPrefsKey);
     if (listJson == null) return;
     try {
       final decoded = listJson
           .map((s) => SyllabusItem.fromJson(
               s.isNotEmpty ? Map<String, dynamic>.from(jsonDecode(s)) : {}))
           .toList();
+
+      // Remove older seeded default examples if they were persisted previously.
+      final filtered = decoded.where((item) {
+        final isDefaultScience = item.title == 'Grade 10 Science Syllabus' &&
+            item.subject == 'Science • Grade 10' &&
+            item.date == '15/01/2024' &&
+            item.tags == 'Physics, Chemistry, Biology';
+        final isDefaultMath = item.title == 'Grade 11 Mathematics Syllabus' &&
+            item.subject == 'Mathematics • Grade 11' &&
+            item.date == '20/02/2024' &&
+            item.tags == 'Algebra, Geometry, Trigonometry';
+        return !(isDefaultScience || isDefaultMath);
+      }).toList();
+
       setState(() {
         _items
           ..clear()
-          ..addAll(decoded);
+          ..addAll(filtered);
       });
+
+      if (filtered.length != decoded.length) {
+        await _saveItems();
+      }
     } catch (_) {
       // ignore malformed storage
     }
@@ -96,9 +156,10 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
   Future<void> _pickFile() async {
     try {
       final result = await FilePicker.platform.pickFiles(
-        allowMultiple: false,
-        type: FileType.custom,
-        allowedExtensions: ['pdf', 'doc', 'docx'],
+        allowMultiple: true,
+        // Using FileType.any avoids "No items" issues on some devices.
+        // We validate the extension manually below.
+        type: FileType.any,
       );
 
       if (result == null) {
@@ -109,20 +170,80 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
         return;
       }
 
-      final file = result.files.single;
-      final filename = file.name;
+      final pickedFiles = result.files;
+      if (pickedFiles.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(tr('syllabus.select_file_cancelled'))),
+        );
+        return;
+      }
+
+      // Validate extensions
+      for (final f in pickedFiles) {
+        final ext = f.extension?.toLowerCase();
+        if (ext == null || !_allowed.contains(ext)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(tr('syllabus.upload_error'))),
+          );
+          return;
+        }
+      }
+
+      // Upload to backend for the active chat session (if available)
+      if (widget.chatSessionId != null) {
+        final List<MultipartFile> multipartFiles = [];
+
+        for (final f in pickedFiles) {
+          if (kIsWeb) {
+            if (f.bytes != null) {
+              multipartFiles.add(
+                MultipartFile.fromBytes(f.bytes!, filename: f.name),
+              );
+            }
+          } else {
+            if (f.path != null) {
+              multipartFiles.add(
+                await MultipartFile.fromFile(f.path!, filename: f.name),
+              );
+            }
+          }
+        }
+
+        if (multipartFiles.isNotEmpty) {
+          // ignore: avoid_print
+          print(
+              'Uploading syllabus with chatSessionId: ${widget.chatSessionId}');
+          await ResourceService.uploadSyllabus(
+            files: multipartFiles,
+            chatSessionId: widget.chatSessionId!,
+          );
+        } else {
+          // ignore: avoid_print
+          print(
+              'Skipping syllabus upload: File bytes/path missing. Web: $kIsWeb');
+        }
+      } else {
+        // ignore: avoid_print
+        print('Skipping syllabus upload: chatSessionId is null');
+      }
+
+      final filename = pickedFiles.first.name;
       final now = DateTime.now();
       final date =
           '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
 
       setState(() {
-        _items.insert(
+        for (final f in pickedFiles.reversed) {
+          _items.insert(
             0,
             SyllabusItem(
-                title: filename,
-                subject: tr('syllabus.file_subject_default'),
-                date: date,
-                tags: ''));
+              title: f.name,
+              subject: tr('syllabus.file_subject_default'),
+              date: date,
+              tags: '',
+            ),
+          );
+        }
       });
       await _saveItems();
 
@@ -143,7 +264,8 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
           backgroundColor: isDark ? Color(0xFF1E1E1E) : Colors.white,
           title: Text(tr('syllabus.delete_title')),
           // use namedArgs so translators can use {name}
-          content: Text(tr('syllabus.delete_confirm', namedArgs: {'name': title})),
+          content:
+              Text(tr('syllabus.delete_confirm', namedArgs: {'name': title})),
           actions: [
             TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
@@ -184,7 +306,8 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
             topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
       ),
       child: DefaultTextStyle.merge(
-        style: const TextStyle(decoration: TextDecoration.none), // remove underline globally
+        style: const TextStyle(
+            decoration: TextDecoration.none), // remove underline globally
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -246,56 +369,65 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                             offset: Offset(0, 2))
                       ],
               ),
-              child:
-                  Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(tr('syllabus.upload_title'),
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : Color(0xFF1A1A1A))),
-                const SizedBox(height: 8),
-                Text(tr('syllabus.upload_subtitle'),
-                    style: TextStyle(
-                        fontSize: 14,
-                        color: isDark ? Color(0xFFAAAAAA) : Color(0xFF666666))),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: _pickFile,
-                  child: Container(
-                    height: 160,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: isDark ? Color(0xFF404040) : Color(0xFFDCE6F2),
-                          width: 1.5),
-                      color: isDark ? Color(0xFF222222) : Colors.white,
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // use main app's upload icon
-                          Icon(
-                            Icons.file_upload_outlined,
-                            size: 48,
-                            color: isDark ? Color(0xFFAAAAAA) : Color(0xFF6B7A95),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(tr('syllabus.upload_title'),
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white : Color(0xFF1A1A1A))),
+                    const SizedBox(height: 8),
+                    Text(tr('syllabus.upload_subtitle'),
+                        style: TextStyle(
+                            fontSize: 14,
+                            color: isDark
+                                ? Color(0xFFAAAAAA)
+                                : Color(0xFF666666))),
+                    const SizedBox(height: 16),
+                    GestureDetector(
+                      onTap: _pickFile,
+                      child: Container(
+                        height: 160,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: isDark
+                                  ? Color(0xFF404040)
+                                  : Color(0xFFDCE6F2),
+                              width: 1.5),
+                          color: isDark ? Color(0xFF222222) : Colors.white,
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // use main app's upload icon
+                              Icon(
+                                Icons.file_upload_outlined,
+                                size: 48,
+                                color: isDark
+                                    ? Color(0xFFAAAAAA)
+                                    : Color(0xFF6B7A95),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                tr('syllabus.click_to_upload'),
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  color: isDark
+                                      ? Color(0xFFAAAAAA)
+                                      : Color(0xFF6B7A95),
+                                  // decoration removed globally by DefaultTextStyle
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 12),
-                          Text(
-                            tr('syllabus.click_to_upload'),
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: isDark ? Color(0xFFAAAAAA) : Color(0xFF6B7A95),
-                              // decoration removed globally by DefaultTextStyle
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ]),
+                  ]),
             ),
 
             const SizedBox(height: 18),
@@ -417,7 +549,7 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
   }
 }
 
-void showSyllabusSidebar(BuildContext context) {
+void showSyllabusSidebar(BuildContext context, {String? chatSessionId}) {
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -435,7 +567,7 @@ void showSyllabusSidebar(BuildContext context) {
             child: SizedBox(
               width: 304,
               height: double.infinity,
-              child: const TeacherSyllabusContent(),
+              child: TeacherSyllabusContent(chatSessionId: chatSessionId),
             ),
           ),
         ),
@@ -443,7 +575,8 @@ void showSyllabusSidebar(BuildContext context) {
     },
     transitionBuilder: (context, animation, _, child) {
       return SlideTransition(
-        position: Tween(begin: const Offset(1, 0), end: Offset.zero).animate(animation),
+        position: Tween(begin: const Offset(1, 0), end: Offset.zero)
+            .animate(animation),
         child: child,
       );
     },

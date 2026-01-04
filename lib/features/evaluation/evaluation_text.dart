@@ -12,6 +12,7 @@ import 'dart:convert';
 import '../../core/utils/json_cast.dart';
 import 'evaluation_process_page.dart';
 import 'evaluation_doc_tokens.dart';
+import '../../services/chat_service.dart';
 
 // NEW PAGE
 import 'paper_config_review_page.dart';
@@ -39,8 +40,14 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   static const String _evaluationStorageKey = 'evaluation_data';
   static const String _rubricKey = 'hasRubric';
   static const String _paperConfigConfirmedKey = 'paper_config_confirmed';
-  static const String _questionPaperKey = 'question_paper_file';
-  static const String _syllabusKey = 'syllabus_items';
+
+  // Question paper + syllabus are persisted per chat session.
+  static const String _questionPaperKeyPrefix = 'question_paper_file:';
+  static const String _syllabusKeyPrefix = 'syllabus_items:';
+
+  String get _questionPaperKey =>
+      '${_questionPaperKeyPrefix}${widget.chatSessionId}';
+  String get _syllabusKey => '${_syllabusKeyPrefix}${widget.chatSessionId}';
 
   bool _hasRubrics = false;
   bool _hasMarks = false;
@@ -82,7 +89,24 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     _attachedFileName = prefs.getString(_attachmentKey);
     _hasAttachment = _attachedFileName != null;
 
-    _hasRubrics = prefs.getBool(_rubricKey) ?? false;
+    // Prefer backend truth (per chat session) so it survives logout/relogin.
+    try {
+      final details =
+          await ChatService.getChatSessionDetails(widget.chatSessionId);
+      _hasQuestionPaper = details.questionPaper != null;
+      _hasSyllabus = details.syllabus != null;
+      _hasRubrics = (details.rubricId != null && details.rubricId!.isNotEmpty);
+    } catch (_) {
+      // Fallback to legacy local state if backend fetch fails.
+      _hasRubrics = prefs.getBool(_rubricKey) ?? false;
+
+      final questionPaperRaw = prefs.getString(_questionPaperKey);
+      _hasQuestionPaper =
+          questionPaperRaw != null && questionPaperRaw.isNotEmpty;
+
+      final syllabusItems = prefs.getStringList(_syllabusKey);
+      _hasSyllabus = syllabusItems != null && syllabusItems.isNotEmpty;
+    }
 
     final legacyMarks = prefs.getString(_evaluationStorageKey);
     final paperConfirmed = prefs.getBool(_paperConfigConfirmedKey) ?? false;
@@ -90,11 +114,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     _hasMarks =
         (legacyMarks != null && legacyMarks.isNotEmpty) || paperConfirmed;
 
-    final questionPaperRaw = prefs.getString(_questionPaperKey);
-    _hasQuestionPaper = questionPaperRaw != null && questionPaperRaw.isNotEmpty;
-
-    final syllabusItems = prefs.getStringList(_syllabusKey);
-    _hasSyllabus = syllabusItems != null && syllabusItems.isNotEmpty;
+    // NOTE: question paper + syllabus are set above (backend preferred).
 
     // Documents are considered processed only if the current token snapshot
     // matches the last processed snapshot.

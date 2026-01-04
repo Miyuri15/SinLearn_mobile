@@ -3,10 +3,15 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'rubric_upload_form.dart';
 
+import '../../services/chat_service.dart';
+import '../../services/rubric_service.dart';
+
 class TeachersRubricSidebar extends StatefulWidget {
   final VoidCallback? onRubricApplied;
+  final String? chatSessionId;
 
-  const TeachersRubricSidebar({super.key, this.onRubricApplied});
+  const TeachersRubricSidebar(
+      {super.key, this.onRubricApplied, this.chatSessionId});
 
   @override
   State<TeachersRubricSidebar> createState() => _TeachersRubricSidebarState();
@@ -59,6 +64,29 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     await prefs.setInt('semantic', s);
     await prefs.setInt('coverage', c);
     await prefs.setInt('relevance', r);
+
+    // Persist to backend for this chat session (so it survives logout/relogin)
+    if (widget.chatSessionId != null) {
+      try {
+        final rubricId = await RubricService.createRubric(
+          name: name,
+          semantic: s,
+          coverage: c,
+          relevance: r,
+          source: 'weights',
+        );
+        await ChatService.attachRubricToSession(
+          chatSessionId: widget.chatSessionId!,
+          rubricId: rubricId,
+        );
+      } catch (e) {
+        // ignore: avoid_print
+        print('Failed to attach rubric to session: $e');
+      }
+    } else {
+      // ignore: avoid_print
+      print('Skipping rubric attach: chatSessionId is null');
+    }
 
     setState(() {
       hasRubric = true;
@@ -408,7 +436,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
 }
 
 void showTeachersRubricSidebar(BuildContext context,
-    {VoidCallback? onRubricApplied}) {
+    {VoidCallback? onRubricApplied, String? chatSessionId}) {
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -430,7 +458,10 @@ void showTeachersRubricSidebar(BuildContext context,
             width: drawerWidth,
             height: double.infinity,
             color: theme.colorScheme.surface,
-            child: TeachersRubricSidebar(onRubricApplied: onRubricApplied),
+            child: TeachersRubricSidebar(
+              onRubricApplied: onRubricApplied,
+              chatSessionId: chatSessionId,
+            ),
           ),
         ),
       );
