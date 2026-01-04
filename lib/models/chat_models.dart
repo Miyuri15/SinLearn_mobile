@@ -3,7 +3,7 @@ class ChatSession {
   final String mode;
   final String channel;
   final String createdAt;
-  final String updatedAt;
+  final String? updatedAt;
   final String? title;
 
   ChatSession({
@@ -11,18 +11,18 @@ class ChatSession {
     required this.mode,
     required this.channel,
     required this.createdAt,
-    required this.updatedAt,
+    this.updatedAt,
     this.title,
   });
 
   factory ChatSession.fromJson(Map<String, dynamic> json) {
     return ChatSession(
-      id: json['id'],
-      mode: json['mode'],
-      channel: json['channel'],
-      createdAt: json['created_at'],
-      updatedAt: json['updated_at'],
-      title: json['title'],
+      id: json['id']?.toString() ?? '',
+      mode: json['mode']?.toString() ?? 'text',
+      channel: json['channel']?.toString() ?? 'text',
+      createdAt: json['created_at']?.toString() ?? DateTime.now().toIso8601String(),
+      updatedAt: json['updated_at']?.toString(),
+      title: json['title']?.toString(),
     );
   }
 }

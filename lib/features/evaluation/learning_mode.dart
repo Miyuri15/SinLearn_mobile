@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:math' as math;
 import '../../services/message_service.dart';
+import '../../services/chat_service.dart';
 
 
 class LearningModePage extends StatefulWidget {
@@ -169,23 +170,33 @@ class _LearningModePageState extends State<LearningModePage> {
       drawer: _buildDrawer(context),
       appBar: MainAppBar(
         selectedIndex: _selectedSegment,
-        onSegmentSelected: (index) {
+        onSegmentSelected: (index) async {
           setState(() => _selectedSegment = index);
 
           if (index == 1) {
-            // Generate a new session ID for evaluation
-            final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (_) =>
-                      EvaluationTextPage(chatSessionId: newSessionId)),
-            );
+            // Create a new session ID for evaluation via API
+            try {
+              final session = await ChatService.createChatSession(
+                mode: 'evaluation',
+                title: 'New Evaluation Chat',
+              );
+              if (!mounted) return;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        EvaluationTextPage(chatSessionId: session.id)),
+              );
+            } catch (e) {
+              print('Error creating evaluation session: $e');
+              // Fallback or show error
+            }
           }
         },
         onMenuPressed: () {},
         onRightIconPressed: () {},
         onAddPressed: () {},
+        chatSessionId: _activeSessionId,
       ),
       body: Row(
         children: [
@@ -244,54 +255,9 @@ class _Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 320,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface, // was Colors.white
-        border: Border(right: BorderSide(color: theme.dividerColor)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const EvaluationHeader(),
-          Expanded(
-            child: ListView(
-              children: const [
-                _ChatListItem(
-                  title: 'New Learning Chat',
-                  subtitle: '0 messages • less than a minute ago',
-                  icon: Icons.menu_book_outlined,
-                ),
-                _ChatListItem(
-                  title: 'New Evaluation Chat',
-                  subtitle: '1 messages • 33 minutes ago',
-                  icon: Icons.assignment_turned_in_outlined,
-                ),
-                _ChatListItem(
-                  title: 'New Learning Chat',
-                  subtitle: '0 messages • about 1 hour ago',
-                  icon: Icons.menu_book_outlined,
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                const Icon(Icons.settings, size: 18),
-                const SizedBox(width: 8),
-                Text('Settings', style: theme.textTheme.bodyMedium),
-                const Spacer(),
-                const Icon(Icons.logout, size: 18),
-                const SizedBox(width: 8),
-                Text('Logout', style: theme.textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    // Use RecentChatsDrawer content for sidebar too, or a similar widget
+    // For now, let's just wrap RecentChatsDrawer but constrained
+    return const RecentChatsDrawer(); 
   }
 }
 

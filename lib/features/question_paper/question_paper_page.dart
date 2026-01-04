@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:file_picker/file_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dio/dio.dart';
 import 'dart:convert';
+import '../../services/resource_service.dart';
 
 class QuestionPaperPage extends StatefulWidget {
-  const QuestionPaperPage({super.key});
+  final String? chatSessionId;
+  const QuestionPaperPage({super.key, this.chatSessionId});
 
   @override
   State<QuestionPaperPage> createState() => _QuestionPaperPageState();
@@ -19,6 +23,7 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
   @override
   void initState() {
     super.initState();
+    print('QuestionPaperPage initialized with chatSessionId: ${widget.chatSessionId}');
     _loadSavedFile();
   }
 
@@ -62,10 +67,11 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
 
   Future<void> _pickFile() async {
     try {
+      // Using FileType.any to avoid issues where some Android devices show "No items"
+      // when filtering by custom extensions. We validate the extension manually below.
       final result = await FilePicker.platform.pickFiles(
         allowMultiple: false,
-        type: FileType.custom,
-        allowedExtensions: _allowed.toList(),
+        type: FileType.any,
       );
       if (result == null || result.files.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -81,14 +87,46 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
         );
         return;
       }
+
+      if (widget.chatSessionId != null) {
+        MultipartFile? multipartFile;
+        
+        if (kIsWeb) {
+          if (picked.bytes != null) {
+            multipartFile = MultipartFile.fromBytes(picked.bytes!, filename: picked.name);
+          }
+        } else {
+          if (picked.path != null) {
+            multipartFile = await MultipartFile.fromFile(picked.path!, filename: picked.name);
+          }
+        }
+
+        if (multipartFile != null) {
+          print('Uploading file with chatSessionId: ${widget.chatSessionId}');
+          await ResourceService.uploadQuestionPaper(
+            file: multipartFile,
+            chatSessionId: widget.chatSessionId!,
+          );
+        } else {
+           print('Skipping upload: File bytes/path missing. Web: $kIsWeb');
+        }
+      } else {
+        print('Skipping upload: chatSessionId is null');
+      }
+
       setState(() => _file = picked);
       await _saveFile(picked);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(tr('question_paper.upload_success', args: [picked.name]))),
       );
-    } catch (_) {
+    } catch (e, stack) {
+      print('Error picking/uploading file: $e');
+      if (e is DioException) {
+        print('DioError response data: ${e.response?.data}');
+      }
+      print(stack);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(tr('question_paper.upload_error'))),
+        SnackBar(content: Text('Error: $e')), // Show actual error for debugging
       );
     }
   }
@@ -318,7 +356,7 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
     );
   }
 }
-void showQuestionPaperSidebar(BuildContext context) {
+void showQuestionPaperSidebar(BuildContext context, {String? chatSessionId}) {
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -336,7 +374,7 @@ void showQuestionPaperSidebar(BuildContext context) {
             child: SizedBox(
               width: 304,
               height: double.infinity,
-              child: const QuestionPaperPage(),
+              child: QuestionPaperPage(chatSessionId: chatSessionId),
             ),
           ),
         ),

@@ -13,7 +13,7 @@ class ChatService {
     String? subject,
   }) async {
     final res = await ApiClient.dio.post(
-      "/chat/sessions",
+      "/api/v1/chat/sessions",
       data: {
         "mode": mode,
         "channel": channel,
@@ -29,7 +29,7 @@ class ChatService {
 
   /// LIST CHAT SESSIONS
   static Future<List<ChatSession>> listChatSessions() async {
-    final res = await ApiClient.dio.get("/chat/sessions");
+    final res = await ApiClient.dio.get("/api/v1/chat/sessions");
     return (res.data as List)
         .map((e) => ChatSession.fromJson(e))
         .toList();
@@ -41,7 +41,7 @@ class ChatService {
         String? title,
       }) async {
     final res = await ApiClient.dio.put(
-      "/chat/sessions/$sessionId",
+      "/api/v1/chat/sessions/$sessionId",
       data: {
         "title": title,
       },
@@ -52,6 +52,6 @@ class ChatService {
 
   /// DELETE CHAT
   static Future<void> deleteChatSession(String sessionId) async {
-    await ApiClient.dio.delete("/chat/sessions/$sessionId");
+    await ApiClient.dio.delete("/api/v1/chat/sessions/$sessionId");
   }
 }

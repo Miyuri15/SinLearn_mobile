@@ -470,6 +470,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
         onMenuPressed: () {},
         onRightIconPressed: () {},
         onAddPressed: () {},
+        chatSessionId: widget.chatSessionId,
       ),
       body: SafeArea(
         child: Center(

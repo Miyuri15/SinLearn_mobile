@@ -11,6 +11,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onRightIconPressed;
   final VoidCallback onAddPressed;
   final VoidCallback? onRubricApplied;
+  final String? chatSessionId;
 
   const MainAppBar({
     super.key,
@@ -20,6 +21,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onRightIconPressed,
     required this.onAddPressed,
     this.onRubricApplied,
+    this.chatSessionId,
   });
 
   @override
@@ -125,7 +127,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                   icon: Icon(Icons.add, size: 22, color: theme.colorScheme.onSurface),
                   padding: const EdgeInsets.all(8),
                   splashRadius: 20,
-                  onPressed: () => showQuestionPaperSidebar(ctx), // opens as right panel
+                  onPressed: () => showQuestionPaperSidebar(ctx, chatSessionId: chatSessionId), // opens as right panel
                 );
               },
             ),

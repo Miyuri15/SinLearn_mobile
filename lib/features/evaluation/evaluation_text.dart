@@ -284,6 +284,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         onRightIconPressed: () {},
         onAddPressed: () {},
         onRubricApplied: _loadAllData,
+        chatSessionId: widget.chatSessionId,
       ),
       drawer: const RecentChatsDrawer(),
       body: Column(
