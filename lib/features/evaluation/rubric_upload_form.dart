@@ -3,7 +3,9 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class RubricUploadForm extends StatefulWidget {
-  const RubricUploadForm({super.key});
+  final VoidCallback? onRubricApplied;
+
+  const RubricUploadForm({super.key, this.onRubricApplied});
 
   @override
   State<RubricUploadForm> createState() => _RubricUploadFormState();
@@ -48,7 +50,7 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
               Text(
                 'total_value_note'.tr(),
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onBackground.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
               const SizedBox(height: 16),
@@ -101,8 +103,7 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
         labelText: 'question_paper.$key'.tr(),
         suffixText: '%',
         border: const OutlineInputBorder(),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) return 'required'.tr();
@@ -137,10 +138,11 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
 
     // Save rubric to local storage
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('semantic', semantic);
-    await prefs.setInt('coverage', coverage);
-    await prefs.setInt('relevance', relevance);
-    await prefs.setBool('hasRubric', true);
+    // Save as custom rubric data
+    await prefs.setInt('custom_semantic', semantic);
+    await prefs.setInt('custom_coverage', coverage);
+    await prefs.setInt('custom_relevance', relevance);
+    await prefs.setBool('hasCustomRubric', true);
 
     Navigator.pop(context);
 

@@ -2,297 +2,309 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import 'dart:math' as math;
+
+import '../../core/utils/json_cast.dart';
+import 'evaluation_process_page.dart';
+import 'evaluation_text.dart';
 
 class EvaluationResponsePage extends StatefulWidget {
   const EvaluationResponsePage({
     super.key,
+    required this.chatSessionId,
     this.initialMessageText,
     this.attachmentName,
     this.evaluationData,
+    this.evaluationRunId,
   });
 
+  final String chatSessionId;
   final String? initialMessageText;
   final String? attachmentName;
   final Map<String, dynamic>? evaluationData;
+  final int? evaluationRunId;
 
   @override
   State<EvaluationResponsePage> createState() => _EvaluationResponsePageState();
 }
 
 class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
-  final List<_ChatMessage> _messages = [];
-  final TextEditingController _replyController = TextEditingController();
-  String? _attachedFileName; // reply input attachment
-  static const String _replyAttachmentKey = 'evaluation_response_attachment';
+  static const String _answerSheetAttachmentKey = 'evaluation_attachment';
+
+  static String _historyKey(String chatSessionId) =>
+      'evaluation_chat_history_v1_$chatSessionId';
+
+  final ScrollController _scrollController = ScrollController();
+  List<_EvalChatEntry> _history = <_EvalChatEntry>[];
+  bool _historyLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    // seed initial message + attachment from navigation payload
-    if (widget.initialMessageText != null || widget.attachmentName != null) {
-      _messages.add(_ChatMessage(
-        text: widget.initialMessageText ?? '',
-        fromUser: true,
-        attachmentName: widget.attachmentName,
-      ));
-    }
-    _loadReplyAttachment();
+    _initHistory();
   }
 
   @override
   void dispose() {
-    _replyController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadReplyAttachment() async {
+  Future<void> _initHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString(_replyAttachmentKey);
-    if (name != null && mounted) {
-      setState(() => _attachedFileName = name);
+    final historyKey = _historyKey(widget.chatSessionId);
+    final raw = prefs.getString(historyKey);
+
+    final loaded = <_EvalChatEntry>[];
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is List) {
+          for (final item in decoded) {
+            if (item is Map) {
+              loaded.add(_EvalChatEntry.fromJson(asStringKeyedMap(item)));
+            }
+          }
+        }
+      } catch (_) {
+        // Ignore malformed stored history.
+      }
+    }
+
+    final runId = widget.evaluationRunId;
+    var appended = false;
+    if (runId != null && runId != 0) {
+      final alreadyHasRun = loaded.any((e) => e.runId == runId);
+      if (!alreadyHasRun) {
+        final now = DateTime.now();
+
+        if (widget.attachmentName != null &&
+            widget.attachmentName!.trim().isNotEmpty) {
+          loaded.add(
+            _EvalChatEntry.user(
+              runId: runId,
+              text: 'evaluation.attachedAnswerSheet'
+                  .tr(args: [widget.attachmentName!]),
+              attachmentName: widget.attachmentName,
+              createdAtIso: now.toIso8601String(),
+              evaluationData: null,
+            ),
+          );
+        }
+
+        if (widget.initialMessageText != null &&
+            widget.initialMessageText!.trim().isNotEmpty) {
+          loaded.add(
+            _EvalChatEntry.assistantText(
+              runId: runId,
+              text: widget.initialMessageText!,
+              attachmentName: widget.attachmentName,
+              createdAtIso: now.toIso8601String(),
+              evaluationData: null,
+            ),
+          );
+        }
+
+        loaded.add(
+          _EvalChatEntry.assistantReport(
+            runId: runId,
+            text: 'evaluation.evaluationResultFor'
+                .tr(args: [widget.attachmentName ?? '']),
+            attachmentName: widget.attachmentName,
+            createdAtIso: now.toIso8601String(),
+            evaluationData: widget.evaluationData,
+          ),
+        );
+
+        await prefs.setString(
+          historyKey,
+          jsonEncode(loaded.map((e) => e.toJson()).toList()),
+        );
+        appended = true;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _history = loaded;
+      _historyLoaded = true;
+    });
+
+    // Scroll to bottom after first layout.
+    if (appended || _history.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_scrollController.hasClients) return;
+        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+      });
     }
   }
 
-  Future<void> _pickReplyAttachment() async {
+  Future<void> _attachAnotherAnswerSheet() async {
     final result = await FilePicker.platform.pickFiles(allowMultiple: false);
     if (result == null) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('evaluation.selectFileCancelled'.tr())),
       );
       return;
     }
+
     final file = result.files.first;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_replyAttachmentKey, file.name);
-    if (mounted) {
-      setState(() => _attachedFileName = file.name);
-    }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('evaluation.fileUploaded'.tr())),
+    await prefs.setString(_answerSheetAttachmentKey, file.name);
+
+    // Re-run evaluation using the already processed documents.
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EvaluationProcessPage(
+          chatSessionId: widget.chatSessionId,
+          attachmentName: file.name,
+          evaluationData: widget.evaluationData,
+        ),
+      ),
     );
   }
 
-  void _removeReplyAttachment() async {
+  Future<void> _endEvaluation() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_replyAttachmentKey);
-    if (mounted) {
-      setState(() => _attachedFileName = null);
-    }
-  }
+    await prefs.remove(_answerSheetAttachmentKey);
 
-  bool _containsSinhala(String s) {
-    return RegExp(r'[\u0D80-\u0DFF]').hasMatch(s);
-  }
-
-  void _sendReply() {
-    final text = _replyController.text.trim();
-    if (text.isEmpty && _attachedFileName == null) return;
-
-    // Add user message
-    setState(() {
-      _messages.add(_ChatMessage(
-        text: text,
-        fromUser: true,
-        attachmentName: _attachedFileName,
-      ));
-      _replyController.clear();
-      _attachedFileName = null;
-    });
-    _removeReplyAttachment(); // clear persisted attachment
-
-    // Single bot reply (Sinhala or English)
-    final isSinhala = _containsSinhala(text);
-    final botReply =
-        isSinhala ? 'ඔබට කෙසේ උදව් කළ හැකිද?' : 'How can I help you?';
-    setState(() {
-      _messages.add(_ChatMessage(text: botReply, fromUser: false));
-    });
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EvaluationTextPage(chatSessionId: widget.chatSessionId),
+      ),
+      (route) => false,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isCompact = MediaQuery.of(context).size.width < 420;
-    final _initialMessage =
-        _messages.isNotEmpty ? _messages.first : null; // added
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text('evaluation_mode'.tr()),
-        actions: isCompact
-            ? [
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: (value) {
-                    switch (value) {
-                      case 'rubric':
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Rubric selected')),
-                        );
-                        break;
-                      case 'syllabus':
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Syllabus selected')),
-                        );
-                        break;
-                      case 'question':
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Question Paper selected')),
-                        );
-                        break;
-                    }
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(value: 'rubric', child: Text('Rubric')),
-                    PopupMenuItem(value: 'syllabus', child: Text('Syllabus')),
-                    PopupMenuItem(
-                        value: 'question', child: Text('Question Paper')),
-                  ],
-                ),
-              ]
-            : [
-                TextButton(onPressed: () {}, child: const Text('Rubric')),
-                const SizedBox(width: 8),
-                TextButton(onPressed: () {}, child: const Text('Syllabus')),
-                const SizedBox(width: 8),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.add),
-                  onSelected: (value) {
-                    if (value == 'question') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Question Paper selected')),
-                      );
-                    } else if (value == 'rubric') {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Rubric selected')),
-                      );
-                    }
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                        value: 'question', child: Text('Question Paper')),
-                    PopupMenuItem(value: 'rubric', child: Text('Rubric')),
-                  ],
-                ),
-                const SizedBox(width: 8),
-              ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Initial message (if any) at the very top
-            if (_initialMessage != null) ...[
-              _MessageBubble(
-                time: TimeOfDay.now().format(context),
-                text: _initialMessage.text,
-                fromUser: _initialMessage.fromUser,
-              ),
-              if (_initialMessage.attachmentName != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Align(
-                    alignment: _initialMessage.fromUser
-                        ? Alignment.centerRight
-                        : Alignment.centerLeft,
-                    child: Column(
-                      crossAxisAlignment: _initialMessage.fromUser
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.start,
-                      children: [
-                        InputChip(
-                          label: Text(_initialMessage.attachmentName!),
-                          avatar: const Icon(Icons.attach_file, size: 18),
-                          onDeleted: null,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          TimeOfDay.now()
-                              .format(context), // time under attachment
-                          textAlign: _initialMessage.fromUser
-                              ? TextAlign.right
-                              : TextAlign.left,
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Theme.of(context).hintColor,
-                                  ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 12),
-            ],
-
-            // Evaluation report next
-            _EvaluationReportCard(theme: theme),
-            const SizedBox(height: 16),
-
-            // Subsequent chat messages (skip the initial one)
-            ..._messages.skip(1).map((m) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _MessageBubble(
-                        time: TimeOfDay.now().format(context),
-                        text: m.text,
-                        fromUser: m.fromUser,
-                      ),
-                      if (m.attachmentName != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 6),
-                          child: Align(
-                            alignment: m.fromUser
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
+            Expanded(
+              child: !_historyLoaded
+                  ? const SizedBox.shrink()
+                  : _history.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
                             child: Column(
-                              crossAxisAlignment: m.fromUser
-                                  ? CrossAxisAlignment.end
-                                  : CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                InputChip(
-                                  label: Text(m.attachmentName!),
-                                  avatar:
-                                      const Icon(Icons.attach_file, size: 18),
-                                  onDeleted: null,
+                                Icon(
+                                  Icons.chat_bubble_outline,
+                                  size: 44,
+                                  color: theme.colorScheme.onSurface
+                                      .withOpacity(0.45),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 10),
                                 Text(
-                                  TimeOfDay.now()
-                                      .format(context), // time under attachment
-                                  textAlign: m.fromUser
-                                      ? TextAlign.right
-                                      : TextAlign.left,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelSmall
-                                      ?.copyWith(
-                                        color: Theme.of(context).hintColor,
-                                      ),
+                                  'evaluation.noPreviousEvaluations'.tr(),
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.75),
+                                  ),
                                 ),
                               ],
                             ),
                           ),
+                        )
+                      : ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _history.length,
+                          itemBuilder: (context, index) {
+                            final msg = _history[index];
+                            final time = _formatTime(msg.createdAtIso);
+
+                            if (msg.kind ==
+                                _EvalChatEntryKind.assistantReport) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 14),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: ConstrainedBox(
+                                    constraints: BoxConstraints(
+                                      maxWidth:
+                                          MediaQuery.of(context).size.width *
+                                              0.92,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          msg.text,
+                                          style: theme.textTheme.titleSmall
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        _EvaluationReportCard(theme: theme),
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          time,
+                                          style: theme.textTheme.labelSmall
+                                              ?.copyWith(
+                                            color: theme.hintColor,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: _MessageBubble(
+                                time: time,
+                                text: msg.text,
+                                fromUser: msg.kind == _EvalChatEntryKind.user,
+                              ),
+                            );
+                          },
                         ),
-                    ],
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  SizedBox(
+                    height: 52,
+                    child: OutlinedButton.icon(
+                      onPressed: _attachAnotherAnswerSheet,
+                      icon: const Icon(Icons.attach_file),
+                      label: Text('evaluation.attachAnotherAnswerSheet'.tr()),
+                    ),
                   ),
-                )),
-
-            const SizedBox(height: 16),
-
-            // Reply input stays at bottom
-            _ReplyInputBar(
-              controller: _replyController,
-              attachedFileName: _attachedFileName,
-              onAttach: _pickReplyAttachment,
-              onRemoveAttachment: _removeReplyAttachment,
-              onSend: _sendReply,
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 52,
+                    child: FilledButton.icon(
+                      onPressed: () => _endEvaluation(),
+                      icon: const Icon(Icons.flag_outlined),
+                      label: Text('evaluation.endEvaluation'.tr()),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -301,13 +313,121 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
   }
 }
 
-// Simple message model for this page
-class _ChatMessage {
-  _ChatMessage(
-      {required this.text, required this.fromUser, this.attachmentName});
+enum _EvalChatEntryKind { user, assistantText, assistantReport }
+
+class _EvalChatEntry {
+  const _EvalChatEntry({
+    required this.runId,
+    required this.kind,
+    required this.text,
+    required this.createdAtIso,
+    required this.attachmentName,
+    required this.evaluationData,
+  });
+
+  factory _EvalChatEntry.user({
+    required int? runId,
+    required String text,
+    required String createdAtIso,
+    required String? attachmentName,
+    required Map<String, dynamic>? evaluationData,
+  }) {
+    return _EvalChatEntry(
+      runId: runId,
+      kind: _EvalChatEntryKind.user,
+      text: text,
+      createdAtIso: createdAtIso,
+      attachmentName: attachmentName,
+      evaluationData: evaluationData,
+    );
+  }
+
+  factory _EvalChatEntry.assistantText({
+    required int? runId,
+    required String text,
+    required String createdAtIso,
+    required String? attachmentName,
+    required Map<String, dynamic>? evaluationData,
+  }) {
+    return _EvalChatEntry(
+      runId: runId,
+      kind: _EvalChatEntryKind.assistantText,
+      text: text,
+      createdAtIso: createdAtIso,
+      attachmentName: attachmentName,
+      evaluationData: evaluationData,
+    );
+  }
+
+  factory _EvalChatEntry.assistantReport({
+    required int? runId,
+    required String text,
+    required String createdAtIso,
+    required String? attachmentName,
+    required Map<String, dynamic>? evaluationData,
+  }) {
+    return _EvalChatEntry(
+      runId: runId,
+      kind: _EvalChatEntryKind.assistantReport,
+      text: text,
+      createdAtIso: createdAtIso,
+      attachmentName: attachmentName,
+      evaluationData: evaluationData,
+    );
+  }
+
+  factory _EvalChatEntry.fromJson(Map<String, dynamic> json) {
+    final kindRaw = (json['kind'] ?? '').toString();
+    final kind = switch (kindRaw) {
+      'assistantReport' => _EvalChatEntryKind.assistantReport,
+      'assistantText' => _EvalChatEntryKind.assistantText,
+      _ => _EvalChatEntryKind.user,
+    };
+    return _EvalChatEntry(
+      runId: (json['runId'] is int) ? json['runId'] as int : null,
+      kind: kind,
+      text: (json['text'] ?? '').toString(),
+      createdAtIso: (json['createdAtIso'] ?? '').toString(),
+      attachmentName: (json['attachmentName'] as String?),
+      evaluationData: (json['evaluationData'] is Map)
+          ? asStringKeyedMap(json['evaluationData'])
+          : null,
+    );
+  }
+
+  final int? runId;
+  final _EvalChatEntryKind kind;
   final String text;
-  final bool fromUser;
+  final String createdAtIso;
   final String? attachmentName;
+  final Map<String, dynamic>? evaluationData;
+
+  Map<String, dynamic> toJson() {
+    final kindString = switch (kind) {
+      _EvalChatEntryKind.assistantReport => 'assistantReport',
+      _EvalChatEntryKind.assistantText => 'assistantText',
+      _EvalChatEntryKind.user => 'user',
+    };
+    return <String, dynamic>{
+      'runId': runId,
+      'kind': kindString,
+      'text': text,
+      'createdAtIso': createdAtIso,
+      'attachmentName': attachmentName,
+      'evaluationData': evaluationData,
+    };
+  }
+}
+
+String _formatTime(String createdAtIso) {
+  try {
+    final dt = DateTime.parse(createdAtIso);
+    final hh = dt.hour.toString().padLeft(2, '0');
+    final mm = dt.minute.toString().padLeft(2, '0');
+    return '$hh:$mm';
+  } catch (_) {
+    return '';
+  }
 }
 
 class _EvaluationReportCard extends StatelessWidget {

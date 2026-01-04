@@ -112,9 +112,12 @@ class _SignInFormState extends State<SignInForm> {
                         const SnackBar(content: Text('Login successful')),
                       );
 
+                      final newSessionId =
+                          DateTime.now().millisecondsSinceEpoch.toString();
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
-                            builder: (_) => const EvaluationTextPage()),
+                            builder: (_) =>
+                                EvaluationTextPage(chatSessionId: newSessionId)),
                       );
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(

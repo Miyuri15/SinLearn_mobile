@@ -15,9 +15,11 @@ class EvaluationInputPage extends StatefulWidget {
 class _EvaluationTextPageState extends State<EvaluationInputPage> {
   int _selectedSegment = 1;
   final TextEditingController _totalMarksController = TextEditingController();
-  final TextEditingController _mainQuestionsController = TextEditingController();
-  final TextEditingController _requiredQuestionsController = TextEditingController();
-  
+  final TextEditingController _mainQuestionsController =
+      TextEditingController();
+  final TextEditingController _requiredQuestionsController =
+      TextEditingController();
+
   bool _isDataSaved = false;
   Map<String, dynamic> _allocatedMarks = {};
   bool _showAllocateMarksPopup = false;
@@ -31,7 +33,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
   void initState() {
     super.initState();
     _loadSavedData();
-    
+
     // Add listeners to validate required questions and trigger rebuild
     _mainQuestionsController.addListener(() {
       _validateRequiredQuestions();
@@ -47,11 +49,12 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
   }
 
   void _validateRequiredQuestions() {
-    if (_mainQuestionsController.text.isNotEmpty && 
+    if (_mainQuestionsController.text.isNotEmpty &&
         _requiredQuestionsController.text.isNotEmpty) {
       final mainQuestions = int.tryParse(_mainQuestionsController.text) ?? 0;
-      final requiredQuestions = int.tryParse(_requiredQuestionsController.text) ?? 0;
-      
+      final requiredQuestions =
+          int.tryParse(_requiredQuestionsController.text) ?? 0;
+
       if (requiredQuestions > mainQuestions && mainQuestions > 0) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -71,21 +74,23 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
   void _loadSavedData() async {
     final prefs = await SharedPreferences.getInstance();
     final savedData = prefs.getString(_storageKey);
-    
+
     if (savedData != null) {
       try {
         final Map<String, dynamic> data = json.decode(savedData);
-        
+
         setState(() {
           _totalMarksController.text = data['totalMarks']?.toString() ?? '';
-          _mainQuestionsController.text = data['mainQuestions']?.toString() ?? '';
-          _requiredQuestionsController.text = data['requiredQuestions']?.toString() ?? '';
-          
+          _mainQuestionsController.text =
+              data['mainQuestions']?.toString() ?? '';
+          _requiredQuestionsController.text =
+              data['requiredQuestions']?.toString() ?? '';
+
           // Fix for type conversion issue
           if (data['allocatedMarks'] != null) {
             _allocatedMarks = Map<String, dynamic>.from(data['allocatedMarks']);
           }
-          
+
           _isDataSaved = true;
         });
       } catch (e) {
@@ -131,17 +136,18 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
     _disposeSubQuestionControllers();
     final currentQuestion = _currentQuestionIndex + 1;
     final questionKey = 'Q$currentQuestion';
-    
+
     // Ensure the question exists in allocated marks
     if (!_allocatedMarks.containsKey(questionKey)) {
       _allocatedMarks[questionKey] = <String, dynamic>{'S1': ''};
     }
-    
+
     final subQuestions = _allocatedMarks[questionKey]!.length;
 
     for (int i = 1; i <= subQuestions; i++) {
       final subQuestionKey = 'S$i';
-      final markValue = _allocatedMarks[questionKey]?[subQuestionKey]?.toString() ?? '';
+      final markValue =
+          _allocatedMarks[questionKey]?[subQuestionKey]?.toString() ?? '';
       final controller = TextEditingController(text: markValue);
       _subQuestionMarkControllers.add(controller);
     }
@@ -150,24 +156,26 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
   void _saveCurrentQuestionMarks() {
     final currentQuestion = _currentQuestionIndex + 1;
     final questionKey = 'Q$currentQuestion';
-    
+
     if (!_allocatedMarks.containsKey(questionKey)) {
       _allocatedMarks[questionKey] = <String, dynamic>{};
     }
-    
+
     final subQuestions = _subQuestionMarkControllers.length;
 
     for (int i = 1; i <= subQuestions; i++) {
       final subQuestionKey = 'S$i';
       if (i - 1 < _subQuestionMarkControllers.length) {
-        _allocatedMarks[questionKey][subQuestionKey] = _subQuestionMarkControllers[i - 1].text;
+        _allocatedMarks[questionKey][subQuestionKey] =
+            _subQuestionMarkControllers[i - 1].text;
       }
     }
   }
 
   void _showAllocateMarksDialog() {
     final mainQuestions = int.tryParse(_mainQuestionsController.text) ?? 0;
-    final requiredQuestions = int.tryParse(_requiredQuestionsController.text) ?? 0;
+    final requiredQuestions =
+        int.tryParse(_requiredQuestionsController.text) ?? 0;
 
     if (mainQuestions == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -216,7 +224,8 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('${question.key}:', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  Text('${question.key}:',
+                      style: const TextStyle(fontWeight: FontWeight.bold)),
                   ...questionData.entries.map((subQuestion) {
                     return Padding(
                       padding: const EdgeInsets.only(left: 16.0),
@@ -241,8 +250,9 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
 
   bool _canAllocateMarks() {
     final mainQuestions = int.tryParse(_mainQuestionsController.text) ?? 0;
-    final requiredQuestions = int.tryParse(_requiredQuestionsController.text) ?? 0;
-    
+    final requiredQuestions =
+        int.tryParse(_requiredQuestionsController.text) ?? 0;
+
     return _totalMarksController.text.isNotEmpty &&
         _mainQuestionsController.text.isNotEmpty &&
         _requiredQuestionsController.text.isNotEmpty &&
@@ -252,15 +262,17 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
 
   bool _canSubmit() {
     final mainQuestions = int.tryParse(_mainQuestionsController.text) ?? 0;
-    final requiredQuestions = int.tryParse(_requiredQuestionsController.text) ?? 0;
-    
+    final requiredQuestions =
+        int.tryParse(_requiredQuestionsController.text) ?? 0;
+
     // Check if all sub-questions have marks allocated
     bool allSubQuestionsHaveMarks = true;
     if (_allocatedMarks.isNotEmpty) {
       for (int i = 1; i <= mainQuestions; i++) {
         final questionKey = 'Q$i';
         if (_allocatedMarks.containsKey(questionKey)) {
-          final subQuestions = _allocatedMarks[questionKey] as Map<String, dynamic>;
+          final subQuestions =
+              _allocatedMarks[questionKey] as Map<String, dynamic>;
           for (var subQuestion in subQuestions.values) {
             if (subQuestion.toString().isEmpty) {
               allSubQuestionsHaveMarks = false;
@@ -273,7 +285,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
         if (!allSubQuestionsHaveMarks) break;
       }
     }
-    
+
     return _totalMarksController.text.isNotEmpty &&
         _mainQuestionsController.text.isNotEmpty &&
         _requiredQuestionsController.text.isNotEmpty &&
@@ -284,7 +296,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
 
   Future<void> _saveToLocalStorage() async {
     if (!_canSubmit()) return;
-    
+
     final evaluationData = {
       'totalMarks': _totalMarksController.text,
       'mainQuestions': _mainQuestionsController.text,
@@ -295,11 +307,12 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_storageKey, json.encode(evaluationData));
-    
+    await prefs.setBool('paper_config_confirmed', true);
+
     setState(() {
       _isDataSaved = true;
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('evaluation.dataSaved'.tr())),
     );
@@ -308,7 +321,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
   Future<void> _removeData() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_storageKey);
-    
+
     setState(() {
       _totalMarksController.clear();
       _mainQuestionsController.clear();
@@ -316,7 +329,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
       _allocatedMarks.clear();
       _isDataSaved = false;
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('evaluation.dataRemoved'.tr())),
     );
@@ -364,7 +377,8 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                     children: [
                       Card(
                         elevation: 4,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
                         child: Padding(
                           padding: EdgeInsets.all(isMobile ? 16 : 24),
                           child: Column(
@@ -379,7 +393,9 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                     },
                                     icon: Icon(
                                       Icons.arrow_back,
-                                      color: isDarkMode ? Colors.white : Colors.black,
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
                                     ),
                                     tooltip: 'common.back'.tr(),
                                   ),
@@ -389,10 +405,15 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                     style: isMobile
                                         ? theme.textTheme.titleLarge?.copyWith(
                                             fontWeight: FontWeight.bold,
-                                            color: isDarkMode ? Colors.white : Colors.black)
-                                        : theme.textTheme.headlineSmall?.copyWith(
-                                            fontWeight: FontWeight.bold,
-                                            color: isDarkMode ? Colors.white : Colors.black),
+                                            color: isDarkMode
+                                                ? Colors.white
+                                                : Colors.black)
+                                        : theme.textTheme.headlineSmall
+                                            ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                color: isDarkMode
+                                                    ? Colors.white
+                                                    : Colors.black),
                                   ),
                                   const Spacer(),
                                   if (_isDataSaved)
@@ -418,14 +439,16 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                               _buildInputField(
                                   controller: _mainQuestionsController,
                                   label: 'evaluation.mainQuestions'.tr(),
-                                  hintText: 'evaluation.enterMainQuestions'.tr(),
+                                  hintText:
+                                      'evaluation.enterMainQuestions'.tr(),
                                   icon: Icons.format_list_numbered,
                                   isDarkMode: isDarkMode),
                               const SizedBox(height: 16),
                               _buildInputField(
                                   controller: _requiredQuestionsController,
                                   label: 'evaluation.requiredQuestions'.tr(),
-                                  hintText: 'evaluation.enterRequiredQuestions'.tr(),
+                                  hintText:
+                                      'evaluation.enterRequiredQuestions'.tr(),
                                   icon: Icons.assignment_turned_in,
                                   isDarkMode: isDarkMode),
                               const SizedBox(height: 24),
@@ -433,29 +456,50 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                 Column(
                                   children: [
                                     ElevatedButton.icon(
-                                      onPressed: _canAllocateMarks() ? _showAllocateMarksDialog : null,
-                                      icon: const Icon(Icons.add_chart, color: Colors.white),
-                                      label: Text('evaluation.allocateMarks'.tr(),
-                                          style: const TextStyle(color: Colors.white)),
+                                      onPressed: _canAllocateMarks()
+                                          ? _showAllocateMarksDialog
+                                          : null,
+                                      icon: const Icon(Icons.add_chart,
+                                          color: Colors.white),
+                                      label: Text(
+                                          'evaluation.allocateMarks'.tr(),
+                                          style: const TextStyle(
+                                              color: Colors.white)),
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _canAllocateMarks() ? primaryBlue : Colors.grey,
+                                        backgroundColor: _canAllocateMarks()
+                                            ? primaryBlue
+                                            : Colors.grey,
                                         minimumSize: const Size.fromHeight(50),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                       ),
                                     ),
                                     const SizedBox(height: 12),
                                     OutlinedButton.icon(
-                                      onPressed: _isDataSaved ? _showViewMarksDialog : null,
-                                      icon: Icon(Icons.edit, color: _isDataSaved ? primaryBlue : Colors.grey),
-                                      label: Text('evaluation.viewEditMarks'.tr(),
-                                          style: TextStyle(color: _isDataSaved ? primaryBlue : Colors.grey)),
+                                      onPressed: _isDataSaved
+                                          ? _showViewMarksDialog
+                                          : null,
+                                      icon: Icon(Icons.edit,
+                                          color: _isDataSaved
+                                              ? primaryBlue
+                                              : Colors.grey),
+                                      label: Text(
+                                          'evaluation.viewEditMarks'.tr(),
+                                          style: TextStyle(
+                                              color: _isDataSaved
+                                                  ? primaryBlue
+                                                  : Colors.grey)),
                                       style: OutlinedButton.styleFrom(
                                         minimumSize: const Size.fromHeight(50),
-                                        side: BorderSide(color: _isDataSaved ? primaryBlue : Colors.grey),
+                                        side: BorderSide(
+                                            color: _isDataSaved
+                                                ? primaryBlue
+                                                : Colors.grey),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                       ),
                                     ),
@@ -466,15 +510,24 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                   children: [
                                     Expanded(
                                       child: ElevatedButton.icon(
-                                        onPressed: _canAllocateMarks() ? _showAllocateMarksDialog : null,
-                                        icon: const Icon(Icons.add_chart, color: Colors.white),
-                                        label: Text('evaluation.allocateMarks'.tr(),
-                                            style: const TextStyle(color: Colors.white)),
+                                        onPressed: _canAllocateMarks()
+                                            ? _showAllocateMarksDialog
+                                            : null,
+                                        icon: const Icon(Icons.add_chart,
+                                            color: Colors.white),
+                                        label: Text(
+                                            'evaluation.allocateMarks'.tr(),
+                                            style: const TextStyle(
+                                                color: Colors.white)),
                                         style: ElevatedButton.styleFrom(
-                                          backgroundColor: _canAllocateMarks() ? primaryBlue : Colors.grey,
-                                          padding: const EdgeInsets.symmetric(vertical: 16),
+                                          backgroundColor: _canAllocateMarks()
+                                              ? primaryBlue
+                                              : Colors.grey,
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 16),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                         ),
                                       ),
@@ -482,27 +535,44 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                     const SizedBox(width: 16),
                                     Expanded(
                                       child: OutlinedButton.icon(
-                                        onPressed: _isDataSaved ? _showViewMarksDialog : null,
-                                        icon: Icon(Icons.visibility, color: _isDataSaved ? primaryBlue : Colors.grey),
-                                        label: Text('evaluation.viewEditMarks'.tr(),
-                                            style: TextStyle(color: _isDataSaved ? primaryBlue : Colors.grey)),
+                                        onPressed: _isDataSaved
+                                            ? _showViewMarksDialog
+                                            : null,
+                                        icon: Icon(Icons.visibility,
+                                            color: _isDataSaved
+                                                ? primaryBlue
+                                                : Colors.grey),
+                                        label: Text(
+                                            'evaluation.viewEditMarks'.tr(),
+                                            style: TextStyle(
+                                                color: _isDataSaved
+                                                    ? primaryBlue
+                                                    : Colors.grey)),
                                         style: OutlinedButton.styleFrom(
-                                          padding: const EdgeInsets.symmetric(vertical: 16),
-                                          side: BorderSide(color: _isDataSaved ? primaryBlue : Colors.grey),
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 16),
+                                          side: BorderSide(
+                                              color: _isDataSaved
+                                                  ? primaryBlue
+                                                  : Colors.grey),
                                           shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius:
+                                                BorderRadius.circular(12),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              
+
                               // Action Buttons inside the card
                               const SizedBox(height: 32),
-                              Divider(color: isDarkMode ? Colors.grey[700] : Colors.grey[300]),
+                              Divider(
+                                  color: isDarkMode
+                                      ? Colors.grey[700]
+                                      : Colors.grey[300]),
                               const SizedBox(height: 24),
-                              
+
                               if (isMobile)
                                 Column(
                                   children: [
@@ -512,14 +582,19 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                           child: OutlinedButton(
                                             onPressed: _resetForm,
                                             style: OutlinedButton.styleFrom(
-                                              padding: const EdgeInsets.symmetric(vertical: 16),
-                                              side: BorderSide(color: primaryBlue),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 16),
+                                              side: BorderSide(
+                                                  color: primaryBlue),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                               ),
                                             ),
                                             child: Text('common.cancel'.tr(),
-                                                style: TextStyle(color: primaryBlue)),
+                                                style: TextStyle(
+                                                    color: primaryBlue)),
                                           ),
                                         ),
                                       ],
@@ -529,16 +604,24 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                       children: [
                                         Expanded(
                                           child: ElevatedButton(
-                                            onPressed: _canSubmit() ? _saveToLocalStorage : null,
+                                            onPressed: _canSubmit()
+                                                ? _saveToLocalStorage
+                                                : null,
                                             style: ElevatedButton.styleFrom(
-                                              backgroundColor: _canSubmit() ? primaryBlue : Colors.grey,
-                                              padding: const EdgeInsets.symmetric(vertical: 16),
+                                              backgroundColor: _canSubmit()
+                                                  ? primaryBlue
+                                                  : Colors.grey,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      vertical: 16),
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(12),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
                                               ),
                                             ),
                                             child: Text('common.submit'.tr(),
-                                                style: const TextStyle(color: Colors.white)),
+                                                style: const TextStyle(
+                                                    color: Colors.white)),
                                           ),
                                         ),
                                       ],
@@ -556,7 +639,8 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                             horizontal: 32, vertical: 16),
                                         side: BorderSide(color: primaryBlue),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                       ),
                                       child: Text('common.cancel'.tr(),
@@ -564,17 +648,23 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                     ),
                                     const SizedBox(width: 16),
                                     ElevatedButton(
-                                      onPressed: _canSubmit() ? _saveToLocalStorage : null,
+                                      onPressed: _canSubmit()
+                                          ? _saveToLocalStorage
+                                          : null,
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _canSubmit() ? primaryBlue : Colors.grey,
-                                        padding:
-                                            const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                                        backgroundColor: _canSubmit()
+                                            ? primaryBlue
+                                            : Colors.grey,
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 32, vertical: 16),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
                                         ),
                                       ),
                                       child: Text('common.submit'.tr(),
-                                          style: const TextStyle(color: Colors.white)),
+                                          style: const TextStyle(
+                                              color: Colors.white)),
                                     ),
                                   ],
                                 ),
@@ -588,30 +678,31 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
               ),
             ],
           ),
-
           if (_showAllocateMarksPopup)
             AllocateMarksPopup(
               theme: theme,
               currentQuestionIndex: _currentQuestionIndex,
-              mainQuestionsCount: int.tryParse(_mainQuestionsController.text) ?? 0,
+              mainQuestionsCount:
+                  int.tryParse(_mainQuestionsController.text) ?? 0,
               subQuestionMarkControllers: _subQuestionMarkControllers,
               allocatedMarks: _allocatedMarks,
               onAddSubQuestion: () {
                 final currentQuestion = _currentQuestionIndex + 1;
                 final questionKey = 'Q$currentQuestion';
-                
+
                 if (!_allocatedMarks.containsKey(questionKey)) {
                   _allocatedMarks[questionKey] = <String, dynamic>{};
                 }
-                
-                final newSubQuestionNumber = (_allocatedMarks[questionKey]!.length) + 1;
-                
+
+                final newSubQuestionNumber =
+                    (_allocatedMarks[questionKey]!.length) + 1;
+
                 // Add new sub-question to the allocated marks structure
                 _allocatedMarks[questionKey]['S$newSubQuestionNumber'] = '';
-                
+
                 // Create a new controller for the new sub-question
                 _subQuestionMarkControllers.add(TextEditingController());
-                
+
                 // Trigger rebuild
                 if (mounted) {
                   setState(() {});
@@ -628,7 +719,8 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
               },
               onNext: () {
                 _saveCurrentQuestionMarks();
-                final mainQuestions = int.tryParse(_mainQuestionsController.text) ?? 0;
+                final mainQuestions =
+                    int.tryParse(_mainQuestionsController.text) ?? 0;
                 if (_currentQuestionIndex < mainQuestions - 1) {
                   setState(() {
                     _currentQuestionIndex++;
@@ -639,14 +731,16 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
               onDone: () {
                 _saveCurrentQuestionMarks();
                 setState(() => _showAllocateMarksPopup = false);
-                
+
                 // Check if all sub-questions have marks
                 bool allHaveMarks = true;
-                final mainQuestions = int.tryParse(_mainQuestionsController.text) ?? 0;
+                final mainQuestions =
+                    int.tryParse(_mainQuestionsController.text) ?? 0;
                 for (int i = 1; i <= mainQuestions; i++) {
                   final questionKey = 'Q$i';
                   if (_allocatedMarks.containsKey(questionKey)) {
-                    final subQuestions = _allocatedMarks[questionKey] as Map<String, dynamic>;
+                    final subQuestions = Map<String, dynamic>.from(
+                        _allocatedMarks[questionKey] as Map);
                     for (var subQuestion in subQuestions.values) {
                       if (subQuestion.toString().isEmpty) {
                         allHaveMarks = false;
@@ -656,7 +750,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                   }
                   if (!allHaveMarks) break;
                 }
-                
+
                 if (!allHaveMarks) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -697,17 +791,21 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
           style: TextStyle(color: isDarkMode ? Colors.white : Colors.black),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle:
-                TextStyle(color: isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+            hintStyle: TextStyle(
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[600]),
             prefixIcon: Icon(icon, color: primaryBlue),
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                    color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300)),
+                    color: isDarkMode
+                        ? Colors.grey.shade700
+                        : Colors.grey.shade300)),
             enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(
-                    color: isDarkMode ? Colors.grey.shade700 : Colors.grey.shade300)),
+                    color: isDarkMode
+                        ? Colors.grey.shade700
+                        : Colors.grey.shade300)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide(color: primaryBlue, width: 2)),
@@ -759,8 +857,8 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
   Widget build(BuildContext context) {
     final currentQuestion = widget.currentQuestionIndex + 1;
     final questionKey = 'Q$currentQuestion';
-    final subQuestionsCount = widget.allocatedMarks.containsKey(questionKey) 
-        ? widget.allocatedMarks[questionKey]!.length 
+    final subQuestionsCount = widget.allocatedMarks.containsKey(questionKey)
+        ? widget.allocatedMarks[questionKey]!.length
         : 1;
 
     return Dialog(
@@ -787,46 +885,56 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                               : widget.theme.textTheme.headlineSmall)
                           ?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: widget.isDarkMode ? Colors.white : Colors.black),
+                              color: widget.isDarkMode
+                                  ? Colors.white
+                                  : Colors.black),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis),
                 ),
                 IconButton(
                     onPressed: widget.onClose,
                     icon: Icon(Icons.close,
-                        color: widget.isDarkMode ? Colors.white : Colors.black)),
+                        color:
+                            widget.isDarkMode ? Colors.white : Colors.black)),
               ],
             ),
             const SizedBox(height: 16),
-            
             Text(
               '${'evaluation.enterMarksForSubQuestions'.tr()} (${'evaluation.total'.tr()}: $subQuestionsCount)',
-              style: widget.theme.textTheme.bodyLarge
-                  ?.copyWith(color: widget.isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+              style: widget.theme.textTheme.bodyLarge?.copyWith(
+                  color:
+                      widget.isDarkMode ? Colors.grey[300] : Colors.grey[700]),
             ),
-            
             const SizedBox(height: 24),
-            
             ConstrainedBox(
-              constraints:
-                  BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+              constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4),
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    ...List.generate(widget.subQuestionMarkControllers.length, (index) {
+                    ...List.generate(widget.subQuestionMarkControllers.length,
+                        (index) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 16),
                         child: TextField(
                           controller: widget.subQuestionMarkControllers[index],
                           keyboardType: TextInputType.number,
-                          style: TextStyle(color: widget.isDarkMode ? Colors.white : Colors.black),
+                          style: TextStyle(
+                              color: widget.isDarkMode
+                                  ? Colors.white
+                                  : Colors.black),
                           decoration: InputDecoration(
-                            labelText: '${'evaluation.subQuestion'.tr()} ${index + 1}',
+                            labelText:
+                                '${'evaluation.subQuestion'.tr()} ${index + 1}',
                             labelStyle: TextStyle(
-                                color: widget.isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+                                color: widget.isDarkMode
+                                    ? Colors.grey[300]
+                                    : Colors.grey[700]),
                             hintText: 'evaluation.enterMarks'.tr(),
                             hintStyle: TextStyle(
-                                color: widget.isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                                color: widget.isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600]),
                             border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
@@ -842,17 +950,17 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                             focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide(
-                                    color: Color(0xFF2196F3),
-                                    width: 2)),
+                                    color: Color(0xFF2196F3), width: 2)),
                             prefixIcon: const Icon(Icons.arrow_right,
                                 color: Color(0xFF2196F3)),
                             filled: true,
-                            fillColor: widget.isDarkMode ? Colors.grey[800] : Colors.grey[50],
+                            fillColor: widget.isDarkMode
+                                ? Colors.grey[800]
+                                : Colors.grey[50],
                           ),
                         ),
                       );
                     }),
-                    
                     Padding(
                       padding: const EdgeInsets.only(top: 8, bottom: 16),
                       child: Center(
@@ -878,9 +986,7 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                 ),
               ),
             ),
-            
             const SizedBox(height: 24),
-            
             if (widget.isMobile)
               Column(
                 children: [
@@ -890,8 +996,7 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                       icon: const Icon(Icons.arrow_back,
                           color: Color(0xFF2196F3)),
                       label: Text('common.previous'.tr(),
-                          style:
-                              const TextStyle(color: Color(0xFF2196F3))),
+                          style: const TextStyle(color: Color(0xFF2196F3))),
                       style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(50),
                           side: const BorderSide(color: Color(0xFF2196F3)),
@@ -899,10 +1004,12 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                               borderRadius: BorderRadius.circular(12))),
                     ),
                   const SizedBox(height: 12),
-                  if (widget.currentQuestionIndex < widget.mainQuestionsCount - 1)
+                  if (widget.currentQuestionIndex <
+                      widget.mainQuestionsCount - 1)
                     ElevatedButton.icon(
                       onPressed: widget.onNext,
-                      icon: const Icon(Icons.arrow_forward, color: Colors.white),
+                      icon:
+                          const Icon(Icons.arrow_forward, color: Colors.white),
                       label: Text('common.next'.tr(),
                           style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
@@ -935,8 +1042,7 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                       icon: const Icon(Icons.arrow_back,
                           color: Color(0xFF2196F3)),
                       label: Text('common.previous'.tr(),
-                          style:
-                              const TextStyle(color: Color(0xFF2196F3))),
+                          style: const TextStyle(color: Color(0xFF2196F3))),
                       style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Color(0xFF2196F3)),
                           shape: RoundedRectangleBorder(
@@ -944,10 +1050,12 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                     )
                   else
                     const SizedBox(width: 100),
-                  if (widget.currentQuestionIndex < widget.mainQuestionsCount - 1)
+                  if (widget.currentQuestionIndex <
+                      widget.mainQuestionsCount - 1)
                     ElevatedButton.icon(
                       onPressed: widget.onNext,
-                      icon: const Icon(Icons.arrow_forward, color: Colors.white),
+                      icon:
+                          const Icon(Icons.arrow_forward, color: Colors.white),
                       label: Text('common.next'.tr(),
                           style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(

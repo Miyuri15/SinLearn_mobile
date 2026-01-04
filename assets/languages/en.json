@@ -174,7 +174,12 @@
     "remove_rubric": "Rubric",
     "delete_confirm": "Do you want to delete \"{name}\"? This cannot be undone.",
     "delete": "Delete",
-    "delete_title": "Delete Question Paper"
+    "delete_title": "Delete Question Paper",
+    "rubric_applied_success": "Rubric applied successfully",
+    "applied_rubric": "Applied Rubric",
+    "custom_uploaded_file": "Custom Uploaded File",
+    "apply_selected_rubric": "Apply Selected Rubric",
+    "applied_for_evaluation": "Applied for evaluation"
   },
    "common": {
     "settings": "Settings",
@@ -223,6 +228,32 @@
     "removeData": "Remove Data",
     "dataRemoved": "Data removed successfully",
     "selectFileCancelled": "File selection cancelled",
-    "attachmentRemoved": "Attachment removed"
+    "attachmentRemoved": "Attachment removed",
+    "processDocuments": "Process Documents",
+    "alreadyProcessed": "Already processed",
+    "docStepAnswerSheetsProcessing": "Answer sheets processing",
+    "docStepQuestionPaperProcessing": "Question paper processing",
+    "docStepSyllabusProcessing": "Syllabus processing",
+    "docStepRubricSet": "Rubric set",
+    "docStepPaperConfigSet": "Paper config set",
+    "evaluationStarted": "Evaluation started",
+    "evaluationInProgress": "Evaluation in progress",
+    "missingDocsTitle": "Missing required documents",
+    "missingDocsBody": "Please complete all required uploads and settings (answer sheet, question paper, syllabus, rubric, and paper config) before evaluation can start.",
+    "reprocessDocuments": "Re-process documents",
+    "docsChangedTitle": "Documents changed",
+    "docsChangedBody": "Your documents/settings have changed. Please re-process documents to continue evaluation.",
+    "waitingForDocuments": "Waiting for document setup to be completed.",
+    "waitingForReprocess": "Evaluation is locked until you re-process documents.",
+    "attachedAnswerSheet": "Attached answer sheet: {}",
+    "evaluationResultFor": "Evaluation result for {}",
+    "noPreviousEvaluations": "No previous evaluations yet.",
+    "evalStepEvaluating": "Evaluating answer sheets",
+    "evalStepCalculatingMarks": "Calculating marks",
+    "evalStepGeneratingFeedback": "Generating feedback",
+    "evalStepPreparingReport": "Preparing report",
+    "viewResults": "View results",
+    "attachAnotherAnswerSheet": "Attach another answer sheet",
+    "endEvaluation": "End evaluation"
   }
 }
