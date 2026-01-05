@@ -231,25 +231,30 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                         const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _handleUpload,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.surface,
-                              foregroundColor: theme.colorScheme.onSurface,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: BorderSide(
-                                  color: theme.colorScheme.outline,
+                          child: Tooltip(
+                            message: 'question_paper.or_upload_custom'.tr(),
+                            waitDuration: const Duration(milliseconds: 250),
+                            child: ElevatedButton(
+                              onPressed: _handleUpload,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.surface,
+                                foregroundColor: theme.colorScheme.onSurface,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  side: BorderSide(
+                                    color: theme.colorScheme.outline,
+                                  ),
                                 ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: Text(
-                              'upload'.tr(),
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
+                              child: Text(
+                                'upload'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),

@@ -328,6 +328,16 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     return _hasAttachment && _hasQuestionPaper && _hasSyllabus;
   }
 
+  bool _canStartDocumentProcessing() {
+    // UX gate: require rubric + required documents before processing.
+    return _hasRubrics && _canProcessDocuments();
+  }
+
+  bool _documentsProcessedUpToDate() {
+    // After processing completes and there are no pending changes.
+    return _canProcessDocuments() && !_needsReprocess;
+  }
+
   Future<void> _processDocuments() async {
     if (_isProcessing) return;
 
@@ -637,6 +647,10 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final docsReadyForProcessing = _canStartDocumentProcessing();
+    final docsProcessed = _documentsProcessedUpToDate();
+    final marksAvailable = docsProcessed;
+    final sendAvailable = docsProcessed && _hasMarks && _hasRubrics;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -676,14 +690,54 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                         style: theme.textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 14),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _statusChip('Rubric', _hasRubrics),
-                          _statusChip('Marks', _hasMarks),
-                          _statusChip('Attachment', _hasAttachment),
+                      _Roadmap(
+                        steps: [
+                          _RoadmapStep(
+                            icon: Icons.rule,
+                            isActive: _hasRubrics,
+                            label: 'Rubric',
+                            tooltip: 'Select/apply a rubric',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.menu_book_outlined,
+                            isActive: _hasSyllabus,
+                            label: 'Syllabus',
+                            tooltip: 'Upload and select syllabus',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.description_outlined,
+                            isActive: _hasQuestionPaper,
+                            label: 'Question',
+                            tooltip: 'Upload question paper',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.attachment_outlined,
+                            isActive: _hasAttachment,
+                            label: 'Answer',
+                            tooltip: 'Upload answer sheet',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.auto_awesome,
+                            isActive: docsProcessed,
+                            isAvailable: docsReadyForProcessing,
+                            label: 'Process',
+                            tooltip:
+                                'Process documents (required before marks)',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.edit_note,
+                            isActive: docsProcessed && _hasMarks,
+                            isAvailable: marksAvailable,
+                            label: 'Marks',
+                            tooltip: 'Configure marks / paper settings',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.send,
+                            isActive: false,
+                            isAvailable: sendAvailable,
+                            label: 'Send',
+                            tooltip: 'Send for evaluation',
+                          ),
                         ],
                       ),
                       const SizedBox(height: 22),
@@ -786,25 +840,39 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                                           spacing: 8,
                                           runSpacing: 4,
                                           children: [
-                                            TextButton.icon(
-                                              onPressed: _isProcessing
-                                                  ? null
-                                                  : _pickAndSaveAttachment,
-                                              icon:
-                                                  const Icon(Icons.swap_horiz),
-                                              label: Text(
-                                                'evaluation.replaceAttachment'
-                                                    .tr(),
+                                            Tooltip(
+                                              message:
+                                                  'evaluation.replaceAttachment'
+                                                      .tr(),
+                                              waitDuration: const Duration(
+                                                  milliseconds: 250),
+                                              child: TextButton.icon(
+                                                onPressed: _isProcessing
+                                                    ? null
+                                                    : _pickAndSaveAttachment,
+                                                icon: const Icon(
+                                                    Icons.swap_horiz),
+                                                label: Text(
+                                                  'evaluation.replaceAttachment'
+                                                      .tr(),
+                                                ),
                                               ),
                                             ),
-                                            TextButton.icon(
-                                              onPressed: _isProcessing
-                                                  ? null
-                                                  : _removeAttachment,
-                                              icon: const Icon(Icons.close),
-                                              label: Text(
-                                                'evaluation.removeAttachment'
-                                                    .tr(),
+                                            Tooltip(
+                                              message:
+                                                  'evaluation.removeAttachment'
+                                                      .tr(),
+                                              waitDuration: const Duration(
+                                                  milliseconds: 250),
+                                              child: TextButton.icon(
+                                                onPressed: _isProcessing
+                                                    ? null
+                                                    : _removeAttachment,
+                                                icon: const Icon(Icons.close),
+                                                label: Text(
+                                                  'evaluation.removeAttachment'
+                                                      .tr(),
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -824,7 +892,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                         child: FilledButton.icon(
                           onPressed: _isProcessing
                               ? null
-                              : (_canProcessDocuments()
+                              : (docsReadyForProcessing
                                   ? _processDocuments
                                   : null),
                           icon: const Icon(Icons.auto_awesome),
@@ -889,30 +957,168 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
             isDark: isDark,
             attachedFileName: _attachedFileName,
             onAttachPressed: _pickAndSaveAttachment,
-            onMarksPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PaperConfigReviewPage(
-                    sessionId: widget.chatSessionId,
-                  ),
-                ),
-              );
-              _loadAllData();
-            },
-            onSendPressed: (_allDocumentsAvailable() && !_needsReprocess)
-                ? _sendToChat
+            onMarksPressed: marksAvailable
+                ? () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PaperConfigReviewPage(
+                          sessionId: widget.chatSessionId,
+                        ),
+                      ),
+                    );
+                    _loadAllData();
+                  }
                 : null,
+            onSendPressed:
+                (_allDocumentsAvailable() && !_needsReprocess && docsProcessed)
+                    ? _sendToChat
+                    : null,
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _statusChip(String label, bool ok) {
-    return Chip(
-      label: Text('$label: ${ok ? '✓' : '✗'}'),
-      backgroundColor: ok ? Colors.green.shade100 : Colors.red.shade100,
+class _RoadmapStep {
+  final IconData icon;
+  final bool isActive;
+  final bool isAvailable;
+  final String label;
+  final String tooltip;
+
+  const _RoadmapStep({
+    required this.icon,
+    required this.isActive,
+    required this.label,
+    required this.tooltip,
+    bool? isAvailable,
+  }) : isAvailable = isAvailable ?? true;
+}
+
+class _Roadmap extends StatelessWidget {
+  final List<_RoadmapStep> steps;
+
+  const _Roadmap({required this.steps});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final activeColor = theme.colorScheme.primary;
+    final inactiveColor = theme.colorScheme.onSurface.withOpacity(0.35);
+    final disabledColor = theme.colorScheme.onSurface.withOpacity(0.18);
+
+    const bubbleSize = 36.0;
+
+    return SizedBox(
+      height: 74,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              for (int i = 0; i < steps.length; i++) ...[
+                _RoadmapBubble(
+                  step: steps[i],
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                  disabledColor: disabledColor,
+                ),
+                if (i != steps.length - 1)
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: steps[i + 1].isAvailable
+                            ? (steps[i].isActive || steps[i + 1].isActive
+                                ? activeColor.withOpacity(0.65)
+                                : inactiveColor)
+                            : disabledColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              for (int i = 0; i < steps.length; i++) ...[
+                SizedBox(
+                  width: bubbleSize,
+                  child: Text(
+                    steps[i].label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: steps[i].isAvailable
+                          ? theme.colorScheme.onSurface.withOpacity(0.75)
+                          : theme.colorScheme.onSurface.withOpacity(0.35),
+                    ),
+                  ),
+                ),
+                if (i != steps.length - 1) const Expanded(child: SizedBox()),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoadmapBubble extends StatelessWidget {
+  final _RoadmapStep step;
+  final Color activeColor;
+  final Color inactiveColor;
+  final Color disabledColor;
+
+  const _RoadmapBubble({
+    required this.step,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.disabledColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final bg = step.isAvailable
+        ? (step.isActive ? activeColor : theme.colorScheme.surface)
+        : theme.colorScheme.surface;
+    final border = step.isAvailable
+        ? (step.isActive ? activeColor : inactiveColor)
+        : disabledColor;
+    final fg = step.isAvailable
+        ? (step.isActive ? theme.colorScheme.onPrimary : inactiveColor)
+        : disabledColor;
+
+    return Tooltip(
+      message: step.tooltip,
+      waitDuration: const Duration(milliseconds: 250),
+      child: Semantics(
+        label: step.label,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: bg,
+            shape: BoxShape.circle,
+            border: Border.all(color: border, width: 2),
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            step.isActive ? Icons.check : step.icon,
+            size: 18,
+            color: fg,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1131,7 +1337,7 @@ class _InputBar extends StatelessWidget {
   final bool isDark;
   final VoidCallback onAttachPressed;
   final String? attachedFileName;
-  final VoidCallback onMarksPressed;
+  final VoidCallback? onMarksPressed;
   final VoidCallback? onSendPressed;
 
   @override
@@ -1144,22 +1350,30 @@ class _InputBar extends StatelessWidget {
           children: [
             Expanded(
               child: attachedFileName == null
-                  ? ElevatedButton.icon(
-                      onPressed: onAttachPressed,
-                      icon: const Icon(Icons.attach_file),
-                      label: Text('evaluation.attach'.tr()),
+                  ? Tooltip(
+                      message: 'evaluation.attach'.tr(),
+                      waitDuration: const Duration(milliseconds: 250),
+                      child: ElevatedButton.icon(
+                        onPressed: onAttachPressed,
+                        icon: const Icon(Icons.attach_file),
+                        label: Text('evaluation.attach'.tr()),
+                      ),
                     )
                   : Row(
                       children: [
                         Expanded(
-                          child: ElevatedButton.icon(
-                            // Tapping the file triggers "Replace".
-                            onPressed: onAttachPressed,
-                            icon: const Icon(Icons.attachment_outlined),
-                            label: Text(
-                              attachedFileName!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          child: Tooltip(
+                            message: 'evaluation.replaceAttachment'.tr(),
+                            waitDuration: const Duration(milliseconds: 250),
+                            child: ElevatedButton.icon(
+                              // Tapping the file triggers "Replace".
+                              onPressed: onAttachPressed,
+                              icon: const Icon(Icons.attachment_outlined),
+                              label: Text(
+                                attachedFileName!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
                         ),
@@ -1172,6 +1386,9 @@ class _InputBar extends StatelessWidget {
                 onPressed: onMarksPressed,
                 icon: const Icon(Icons.add),
                 label: Text('evaluation.marks'.tr()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: onMarksPressed != null ? null : Colors.grey,
+                ),
               ),
             ),
             const SizedBox(width: 12),

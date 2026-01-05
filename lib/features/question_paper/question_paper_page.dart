@@ -346,47 +346,53 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
                               : const Color(0xFF666666)),
                     ),
                     const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: _pickFile,
-                      child: Container(
-                        height: 160,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: isDark
-                                  ? const Color(0xFF404040)
-                                  : const Color(0xFFDCE6F2),
-                              width: 1.5),
-                          color:
-                              isDark ? const Color(0xFF222222) : Colors.white,
-                        ),
-                        child: Center(
-                          child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // use main app's upload icon
-                                Icon(
-                                  Icons.file_upload_outlined,
-                                  size: 48,
-                                  color: isDark
-                                      ? const Color(0xFFAAAAAA)
-                                      : const Color(0xFF6B7A95),
-                                ),
-                                const SizedBox(height: 12),
-                                Text(
-                                  _file == null
-                                      ? tr('question_paper.click_to_upload')
-                                      : tr('question_paper.replace_file'),
-                                  style: TextStyle(
-                                    fontSize: 15,
+                    Tooltip(
+                      message: _file == null
+                          ? tr('question_paper.click_to_upload')
+                          : tr('question_paper.replace_file'),
+                      waitDuration: const Duration(milliseconds: 250),
+                      child: GestureDetector(
+                        onTap: _pickFile,
+                        child: Container(
+                          height: 160,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                                color: isDark
+                                    ? const Color(0xFF404040)
+                                    : const Color(0xFFDCE6F2),
+                                width: 1.5),
+                            color:
+                                isDark ? const Color(0xFF222222) : Colors.white,
+                          ),
+                          child: Center(
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  // use main app's upload icon
+                                  Icon(
+                                    Icons.file_upload_outlined,
+                                    size: 48,
                                     color: isDark
                                         ? const Color(0xFFAAAAAA)
                                         : const Color(0xFF6B7A95),
-                                    // decoration removed globally by DefaultTextStyle
                                   ),
-                                ),
-                              ]),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    _file == null
+                                        ? tr('question_paper.click_to_upload')
+                                        : tr('question_paper.replace_file'),
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      color: isDark
+                                          ? const Color(0xFFAAAAAA)
+                                          : const Color(0xFF6B7A95),
+                                      // decoration removed globally by DefaultTextStyle
+                                    ),
+                                  ),
+                                ]),
+                          ),
                         ),
                       ),
                     ),

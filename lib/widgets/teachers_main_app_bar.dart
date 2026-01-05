@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../features/evaluation/teachers_rubric_sidebar.dart';
 import '../features/syllabus/syllabus_page.dart';
 import '../features/question_paper/question_paper_page.dart';
@@ -97,14 +98,20 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                           .withOpacity(0.5),
                       shape: BoxShape.circle,
                     ),
-                    child: IconButton(
-                      icon: Icon(Icons.document_scanner,
-                          size: 20, color: theme.colorScheme.onSurface),
-                      padding: const EdgeInsets.all(8),
-                      splashRadius: 20,
-                      onPressed: () => showTeachersRubricSidebar(context,
+                    child: Tooltip(
+                      message: 'question_paper.select_rubric_tooltip'.tr(),
+                      waitDuration: const Duration(milliseconds: 250),
+                      child: IconButton(
+                        icon: Icon(Icons.document_scanner,
+                            size: 20, color: theme.colorScheme.onSurface),
+                        padding: const EdgeInsets.all(8),
+                        splashRadius: 20,
+                        onPressed: () => showTeachersRubricSidebar(
+                          context,
                           onRubricApplied: onRubricApplied,
-                          chatSessionId: chatSessionId),
+                          chatSessionId: chatSessionId,
+                        ),
+                      ),
                     ),
                   ),
 
@@ -119,14 +126,19 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                               .withOpacity(0.5),
                           shape: BoxShape.circle,
                         ),
-                        child: IconButton(
-                          icon: Icon(Icons.book,
-                              size: 20, color: theme.colorScheme.onSurface),
-                          padding: const EdgeInsets.all(8),
-                          splashRadius: 20,
-                          onPressed: () => showSyllabusSidebar(ctx,
-                              chatSessionId:
-                                  chatSessionId), // opens as right panel
+                        child: Tooltip(
+                          message: 'syllabus.upload_title'.tr(),
+                          waitDuration: const Duration(milliseconds: 250),
+                          child: IconButton(
+                            icon: Icon(Icons.book,
+                                size: 20, color: theme.colorScheme.onSurface),
+                            padding: const EdgeInsets.all(8),
+                            splashRadius: 20,
+                            onPressed: () => showSyllabusSidebar(
+                              ctx,
+                              chatSessionId: chatSessionId,
+                            ), // opens as right panel
+                          ),
                         ),
                       );
                     },
@@ -134,14 +146,19 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                   const SizedBox(width: 8),
                   Builder(
                     builder: (ctx) {
-                      return IconButton(
-                        icon: Icon(Icons.add,
-                            size: 22, color: theme.colorScheme.onSurface),
-                        padding: const EdgeInsets.all(8),
-                        splashRadius: 20,
-                        onPressed: () => showQuestionPaperSidebar(ctx,
-                            chatSessionId:
-                                chatSessionId), // opens as right panel
+                      return Tooltip(
+                        message: 'question_paper.upload_title'.tr(),
+                        waitDuration: const Duration(milliseconds: 250),
+                        child: IconButton(
+                          icon: Icon(Icons.add,
+                              size: 22, color: theme.colorScheme.onSurface),
+                          padding: const EdgeInsets.all(8),
+                          splashRadius: 20,
+                          onPressed: () => showQuestionPaperSidebar(
+                            ctx,
+                            chatSessionId: chatSessionId,
+                          ), // opens as right panel
+                        ),
                       );
                     },
                   ),

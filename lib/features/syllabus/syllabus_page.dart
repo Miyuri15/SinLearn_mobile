@@ -423,45 +423,49 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                                 ? const Color(0xFFAAAAAA)
                                 : const Color(0xFF666666))),
                     const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: _pickFile,
-                      child: Container(
-                        height: 160,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: isDark
-                                  ? const Color(0xFF404040)
-                                  : const Color(0xFFDCE6F2),
-                              width: 1.5),
-                          color:
-                              isDark ? const Color(0xFF222222) : Colors.white,
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              // use main app's upload icon
-                              Icon(
-                                Icons.file_upload_outlined,
-                                size: 48,
+                    Tooltip(
+                      message: tr('syllabus.click_to_upload'),
+                      waitDuration: const Duration(milliseconds: 250),
+                      child: GestureDetector(
+                        onTap: _pickFile,
+                        child: Container(
+                          height: 160,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
                                 color: isDark
-                                    ? const Color(0xFFAAAAAA)
-                                    : const Color(0xFF6B7A95),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                tr('syllabus.click_to_upload'),
-                                style: TextStyle(
-                                  fontSize: 15,
+                                    ? const Color(0xFF404040)
+                                    : const Color(0xFFDCE6F2),
+                                width: 1.5),
+                            color:
+                                isDark ? const Color(0xFF222222) : Colors.white,
+                          ),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // use main app's upload icon
+                                Icon(
+                                  Icons.file_upload_outlined,
+                                  size: 48,
                                   color: isDark
                                       ? const Color(0xFFAAAAAA)
                                       : const Color(0xFF6B7A95),
-                                  // decoration removed globally by DefaultTextStyle
                                 ),
-                              ),
-                            ],
+                                const SizedBox(height: 12),
+                                Text(
+                                  tr('syllabus.click_to_upload'),
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    color: isDark
+                                        ? const Color(0xFFAAAAAA)
+                                        : const Color(0xFF6B7A95),
+                                    // decoration removed globally by DefaultTextStyle
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),

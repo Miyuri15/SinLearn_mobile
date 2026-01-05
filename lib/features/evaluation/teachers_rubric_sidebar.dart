@@ -265,18 +265,22 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
                 const SizedBox(height: 24),
                 // Option to upload a new one
                 Center(
-                  child: TextButton.icon(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (_) => RubricUploadForm(
-                          onRubricApplied: widget.onRubricApplied,
-                          chatSessionId: widget.chatSessionId,
-                        ),
-                      ).then((_) => _loadRubric());
-                    },
-                    icon: const Icon(Icons.upload_file),
-                    label: Text('question_paper.or_upload_custom'.tr()),
+                  child: Tooltip(
+                    message: 'question_paper.or_upload_custom'.tr(),
+                    waitDuration: const Duration(milliseconds: 250),
+                    child: TextButton.icon(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (_) => RubricUploadForm(
+                            onRubricApplied: widget.onRubricApplied,
+                            chatSessionId: widget.chatSessionId,
+                          ),
+                        ).then((_) => _loadRubric());
+                      },
+                      icon: const Icon(Icons.upload_file),
+                      label: Text('question_paper.or_upload_custom'.tr()),
+                    ),
                   ),
                 ),
               ] else ...[
