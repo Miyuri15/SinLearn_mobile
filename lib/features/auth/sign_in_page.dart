@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'services/auth_service.dart';
-import '../evaluation/evaluation_text.dart';
+import '../evaluation/learning_mode.dart';
 
 class SignInForm extends StatefulWidget {
   const SignInForm({super.key});
@@ -20,7 +20,7 @@ class _SignInFormState extends State<SignInForm> {
   final AuthService _authService = AuthService();
   bool _loading = false;
 
-  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   @override
   void dispose() {
@@ -112,12 +112,9 @@ class _SignInFormState extends State<SignInForm> {
                         const SnackBar(content: Text('Login successful')),
                       );
 
-                      final newSessionId =
-                          DateTime.now().millisecondsSinceEpoch.toString();
                       Navigator.of(context).pushReplacement(
                         MaterialPageRoute(
-                            builder: (_) =>
-                                EvaluationTextPage(chatSessionId: newSessionId)),
+                            builder: (_) => const LearningModePage()),
                       );
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(

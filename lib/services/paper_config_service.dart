@@ -1,49 +1,117 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+
+import '../core/network/api_client.dart';
 import '../models/paper_config.dart';
 
 class PaperConfigService {
-  final String baseUrl;
-
-  PaperConfigService(this.baseUrl);
-
   Future<List<PaperConfig>> fetchConfigs(String sessionId) async {
-    try {
-      final res = await http.get(
-        Uri.parse('$baseUrl/evaluation/sessions/$sessionId/paper-config'),
-      );
+    final pathsToTry = <String>[
+      '/api/v1/evaluation/sessions/$sessionId/paper-config',
+      '/evaluation/sessions/$sessionId/paper-config',
+    ];
 
-      if (res.statusCode == 200) {
-        // Check if body is empty
-        if (res.body.isEmpty) return [];
-
-        try {
-          final decoded = jsonDecode(res.body);
-          if (decoded is List) {
-            return decoded.map((e) => PaperConfig.fromJson(e)).toList();
-          }
-        } catch (e) {
-          // If JSON decode fails (e.g. HTML response), return empty list
-          print('Error decoding paper config: $e');
-          return [];
+    DioException? last404;
+    for (final path in pathsToTry) {
+      try {
+        final res = await ApiClient.dio.get(path);
+        if (res.statusCode != 200) {
+          continue;
         }
+
+        final data = res.data;
+        if (data is List) {
+          return data
+              .whereType<Map>()
+              .map((e) => PaperConfig.fromJson(Map<String, dynamic>.from(e)))
+              .toList();
+        }
+        return const <PaperConfig>[];
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          last404 = e;
+          continue;
+        }
+        rethrow;
       }
-      return [];
-    } catch (e) {
-      print('Error fetching paper config: $e');
-      return [];
     }
+
+    if (last404 != null) {
+      return const <PaperConfig>[];
+    }
+    return const <PaperConfig>[];
+  }
+
+  Future<List<Map<String, dynamic>>> fetchQuestionsRaw(String sessionId) async {
+    final pathsToTry = <String>[
+      '/api/v1/evaluation/sessions/$sessionId/questions',
+      '/evaluation/sessions/$sessionId/questions',
+    ];
+
+    DioException? last404;
+    for (final path in pathsToTry) {
+      try {
+        final res = await ApiClient.dio.get(path);
+        if (res.statusCode != 200) {
+          continue;
+        }
+
+        final data = res.data;
+        if (data is List) {
+          return data
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+        return const <Map<String, dynamic>>[];
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          last404 = e;
+          continue;
+        }
+        rethrow;
+      }
+    }
+
+    if (last404 != null) {
+      return const <Map<String, dynamic>>[];
+    }
+    return const <Map<String, dynamic>>[];
   }
 
   Future<void> confirmConfigs(
       String sessionId, List<PaperConfig> configs) async {
-    await http.post(
-      Uri.parse(
-          '$baseUrl/evaluation/sessions/$sessionId/paper-config/confirm'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'paper_configs': configs.map((e) => e.toJson()).toList(),
-      }),
+    final payload = <String, dynamic>{
+      'paper_configs': configs.map((e) => e.toJson()).toList(),
+    };
+
+    final pathsToTry = <String>[
+      '/api/v1/evaluation/sessions/$sessionId/paper-config/confirm',
+      '/evaluation/sessions/$sessionId/paper-config/confirm',
+    ];
+
+    DioException? last404;
+    for (final path in pathsToTry) {
+      try {
+        final res = await ApiClient.dio.post(path, data: payload);
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          return;
+        }
+        throw StateError(
+          'Confirm paper-config failed (${res.statusCode}): ${res.data}',
+        );
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          last404 = e;
+          continue;
+        }
+        throw StateError(
+          'Confirm paper-config failed (${e.response?.statusCode}): ${e.response?.data}',
+        );
+      }
+    }
+
+    throw StateError(
+      'paper-config confirm endpoint not found. Last error: ${last404?.message}',
     );
   }
 }

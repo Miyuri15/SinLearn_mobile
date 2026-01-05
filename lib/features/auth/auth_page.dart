@@ -85,7 +85,7 @@ class _AuthPageState extends State<AuthPage> {
                         bottom: 20,
                       ),
                       child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 480),
+                        constraints: const BoxConstraints(maxWidth: 480),
                         child: Container(
                           margin: EdgeInsets.symmetric(
                             horizontal: isSmallPhone
@@ -310,7 +310,7 @@ class _AuthPageState extends State<AuthPage> {
 }
 
 class _LanguageToggle extends StatelessWidget {
-  const _LanguageToggle({Key? key}) : super(key: key);
+  const _LanguageToggle({super.key});
 
   @override
   Widget build(BuildContext context) {

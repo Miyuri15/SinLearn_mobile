@@ -14,6 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:math' as math;
 import '../../services/message_service.dart';
+import '../../services/chat_service.dart';
 
 
 class LearningModePage extends StatefulWidget {
@@ -43,7 +44,7 @@ class _LearningModePageState extends State<LearningModePage> {
   // store the localization key (display shows .tr())
   String? _activeSessionId;
   bool _isSending = false;
-  List<Message> _messages = [];
+  final List<Message> _messages = [];
   String _responseLevel = 'grades_9_11';
 
   final TextEditingController _inputController = TextEditingController();
@@ -169,23 +170,33 @@ class _LearningModePageState extends State<LearningModePage> {
       drawer: _buildDrawer(context),
       appBar: MainAppBar(
         selectedIndex: _selectedSegment,
-        onSegmentSelected: (index) {
+        onSegmentSelected: (index) async {
           setState(() => _selectedSegment = index);
 
           if (index == 1) {
-            // Generate a new session ID for evaluation
-            final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                  builder: (_) =>
-                      EvaluationTextPage(chatSessionId: newSessionId)),
-            );
+            // Create a new session ID for evaluation via API
+            try {
+              final session = await ChatService.createChatSession(
+                mode: 'evaluation',
+                title: 'New Evaluation Chat',
+              );
+              if (!mounted) return;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (_) =>
+                        EvaluationTextPage(chatSessionId: session.id)),
+              );
+            } catch (e) {
+              print('Error creating evaluation session: $e');
+              // Fallback or show error
+            }
           }
         },
         onMenuPressed: () {},
         onRightIconPressed: () {},
         onAddPressed: () {},
+        chatSessionId: _activeSessionId,
       ),
       body: Row(
         children: [
@@ -244,54 +255,9 @@ class _Sidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 320,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface, // was Colors.white
-        border: Border(right: BorderSide(color: theme.dividerColor)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const EvaluationHeader(),
-          Expanded(
-            child: ListView(
-              children: const [
-                _ChatListItem(
-                  title: 'New Learning Chat',
-                  subtitle: '0 messages • less than a minute ago',
-                  icon: Icons.menu_book_outlined,
-                ),
-                _ChatListItem(
-                  title: 'New Evaluation Chat',
-                  subtitle: '1 messages • 33 minutes ago',
-                  icon: Icons.assignment_turned_in_outlined,
-                ),
-                _ChatListItem(
-                  title: 'New Learning Chat',
-                  subtitle: '0 messages • about 1 hour ago',
-                  icon: Icons.menu_book_outlined,
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                const Icon(Icons.settings, size: 18),
-                const SizedBox(width: 8),
-                Text('Settings', style: theme.textTheme.bodyMedium),
-                const Spacer(),
-                const Icon(Icons.logout, size: 18),
-                const SizedBox(width: 8),
-                Text('Logout', style: theme.textTheme.bodyMedium),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+    // Use RecentChatsDrawer content for sidebar too, or a similar widget
+    // For now, let's just wrap RecentChatsDrawer but constrained
+    return const RecentChatsDrawer(); 
   }
 }
 
@@ -330,9 +296,9 @@ class _ChatListItem extends StatelessWidget {
 // Replace previous _EmptyChatView with _ChatView that shows messages or empty prompt
 class _ChatView extends StatelessWidget {
   const _ChatView({
-    Key? key,
+    super.key,
     required this.messages,
-  }) : super(key: key);
+  });
 
   final List<Message> messages;
 
@@ -403,7 +369,7 @@ class _ChatView extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: m.fromUser
                                   ? Colors.white.withOpacity(0.06)
-                                  : theme.colorScheme.background,
+                                  : theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -432,7 +398,7 @@ class _ChatView extends StatelessWidget {
                       '${MaterialLocalizations.of(context).formatShortDate(m.time)} '
                       '${TimeOfDay.fromDateTime(m.time).format(context)}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                          color: (textColor as Color?)?.withOpacity(0.7) ??
+                          color: (textColor)?.withOpacity(0.7) ??
                               Colors.grey),
                     ),
                   ],
@@ -553,9 +519,9 @@ class _InputBarState extends State<_InputBar>
 
   // small animated waveform widget used inside recording panel
   Widget _waveform(BuildContext context) {
-    final barCount = 12;
-    final maxBarHeight = 28.0;
-    final minBarHeight = 6.0;
+    const barCount = 12;
+    const maxBarHeight = 28.0;
+    const minBarHeight = 6.0;
 
     return AnimatedBuilder(
       animation: _animController,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import '../features/evaluation/teachers_rubric_sidebar.dart';
-import '../features/recent_chat/recent_chats_page.dart';
 import '../features/syllabus/syllabus_page.dart';
 import '../features/question_paper/question_paper_page.dart';
 
@@ -11,6 +11,8 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onRightIconPressed;
   final VoidCallback onAddPressed;
   final VoidCallback? onRubricApplied;
+  final String? chatSessionId;
+  final bool enableSidebars;
 
   const MainAppBar({
     super.key,
@@ -20,6 +22,8 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onRightIconPressed,
     required this.onAddPressed,
     this.onRubricApplied,
+    this.chatSessionId,
+    this.enableSidebars = true,
   });
 
   @override
@@ -62,7 +66,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant
+                    color: theme.colorScheme.surfaceContainerHighest
                         .withOpacity(0.5), // was 0xFFF7F9FC
                     borderRadius: BorderRadius.circular(28),
                   ),
@@ -84,60 +88,81 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 
                 const Spacer(),
 
-            // TEACHERS RUBRIC -> right-side sidebar
-            // show rubric icon only in Evaluation mode (selectedIndex == 1)
-            if (selectedIndex == 1)
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                  shape: BoxShape.circle,
-                ),
-                child: IconButton(
-                  icon: Icon(Icons.document_scanner, size: 20, color: theme.colorScheme.onSurface),
-                  padding: const EdgeInsets.all(8),
-                  splashRadius: 20,
-                  onPressed: () => showTeachersRubricSidebar(context, onRubricApplied: onRubricApplied),
-                ),
-              ),
-
-                // BOOK ICON -> Syllabus (sidebar)
-                Builder(
-                  builder: (ctx) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 6),
-                      decoration: BoxDecoration(
-                        color:
-                            theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                        shape: BoxShape.circle,
-                      ),
+                // TEACHERS RUBRIC -> right-side sidebar
+                // show rubric icon only in Evaluation mode (selectedIndex == 1)
+                if (enableSidebars && selectedIndex == 1)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Tooltip(
+                      message: 'question_paper.select_rubric_tooltip'.tr(),
+                      waitDuration: const Duration(milliseconds: 250),
                       child: IconButton(
-                        icon: Icon(Icons.book,
+                        icon: Icon(Icons.document_scanner,
                             size: 20, color: theme.colorScheme.onSurface),
                         padding: const EdgeInsets.all(8),
                         splashRadius: 20,
-                        onPressed: () =>
-                            showSyllabusSidebar(ctx), // opens as right panel
+                        onPressed: () => showTeachersRubricSidebar(
+                          context,
+                          onRubricApplied: onRubricApplied,
+                          chatSessionId: chatSessionId,
+                        ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  ),
 
-                const SizedBox(width: 8),
-
-                // ADD BUTTON -> Question Paper (sidebar)
-                Builder(
-                  builder: (ctx) {
-                    return IconButton(
-                      icon: Icon(Icons.add,
-                          size: 22, color: theme.colorScheme.onSurface),
-                      padding: const EdgeInsets.all(8),
-                      splashRadius: 20,
-                      onPressed: () =>
-                          showQuestionPaperSidebar(ctx), // opens as right panel
-                    );
-                  },
-                ),
+                // BOOK ICON -> Syllabus (sidebar)
+                if (enableSidebars) ...[
+                  Builder(
+                    builder: (ctx) {
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Tooltip(
+                          message: 'syllabus.upload_title'.tr(),
+                          waitDuration: const Duration(milliseconds: 250),
+                          child: IconButton(
+                            icon: Icon(Icons.book,
+                                size: 20, color: theme.colorScheme.onSurface),
+                            padding: const EdgeInsets.all(8),
+                            splashRadius: 20,
+                            onPressed: () => showSyllabusSidebar(
+                              ctx,
+                              chatSessionId: chatSessionId,
+                            ), // opens as right panel
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Builder(
+                    builder: (ctx) {
+                      return Tooltip(
+                        message: 'question_paper.upload_title'.tr(),
+                        waitDuration: const Duration(milliseconds: 250),
+                        child: IconButton(
+                          icon: Icon(Icons.add,
+                              size: 22, color: theme.colorScheme.onSurface),
+                          padding: const EdgeInsets.all(8),
+                          splashRadius: 20,
+                          onPressed: () => showQuestionPaperSidebar(
+                            ctx,
+                            chatSessionId: chatSessionId,
+                          ), // opens as right panel
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ),

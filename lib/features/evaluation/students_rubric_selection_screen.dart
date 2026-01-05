@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+
+import '../../services/chat_service.dart';
+import '../../services/rubric_service.dart';
+import '../../core/utils/blocking_progress_dialog.dart';
 
 class RubricSelectionSidebar extends StatefulWidget {
   final VoidCallback? onRubricApplied;
+  final String? chatSessionId;
 
-  const RubricSelectionSidebar({super.key, this.onRubricApplied});
+  const RubricSelectionSidebar(
+      {super.key, this.onRubricApplied, this.chatSessionId});
 
   @override
   State<RubricSelectionSidebar> createState() => _RubricSelectionSidebarState();
@@ -16,9 +23,13 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
   String? _appliedRubric;
   bool _isCustomRubric = false;
 
-  static const String _rubricKey = 'hasRubric';
-  static const String _rubricNameKey = 'appliedRubricName';
-  static const String _isCustomRubricKey = 'isCustomRubric';
+  // Session-scoped keys (fallback to legacy globals).
+  static const String _rubricAppliedPrefix = 'hasRubric:';
+  static const String _rubricNamePrefix = 'rubricName:';
+  static const String _isCustomRubricPrefix = 'isCustomRubric:';
+
+  String? get _sid => widget.chatSessionId;
+  String _k(String prefix) => '$prefix${_sid ?? 'no-session'}';
 
   @override
   void initState() {
@@ -28,25 +39,94 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
 
   Future<void> _loadSavedRubric() async {
     final prefs = await SharedPreferences.getInstance();
-    final hasRubric = prefs.getBool(_rubricKey) ?? false;
-    if (hasRubric) {
-      setState(() {
-        _appliedRubric = prefs.getString(_rubricNameKey);
-        _isCustomRubric = prefs.getBool(_isCustomRubricKey) ?? false;
-        // Also set the dropdown value if it's a standard rubric
-        if (!_isCustomRubric && _standardRubrics.contains(_appliedRubric)) {
-          _selectedRubric = _appliedRubric;
-        }
-      });
+
+    // Backend is the source of truth for whether a rubric is attached.
+    bool attachedInBackend = false;
+    String? backendRubricId;
+    if (_sid != null && _sid!.isNotEmpty) {
+      try {
+        final details = await ChatService.getChatSessionDetails(_sid!);
+        backendRubricId = details.rubricId;
+        attachedInBackend =
+            backendRubricId != null && backendRubricId!.isNotEmpty;
+      } catch (e) {
+        // ignore: avoid_print
+        print('Failed to load rubric from backend: $e');
+      }
     }
+
+    final hasRubric = (prefs.getBool(_k(_rubricAppliedPrefix)) ?? false) ||
+        (prefs.getBool('hasRubric') ?? false) ||
+        attachedInBackend;
+
+    if (!hasRubric) return;
+
+    // Ensure local session-scoped flag is set when backend has rubric.
+    if (attachedInBackend && _sid != null && _sid!.isNotEmpty) {
+      await prefs.setBool(_k(_rubricAppliedPrefix), true);
+      await prefs.setBool('hasRubric', true);
+    }
+
+    final appliedName = prefs.getString(_k(_rubricNamePrefix)) ??
+        prefs.getString('rubricName') ??
+        prefs.getString('appliedRubricName') ??
+        (backendRubricId?.toString());
+
+    final isCustom = prefs.getBool(_k(_isCustomRubricPrefix)) ??
+        (prefs.getBool('isCustomRubric') ?? false);
+
+    if (!mounted) return;
+    setState(() {
+      _appliedRubric = appliedName;
+      _isCustomRubric = isCustom;
+      if (!_isCustomRubric && _standardRubrics.contains(_appliedRubric)) {
+        _selectedRubric = _appliedRubric;
+      }
+    });
   }
 
   Future<void> _saveRubric(String name, bool isCustom) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_rubricKey, true);
-    await prefs.setString(_rubricNameKey, name);
-    await prefs.setBool(_isCustomRubricKey, isCustom);
-    
+
+    // Persist session-scoped, plus legacy globals for backward compatibility.
+    await prefs.setBool(_k(_rubricAppliedPrefix), true);
+    await prefs.setString(_k(_rubricNamePrefix), name);
+    await prefs.setBool(_k(_isCustomRubricPrefix), isCustom);
+
+    await prefs.setBool('hasRubric', true);
+    await prefs.setString('rubricName', name);
+    await prefs.setString('appliedRubricName', name);
+    await prefs.setBool('isCustomRubric', isCustom);
+
+    // Best-effort: persist to backend for this chat session
+    if (widget.chatSessionId != null) {
+      try {
+        unawaited(
+          showBlockingProgressDialog(
+            context,
+            message: 'Applying rubric...',
+          ),
+        );
+        final displayName = isCustom ? name : name.tr();
+        final rubricId = await RubricService.createRubric(
+          name: displayName,
+          chatSessionId: widget.chatSessionId,
+          source: isCustom ? 'custom' : 'standard',
+        );
+        await ChatService.attachRubricToSession(
+          chatSessionId: widget.chatSessionId!,
+          rubricId: rubricId,
+        );
+      } catch (e) {
+        // ignore: avoid_print
+        print('Failed to attach rubric to session: $e');
+      } finally {
+        if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
+    }
+
     if (widget.onRubricApplied != null) {
       widget.onRubricApplied!();
     }
@@ -151,25 +231,30 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                         const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _handleUpload,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: theme.colorScheme.surface,
-                              foregroundColor: theme.colorScheme.onSurface,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                side: BorderSide(
-                                  color: theme.colorScheme.outline,
+                          child: Tooltip(
+                            message: 'question_paper.or_upload_custom'.tr(),
+                            waitDuration: const Duration(milliseconds: 250),
+                            child: ElevatedButton(
+                              onPressed: _handleUpload,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: theme.colorScheme.surface,
+                                foregroundColor: theme.colorScheme.onSurface,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  side: BorderSide(
+                                    color: theme.colorScheme.outline,
+                                  ),
                                 ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                               ),
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                            ),
-                            child: Text(
-                              'upload'.tr(),
-                              style: const TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
+                              child: Text(
+                                'upload'.tr(),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           ),
@@ -248,7 +333,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
           borderRadius: BorderRadius.circular(8),
         ),
         filled: true,
-        fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
       ),
       borderRadius: BorderRadius.circular(8),
       dropdownColor: theme.colorScheme.surface,
@@ -287,7 +372,8 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('question_paper.rubric_applied_success'.tr()),
+                      content:
+                          Text('question_paper.rubric_applied_success'.tr()),
                       backgroundColor: theme.colorScheme.primary,
                     ),
                   );
@@ -317,7 +403,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
     // Simulate file upload
     const fileName = "Custom_Rubric.pdf";
     await _saveRubric(fileName, true);
-    
+
     setState(() {
       _selectedRubric = fileName; // Example file name
       _appliedRubric = _selectedRubric;
@@ -392,7 +478,8 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
   }
 }
 
-void showRubricSelectionSidebar(BuildContext context, {VoidCallback? onRubricApplied}) {
+void showRubricSelectionSidebar(BuildContext context,
+    {VoidCallback? onRubricApplied, String? chatSessionId}) {
   showGeneralDialog(
     context: context,
     barrierDismissible: true,
@@ -412,7 +499,10 @@ void showRubricSelectionSidebar(BuildContext context, {VoidCallback? onRubricApp
           child: SizedBox(
             width: drawerW,
             height: double.infinity,
-            child: RubricSelectionSidebar(onRubricApplied: onRubricApplied),
+            child: RubricSelectionSidebar(
+              onRubricApplied: onRubricApplied,
+              chatSessionId: chatSessionId,
+            ),
           ),
         ),
       );

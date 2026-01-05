@@ -19,7 +19,7 @@ class PaperConfigReviewPage extends StatefulWidget {
 class _PaperConfigReviewPageState extends State<PaperConfigReviewPage> {
   bool _isLoading = true;
   final List<PaperConfig> _configs = [];
-  final _service = PaperConfigService('BASE_URL_HERE');
+  final _service = PaperConfigService();
 
   @override
   void initState() {
@@ -35,6 +35,13 @@ class _PaperConfigReviewPageState extends State<PaperConfigReviewPage> {
       final data = await _service.fetchConfigs(widget.sessionId);
       if (data.isNotEmpty) {
         _configs.addAll(data);
+
+        // Prefill marks from processed questions endpoint.
+        // Backend provides paper-config metadata but question marks come from
+        // /evaluation/sessions/{chat_session_id}/questions.
+        final rawQuestions =
+            await _service.fetchQuestionsRaw(widget.sessionId);
+        _applyQuestionsFromBackend(rawQuestions);
       } else {
         _configs.add(_newPaperPart());
       }
@@ -42,6 +49,69 @@ class _PaperConfigReviewPageState extends State<PaperConfigReviewPage> {
       _configs.add(_newPaperPart());
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _applyQuestionsFromBackend(List<Map<String, dynamic>> rawQuestions) {
+    if (rawQuestions.isEmpty || _configs.isEmpty) return;
+
+    // Ensure deterministic ordering by question_number when possible.
+    final sorted = [...rawQuestions];
+    sorted.sort((a, b) {
+      final an = int.tryParse((a['question_number'] ?? '').toString());
+      final bn = int.tryParse((b['question_number'] ?? '').toString());
+      if (an == null && bn == null) return 0;
+      if (an == null) return 1;
+      if (bn == null) return -1;
+      return an.compareTo(bn);
+    });
+
+    var cursor = 0;
+    for (final config in _configs) {
+      final count = config.totalMainQuestions;
+      if (count <= 0) continue;
+
+      // Ensure local question list size matches backend paper-config.
+      if (config.questions.length != count) {
+        _updateQuestionCount(config, count);
+      }
+
+      for (var i = 0; i < count; i++) {
+        if (cursor >= sorted.length) return;
+
+        final qJson = sorted[cursor++];
+        final q = config.questions[i];
+
+        final maxMarks = (qJson['max_marks'] is num)
+            ? (qJson['max_marks'] as num).toDouble()
+            : double.tryParse((qJson['max_marks'] ?? 0).toString()) ?? 0;
+
+        final subQuestions = (qJson['sub_questions'] as List?)
+                ?.whereType<Map>()
+                .map((e) => Map<String, dynamic>.from(e))
+                .toList() ??
+            const <Map<String, dynamic>>[];
+
+        if (subQuestions.isNotEmpty) {
+          q.hasSubQuestions = true;
+          q.marks = 0;
+          q.subQuestions = subQuestions
+              .map(
+                (sq) => SubQuestionStructure(
+                  label: (sq['label'] ?? '').toString(),
+                  marks: (sq['max_marks'] is num)
+                      ? (sq['max_marks'] as num).toDouble()
+                      : double.tryParse((sq['max_marks'] ?? 0).toString()) ??
+                          0,
+                ),
+              )
+              .toList();
+        } else {
+          q.hasSubQuestions = false;
+          q.subQuestions = [];
+          q.marks = maxMarks;
+        }
+      }
     }
   }
 
@@ -162,8 +232,10 @@ class _PaperConfigReviewPageState extends State<PaperConfigReviewPage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('paper_config_confirmed', true);
 
-      if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      Navigator.pop(context);
     } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to save paper config')),
       );
@@ -282,8 +354,10 @@ class _PaperConfigReviewPageState extends State<PaperConfigReviewPage> {
               ),
               keyboardType: TextInputType.number,
               onChanged: (v) {
-                config.selectionRules =
-                    SelectionRules(chooseAny: int.tryParse(v));
+                config.selectionRules = SelectionRules(
+                  mode: config.selectionRules.mode,
+                  chooseAny: int.tryParse(v),
+                );
               },
             ),
             const Divider(height: 32),

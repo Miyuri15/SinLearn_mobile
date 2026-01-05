@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
+
+import '../../services/chat_service.dart';
+import '../../services/rubric_service.dart';
+import '../../core/utils/blocking_progress_dialog.dart';
 
 class RubricUploadForm extends StatefulWidget {
   final VoidCallback? onRubricApplied;
+  final String? chatSessionId;
 
-  const RubricUploadForm({super.key, this.onRubricApplied});
+  const RubricUploadForm({
+    super.key,
+    this.onRubricApplied,
+    this.chatSessionId,
+  });
 
   @override
   State<RubricUploadForm> createState() => _RubricUploadFormState();
@@ -22,6 +32,8 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
       TextEditingController(text: '30');
 
   String? totalError; // <-- for inline error display
+
+  bool _submitting = false;
 
   @override
   Widget build(BuildContext context) {
@@ -75,7 +87,7 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _submit,
+                  onPressed: _submitting ? null : _submit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: theme.colorScheme.primary,
                     shape: RoundedRectangleBorder(
@@ -119,6 +131,11 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_submitting) return;
+    setState(() {
+      _submitting = true;
+    });
+
     final semantic = int.parse(semanticController.text);
     final coverage = int.parse(coverageController.text);
     final relevance = int.parse(relevanceController.text);
@@ -139,16 +156,74 @@ class _RubricUploadFormState extends State<RubricUploadForm> {
     // Save rubric to local storage
     final prefs = await SharedPreferences.getInstance();
     // Save as custom rubric data
+    final sid = widget.chatSessionId;
+    if (sid != null && sid.isNotEmpty) {
+      await prefs.setInt('custom_semantic:$sid', semantic);
+      await prefs.setInt('custom_coverage:$sid', coverage);
+      await prefs.setInt('custom_relevance:$sid', relevance);
+      await prefs.setBool('hasCustomRubric:$sid', true);
+    }
+
+    // Legacy (non-session) keys
     await prefs.setInt('custom_semantic', semantic);
     await prefs.setInt('custom_coverage', coverage);
     await prefs.setInt('custom_relevance', relevance);
     await prefs.setBool('hasCustomRubric', true);
 
-    Navigator.pop(context);
+    // Also mark rubric applied (required by evaluation flow gating)
+    if (sid != null && sid.isNotEmpty) {
+      await prefs.setBool('hasRubric:$sid', true);
+      await prefs.setString('rubricName:$sid', 'Custom Rubric');
+    }
+    await prefs.setBool('hasRubric', true);
+    await prefs.setString('rubricName', 'Custom Rubric');
 
-    ScaffoldMessenger.of(Navigator.of(context).context).showSnackBar(
-      SnackBar(content: Text('upload_message'.tr())),
+    // Best-effort: create rubric in backend and attach to this chat session.
+    if (sid != null && sid.isNotEmpty) {
+      try {
+        unawaited(
+          showBlockingProgressDialog(
+            context,
+            message: 'Uploading rubric...',
+          ),
+        );
+        final rubricId = await RubricService.createRubric(
+          name: 'Custom Rubric',
+          chatSessionId: sid,
+          semantic: semantic,
+          coverage: coverage,
+          relevance: relevance,
+          source: 'custom',
+          rubricType: 'custom',
+        );
+        await ChatService.attachRubricToSession(
+          chatSessionId: sid,
+          rubricId: rubricId,
+        );
+      } catch (e) {
+        // ignore: avoid_print
+        print('Failed to create/attach custom rubric: $e');
+      } finally {
+        if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context);
+    widget.onRubricApplied?.call();
+
+    // Use current context before the dialog is disposed.
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('question_paper.rubric_applied_success'.tr())),
     );
+
+    if (mounted) {
+      setState(() {
+        _submitting = false;
+      });
+    }
   }
 
   @override

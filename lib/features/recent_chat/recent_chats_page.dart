@@ -7,6 +7,7 @@ import '../evaluation/learning_mode.dart';
 import '../evaluation/evaluation_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import '../../services/chat_service.dart';
 
 // Model
 class ChatEntry {
@@ -38,7 +39,7 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
   final List<ChatEntry> _all = [];
   String? _activeId;
   final _search = TextEditingController();
-  int _version = 0;
+  final int _version = 0;
 
   @override
   void initState() {
@@ -47,115 +48,85 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
   }
 
   Future<void> _seedInitialChats() async {
-    final now = DateTime.now();
-    setState(() {
-      _all
-        ..clear()
-        ..addAll([
-          ChatEntry(
-              title: 'recent_chats.new_learning'.tr(),
-              type: ChatType.learning,
-              createdAt: now,
-              messageCount: 0),
-          ChatEntry(
-              title: 'recent_chats.new_learning'.tr(),
-              type: ChatType.learning,
-              createdAt: now.subtract(const Duration(minutes: 60)),
-              messageCount: 1),
-          ChatEntry(
-              title: 'recent_chats.new_evaluation'.tr(),
-              type: ChatType.evaluation,
-              createdAt: now.subtract(const Duration(hours: 2)),
-              messageCount: 0),
-        ]);
-      _activeId = _all.first.id;
-      // keep ids monotonic
-      ChatEntry._next = (_all
-          .map((c) => int.tryParse(c.id) ?? 0)
-          .fold<int>(0, (a, b) => a > b ? a : b));
-    });
-    await _saveChats();
+    // No-op: We don't want fake chats anymore.
   }
 
   Future<void> _loadChats() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('recent_chats');
-    _version = prefs.getInt('recent_chats_version') ?? 0;
-
-    if (raw == null) {
-      await _seedInitialChats();
-      return;
-    }
-
     try {
-      final data = jsonDecode(raw);
-      if (data is List && data.isNotEmpty) {
+      final sessions = await ChatService.listChatSessions();
+      if (!mounted) return;
+      
+      setState(() {
         _all
           ..clear()
-          ..addAll(data.map((e) => ChatEntry(
-                id: e['id'],
-                title: e['title'],
-                type: e['type'] == 'learning'
-                    ? ChatType.learning
-                    : ChatType.evaluation,
-                createdAt: DateTime.parse(e['createdAt']),
-                messageCount: e['messageCount'] ?? 0,
-              )));
-        ChatEntry._next = (_all
-            .map((c) => int.tryParse(c.id) ?? 0)
-            .fold<int>(0, (a, b) => a > b ? a : b));
-        _activeId = _all.isNotEmpty ? _all.first.id : null;
-        setState(() {});
-      } else {
-        // empty list or wrong shape -> seed defaults
-        await _seedInitialChats();
-      }
-    } catch (_) {
-      // corrupted JSON -> seed defaults
-      await _seedInitialChats();
+          ..addAll(sessions.map((s) => ChatEntry(
+            id: s.id,
+            title: s.title ?? (s.mode == 'learning' ? 'recent_chats.new_learning'.tr() : 'recent_chats.new_evaluation'.tr()),
+            type: s.mode == 'learning' ? ChatType.learning : ChatType.evaluation,
+            createdAt: DateTime.tryParse(s.createdAt) ?? DateTime.now(),
+            messageCount: 0, 
+          )));
+          
+          // Sort by createdAt desc
+          _all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          
+          if (_all.isNotEmpty) {
+             _activeId = _all.first.id;
+          }
+      });
+    } catch (e) {
+      print("Error loading chats: $e");
+      // If API fails, maybe show empty or cached? 
+      // For now, let's not seed fake data to avoid confusion.
     }
   }
 
   Future<void> _saveChats() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = _all
-        .map((c) => {
-              'id': c.id,
-              'title': c.title,
-              'type': c.type == ChatType.learning ? 'learning' : 'evaluation',
-              'createdAt': c.createdAt.toIso8601String(),
-              'messageCount': c.messageCount,
-            })
-        .toList();
-    await prefs.setString('recent_chats', jsonEncode(data));
-    // bump version so drawer can detect changes
-    _version = (_version + 1);
-    await prefs.setInt('recent_chats_version', _version);
+    // We might not need to save to local storage if we are fully API driven, 
+    // but keeping it for offline support could be useful. 
+    // However, syncing is complex. Let's skip saving for now to rely on API.
   }
 
-  void _create(ChatType type) {
-    final entry = ChatEntry(
-      title: type == ChatType.learning
-          ? 'recent_chats.new_learning'.tr()
-          : 'recent_chats.new_evaluation'.tr(),
-      type: type,
-      createdAt: DateTime.now(),
-    );
+  Future<void> _create(ChatType type) async {
+    try {
+      final session = await ChatService.createChatSession(
+        mode: type == ChatType.learning ? 'learning' : 'evaluation',
+        title: type == ChatType.learning
+            ? 'recent_chats.new_learning'.tr()
+            : 'recent_chats.new_evaluation'.tr(),
+      );
 
-    setState(() {
-      _all.insert(0, entry);
-      _activeId = entry.id;
-    });
-    _saveChats();
+      final entry = ChatEntry(
+        id: session.id,
+        title: session.title ?? (type == ChatType.learning
+            ? 'recent_chats.new_learning'.tr()
+            : 'recent_chats.new_evaluation'.tr()),
+        type: type,
+        createdAt: DateTime.now(),
+      );
 
-    // Close the drawer first, then navigate to the appropriate interface
-    Navigator.of(context).pop();
-    if (type == ChatType.learning) {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const LearningModePage()));
-    } else {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
+      setState(() {
+        _all.insert(0, entry);
+        _activeId = entry.id;
+      });
+      await _saveChats();
+
+      if (!mounted) return;
+      // Close the drawer first, then navigate to the appropriate interface
+      Navigator.of(context).pop();
+      if (type == ChatType.learning) {
+        Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const LearningModePage()));
+      } else {
+        Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to create session: $e')),
+        );
+      }
     }
   }
 
