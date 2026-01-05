@@ -22,7 +22,7 @@ class _SignUpFormState extends State<SignUpForm> {
   final FocusNode _passwordFocus = FocusNode();
 
   final AuthService _authService = AuthService();
-  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   bool _loading = false;
 
   @override

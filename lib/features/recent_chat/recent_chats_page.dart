@@ -39,7 +39,7 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
   final List<ChatEntry> _all = [];
   String? _activeId;
   final _search = TextEditingController();
-  int _version = 0;
+  final int _version = 0;
 
   @override
   void initState() {

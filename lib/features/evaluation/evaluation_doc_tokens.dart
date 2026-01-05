@@ -30,6 +30,13 @@ class EvalDocKeys {
 /// If any token changes (new answer sheet, new question paper, syllabus edits,
 /// the documents must be processed again before evaluating.
 class EvalDocTokens {
+  static String _processedKey(String? chatSessionId) {
+    if (chatSessionId == null || chatSessionId.isEmpty) {
+      return EvalDocKeys.processedTokens;
+    }
+    return '${EvalDocKeys.processedTokens}:$chatSessionId';
+  }
+
   static Map<String, String> buildCurrent(
     SharedPreferences prefs, {
     String? chatSessionId,
@@ -59,8 +66,13 @@ class EvalDocTokens {
     };
   }
 
-  static Map<String, String>? loadProcessed(SharedPreferences prefs) {
-    final raw = prefs.getString(EvalDocKeys.processedTokens);
+  static Map<String, String>? loadProcessed(
+    SharedPreferences prefs, {
+    String? chatSessionId,
+  }) {
+    final raw = prefs.getString(_processedKey(chatSessionId)) ??
+        // Backward-compatible fallback
+        prefs.getString(EvalDocKeys.processedTokens);
     if (raw == null || raw.isEmpty) return null;
 
     try {
@@ -73,8 +85,11 @@ class EvalDocTokens {
   }
 
   static Future<void> saveProcessed(
-      SharedPreferences prefs, Map<String, String> tokens) async {
-    await prefs.setString(EvalDocKeys.processedTokens, jsonEncode(tokens));
+    SharedPreferences prefs,
+    Map<String, String> tokens, {
+    String? chatSessionId,
+  }) async {
+    await prefs.setString(_processedKey(chatSessionId), jsonEncode(tokens));
   }
 
   static bool equals(Map<String, String> a, Map<String, String> b) {

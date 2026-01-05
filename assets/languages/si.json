@@ -223,6 +223,9 @@
     "attachmentRemoved": "ඇමුණුම ඉවත් කරන ලදි",
     "processDocuments": "ලේඛන සැකසන්න",
     "alreadyProcessed": "දැනටමත් සකස් කර ඇත",
+    "statusStarting": "ආරම්භ වෙමින්",
+    "statusProcessing": "සැකසෙමින්",
+    "statusCompleted": "සම්පූර්ණයි",
     "docStepAnswerSheetsProcessing": "පිළිතුරු පත්‍ර සැකසීම",
     "docStepQuestionPaperProcessing": "ප්‍රශ්නා පත්‍ර සැකසීම",
     "docStepSyllabusProcessing": "විෂය නිර්දේශ සැකසීම",
@@ -245,7 +248,12 @@
     "evalStepGeneratingFeedback": "ප්‍රතිචාර සකස් කිරීම",
     "evalStepPreparingReport": "වාර්තාව සකස් කිරීම",
     "viewResults": "ප්‍රතිඵල බලන්න",
+    "viewResultsHistory": "ප්‍රතිඵල ඉතිහාසය බලන්න",
     "attachAnotherAnswerSheet": "තවත් පිළිතුරු පත්‍රයක් අමුණන්න",
-    "endEvaluation": "ඇගයීම අවසන් කරන්න"
+    "endEvaluation": "ඇගයීම අවසන් කරන්න",
+    "startNewAnswerEvaluation": "නව පිළිතුරු පත්‍ර ඇගයීමක් ආරම්භ කරන්න",
+    "backToDocumentProcess": "ලේඛන සැකසීමට ආපසු යන්න",
+    "replaceAttachment": "ඇමුණුම ප්‍රතිස්ථාපනය කරන්න",
+    "removeAttachment": "ඇමුණුම ඉවත් කරන්න"
   }
 }

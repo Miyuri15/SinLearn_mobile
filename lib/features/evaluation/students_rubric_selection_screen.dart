@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 import '../../services/chat_service.dart';
 import '../../services/rubric_service.dart';
+import '../../core/utils/blocking_progress_dialog.dart';
 
 class RubricSelectionSidebar extends StatefulWidget {
   final VoidCallback? onRubricApplied;
@@ -21,9 +23,13 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
   String? _appliedRubric;
   bool _isCustomRubric = false;
 
-  static const String _rubricKey = 'hasRubric';
-  static const String _rubricNameKey = 'appliedRubricName';
-  static const String _isCustomRubricKey = 'isCustomRubric';
+  // Session-scoped keys (fallback to legacy globals).
+  static const String _rubricAppliedPrefix = 'hasRubric:';
+  static const String _rubricNamePrefix = 'rubricName:';
+  static const String _isCustomRubricPrefix = 'isCustomRubric:';
+
+  String? get _sid => widget.chatSessionId;
+  String _k(String prefix) => '$prefix${_sid ?? 'no-session'}';
 
   @override
   void initState() {
@@ -33,31 +39,78 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
 
   Future<void> _loadSavedRubric() async {
     final prefs = await SharedPreferences.getInstance();
-    final hasRubric = prefs.getBool(_rubricKey) ?? false;
-    if (hasRubric) {
-      setState(() {
-        _appliedRubric = prefs.getString(_rubricNameKey);
-        _isCustomRubric = prefs.getBool(_isCustomRubricKey) ?? false;
-        // Also set the dropdown value if it's a standard rubric
-        if (!_isCustomRubric && _standardRubrics.contains(_appliedRubric)) {
-          _selectedRubric = _appliedRubric;
-        }
-      });
+
+    // Backend is the source of truth for whether a rubric is attached.
+    bool attachedInBackend = false;
+    String? backendRubricId;
+    if (_sid != null && _sid!.isNotEmpty) {
+      try {
+        final details = await ChatService.getChatSessionDetails(_sid!);
+        backendRubricId = details.rubricId;
+        attachedInBackend =
+            backendRubricId != null && backendRubricId!.isNotEmpty;
+      } catch (e) {
+        // ignore: avoid_print
+        print('Failed to load rubric from backend: $e');
+      }
     }
+
+    final hasRubric = (prefs.getBool(_k(_rubricAppliedPrefix)) ?? false) ||
+        (prefs.getBool('hasRubric') ?? false) ||
+        attachedInBackend;
+
+    if (!hasRubric) return;
+
+    // Ensure local session-scoped flag is set when backend has rubric.
+    if (attachedInBackend && _sid != null && _sid!.isNotEmpty) {
+      await prefs.setBool(_k(_rubricAppliedPrefix), true);
+      await prefs.setBool('hasRubric', true);
+    }
+
+    final appliedName = prefs.getString(_k(_rubricNamePrefix)) ??
+        prefs.getString('rubricName') ??
+        prefs.getString('appliedRubricName') ??
+        (backendRubricId?.toString());
+
+    final isCustom = prefs.getBool(_k(_isCustomRubricPrefix)) ??
+        (prefs.getBool('isCustomRubric') ?? false);
+
+    if (!mounted) return;
+    setState(() {
+      _appliedRubric = appliedName;
+      _isCustomRubric = isCustom;
+      if (!_isCustomRubric && _standardRubrics.contains(_appliedRubric)) {
+        _selectedRubric = _appliedRubric;
+      }
+    });
   }
 
   Future<void> _saveRubric(String name, bool isCustom) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_rubricKey, true);
-    await prefs.setString(_rubricNameKey, name);
-    await prefs.setBool(_isCustomRubricKey, isCustom);
+
+    // Persist session-scoped, plus legacy globals for backward compatibility.
+    await prefs.setBool(_k(_rubricAppliedPrefix), true);
+    await prefs.setString(_k(_rubricNamePrefix), name);
+    await prefs.setBool(_k(_isCustomRubricPrefix), isCustom);
+
+    await prefs.setBool('hasRubric', true);
+    await prefs.setString('rubricName', name);
+    await prefs.setString('appliedRubricName', name);
+    await prefs.setBool('isCustomRubric', isCustom);
 
     // Best-effort: persist to backend for this chat session
     if (widget.chatSessionId != null) {
       try {
+        unawaited(
+          showBlockingProgressDialog(
+            context,
+            message: 'Applying rubric...',
+          ),
+        );
         final displayName = isCustom ? name : name.tr();
         final rubricId = await RubricService.createRubric(
           name: displayName,
+          chatSessionId: widget.chatSessionId,
           source: isCustom ? 'custom' : 'standard',
         );
         await ChatService.attachRubricToSession(
@@ -67,6 +120,10 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
       } catch (e) {
         // ignore: avoid_print
         print('Failed to attach rubric to session: $e');
+      } finally {
+        if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
       }
     }
 
@@ -271,7 +328,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
           borderRadius: BorderRadius.circular(8),
         ),
         filled: true,
-        fillColor: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
       ),
       borderRadius: BorderRadius.circular(8),
       dropdownColor: theme.colorScheme.surface,

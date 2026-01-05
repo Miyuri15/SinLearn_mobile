@@ -144,8 +144,8 @@ class ResourceService {
       },
       options: Options(
         // Backend performs extraction/embedding before responding; allow longer.
-        receiveTimeout: Duration(minutes: 3),
-        sendTimeout: Duration(minutes: 2),
+        receiveTimeout: const Duration(minutes: 3),
+        sendTimeout: const Duration(minutes: 2),
       ),
       data: formData,
     );
@@ -197,8 +197,8 @@ class ResourceService {
         "chat_session_id": chatSessionId,
       },
       options: Options(
-        receiveTimeout: Duration(minutes: 3),
-        sendTimeout: Duration(minutes: 2),
+        receiveTimeout: const Duration(minutes: 3),
+        sendTimeout: const Duration(minutes: 2),
       ),
       data: formData,
     );
@@ -249,8 +249,8 @@ class ResourceService {
         'chat_session_id': chatSessionId,
       },
       options: Options(
-        receiveTimeout: Duration(minutes: 3),
-        sendTimeout: Duration(minutes: 2),
+        receiveTimeout: const Duration(minutes: 3),
+        sendTimeout: const Duration(minutes: 2),
       ),
       data: formData,
     );

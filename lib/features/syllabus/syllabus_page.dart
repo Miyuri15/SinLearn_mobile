@@ -4,9 +4,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
+import 'dart:async';
 // add JSON helpers
 import 'dart:convert';
 
+import '../../core/utils/blocking_progress_dialog.dart';
 import '../../services/resource_service.dart';
 import '../../services/chat_service.dart';
 
@@ -224,13 +226,27 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
         }
 
         if (multipartFiles.isNotEmpty) {
+          final filename = pickedFiles.first.name;
+          unawaited(
+            showBlockingProgressDialog(
+              context,
+              message: 'Uploading $filename...',
+            ),
+          );
           // ignore: avoid_print
           print(
               'Uploading syllabus with chatSessionId: ${widget.chatSessionId}');
-          await ResourceService.uploadSyllabus(
-            files: multipartFiles,
-            chatSessionId: widget.chatSessionId!,
-          );
+          try {
+            await ResourceService.uploadSyllabus(
+              files: multipartFiles,
+              chatSessionId: widget.chatSessionId!,
+            );
+          } finally {
+            if (mounted &&
+                Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            }
+          }
         } else {
           // ignore: avoid_print
           print(
@@ -277,7 +293,7 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return AlertDialog(
-          backgroundColor: isDark ? Color(0xFF1E1E1E) : Colors.white,
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           title: Text(tr('syllabus.delete_title')),
           // use namedArgs so translators can use {name}
           content:
@@ -317,7 +333,7 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
       width: double.infinity, // fit sidebar width (304)
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: isDark ? Color(0xFF1E1E1E) : Colors.white,
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: const BorderRadius.only(
             topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
       ),
@@ -331,7 +347,7 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
             Row(
               children: [
                 // line-style book icon (no bg)
-                Icon(
+                const Icon(
                   Icons.menu_book_outlined,
                   color: Color(0xFF0066FF),
                   size: 22,
@@ -342,14 +358,14 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Color(0xFF1A1A1A),
+                    color: isDark ? Colors.white : const Color(0xFF1A1A1A),
                   ),
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: Icon(Icons.close, size: 20),
+                  icon: const Icon(Icons.close, size: 20),
                   onPressed: () => Navigator.of(context).maybePop(),
-                  color: isDark ? Colors.white : Color(0xFF666666),
+                  color: isDark ? Colors.white : const Color(0xFF666666),
                 ),
               ],
             ),
@@ -360,7 +376,8 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
               tr('syllabus.intro'),
               style: TextStyle(
                 fontSize: 14,
-                color: isDark ? Color(0xFFAAAAAA) : Color(0xFF666666),
+                color:
+                    isDark ? const Color(0xFFAAAAAA) : const Color(0xFF666666),
                 height: 1.5,
               ),
             ),
@@ -372,17 +389,20 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: isDark ? Color(0xFF2A2A2A) : Color(0xFFF8F9FA),
+                color:
+                    isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF8F9FA),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                    color: isDark ? Color(0xFF404040) : Color(0xFFE5E5E5)),
+                    color: isDark
+                        ? const Color(0xFF404040)
+                        : const Color(0xFFE5E5E5)),
                 boxShadow: isDark
                     ? null
                     : [
                         BoxShadow(
                             color: Colors.black.withOpacity(0.03),
                             blurRadius: 8,
-                            offset: Offset(0, 2))
+                            offset: const Offset(0, 2))
                       ],
               ),
               child: Column(
@@ -392,14 +412,16 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                         style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : Color(0xFF1A1A1A))),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF1A1A1A))),
                     const SizedBox(height: 8),
                     Text(tr('syllabus.upload_subtitle'),
                         style: TextStyle(
                             fontSize: 14,
                             color: isDark
-                                ? Color(0xFFAAAAAA)
-                                : Color(0xFF666666))),
+                                ? const Color(0xFFAAAAAA)
+                                : const Color(0xFF666666))),
                     const SizedBox(height: 16),
                     GestureDetector(
                       onTap: _pickFile,
@@ -410,10 +432,11 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                               color: isDark
-                                  ? Color(0xFF404040)
-                                  : Color(0xFFDCE6F2),
+                                  ? const Color(0xFF404040)
+                                  : const Color(0xFFDCE6F2),
                               width: 1.5),
-                          color: isDark ? Color(0xFF222222) : Colors.white,
+                          color:
+                              isDark ? const Color(0xFF222222) : Colors.white,
                         ),
                         child: Center(
                           child: Column(
@@ -424,8 +447,8 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                                 Icons.file_upload_outlined,
                                 size: 48,
                                 color: isDark
-                                    ? Color(0xFFAAAAAA)
-                                    : Color(0xFF6B7A95),
+                                    ? const Color(0xFFAAAAAA)
+                                    : const Color(0xFF6B7A95),
                               ),
                               const SizedBox(height: 12),
                               Text(
@@ -433,8 +456,8 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                                 style: TextStyle(
                                   fontSize: 15,
                                   color: isDark
-                                      ? Color(0xFFAAAAAA)
-                                      : Color(0xFF6B7A95),
+                                      ? const Color(0xFFAAAAAA)
+                                      : const Color(0xFF6B7A95),
                                   // decoration removed globally by DefaultTextStyle
                                 ),
                               ),
@@ -455,10 +478,14 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                   width: double.infinity,
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isDark ? Color(0xFF2A2A2A) : Color(0xFFF8F9FA),
+                    color: isDark
+                        ? const Color(0xFF2A2A2A)
+                        : const Color(0xFFF8F9FA),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                        color: isDark ? Color(0xFF404040) : Color(0xFFE5E5E5)),
+                        color: isDark
+                            ? const Color(0xFF404040)
+                            : const Color(0xFFE5E5E5)),
                   ),
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -467,15 +494,16 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
                             style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color:
-                                    isDark ? Colors.white : Color(0xFF1A1A1A))),
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF1A1A1A))),
                         const SizedBox(height: 6),
                         Text(tr('syllabus.uploaded_section_subtitle'),
                             style: TextStyle(
                                 fontSize: 13,
                                 color: isDark
-                                    ? Color(0xFFAAAAAA)
-                                    : Color(0xFF666666))),
+                                    ? const Color(0xFFAAAAAA)
+                                    : const Color(0xFF666666))),
                         const SizedBox(height: 12),
                         Column(
                           children: List.generate(_items.length, (i) {
@@ -499,11 +527,14 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
               decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                      color: isDark ? Color(0xFF404040) : Color(0xFFE5E5E5))),
+                      color: isDark
+                          ? const Color(0xFF404040)
+                          : const Color(0xFFE5E5E5))),
               child: TextButton(
                 onPressed: () => Navigator.of(context).maybePop(),
                 style: TextButton.styleFrom(
-                    foregroundColor: isDark ? Colors.white : Color(0xFF1A1A1A),
+                    foregroundColor:
+                        isDark ? Colors.white : const Color(0xFF1A1A1A),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8))),
                 child: Text(tr('syllabus.cancel')),
@@ -523,28 +554,31 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-          color: isDark ? Color(0xFF1F1F1F) : Colors.white,
+          color: isDark ? const Color(0xFF1F1F1F) : Colors.white,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-              color: isDark ? Color(0xFF404040) : Color(0xFFECEFF1))),
+              color:
+                  isDark ? const Color(0xFF404040) : const Color(0xFFECEFF1))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
-          Icon(Icons.article_outlined, color: Color(0xFF0066FF), size: 18),
+          const Icon(Icons.article_outlined,
+              color: Color(0xFF0066FF), size: 18),
           const SizedBox(width: 10),
           Expanded(
               child: Text(item.title,
                   style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : Color(0xFF1A1A1A)),
+                      color: isDark ? Colors.white : const Color(0xFF1A1A1A)),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis)),
           IconButton(
               padding: EdgeInsets.zero,
-              constraints: BoxConstraints(),
-              icon: Icon(Icons.delete_outline, size: 20),
+              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.delete_outline, size: 20),
               onPressed: () => _deleteItem(index),
-              color: isDark ? Color(0xFFCC6666) : Color(0xFFFF4444)),
+              color:
+                  isDark ? const Color(0xFFCC6666) : const Color(0xFFFF4444)),
         ]),
         if (meta.isNotEmpty) ...[
           const SizedBox(height: 6),
@@ -552,7 +586,7 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
             meta,
             style: TextStyle(
               fontSize: 12,
-              color: isDark ? Color(0xFF888888) : Color(0xFF888888),
+              color: isDark ? const Color(0xFF888888) : const Color(0xFF888888),
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -562,17 +596,23 @@ class _TeacherSyllabusContentState extends State<TeacherSyllabusContent> {
         Text(item.subject,
             style: TextStyle(
                 fontSize: 13,
-                color: isDark ? Color(0xFFAAAAAA) : Color(0xFF666666))),
+                color: isDark
+                    ? const Color(0xFFAAAAAA)
+                    : const Color(0xFF666666))),
         const SizedBox(height: 6),
         Text('${tr('syllabus.uploaded')}: ${item.date}',
             style: TextStyle(
                 fontSize: 12,
-                color: isDark ? Color(0xFF888888) : Color(0xFF888888))),
+                color: isDark
+                    ? const Color(0xFF888888)
+                    : const Color(0xFF888888))),
         const SizedBox(height: 6),
         Text(item.tags,
             style: TextStyle(
                 fontSize: 12,
-                color: isDark ? Color(0xFFAAAAAA) : Color(0xFF666666))),
+                color: isDark
+                    ? const Color(0xFFAAAAAA)
+                    : const Color(0xFF666666))),
       ]),
     );
   }

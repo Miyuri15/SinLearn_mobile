@@ -13,9 +13,9 @@ void main() async {
 
   runApp(
     EasyLocalization(
-      supportedLocales: [Locale('en'), Locale('si')],
+      supportedLocales: const [Locale('en'), Locale('si')],
       path: 'assets/languages',
-      fallbackLocale: Locale('en'),
+      fallbackLocale: const Locale('en'),
       child: MyApp(
         key: MyApp.stateKey, // use global key to access state
         isDark: isDark,

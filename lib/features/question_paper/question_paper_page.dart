@@ -4,9 +4,11 @@ import 'package:file_picker/file_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
+import 'dart:async';
 import 'dart:convert';
 import '../../services/resource_service.dart';
 import '../../services/chat_service.dart';
+import '../../core/utils/blocking_progress_dialog.dart';
 
 class QuestionPaperPage extends StatefulWidget {
   final String? chatSessionId;
@@ -24,7 +26,7 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
   static const _prefsKeyPrefix = 'question_paper_file:';
 
   String get _prefsKey =>
-      '${_prefsKeyPrefix}${widget.chatSessionId ?? 'no-session'}';
+      '$_prefsKeyPrefix${widget.chatSessionId ?? 'no-session'}';
 
   @override
   void initState() {
@@ -152,13 +154,26 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
         }
 
         if (multipartFile != null) {
-          print('Uploading file with chatSessionId: ${widget.chatSessionId}');
-          final res = await ResourceService.uploadQuestionPaper(
-            file: multipartFile,
-            chatSessionId: widget.chatSessionId!,
+          unawaited(
+            showBlockingProgressDialog(
+              context,
+              message: 'Uploading ${picked.name}...',
+            ),
           );
-          _resourceId = res.resourceId;
-          _mimeType = _mimeTypeFromExtension(picked.extension);
+          print('Uploading file with chatSessionId: ${widget.chatSessionId}');
+          try {
+            final res = await ResourceService.uploadQuestionPaper(
+              file: multipartFile,
+              chatSessionId: widget.chatSessionId!,
+            );
+            _resourceId = res.resourceId;
+            _mimeType = _mimeTypeFromExtension(picked.extension);
+          } finally {
+            if (mounted &&
+                Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            }
+          }
         } else {
           print('Skipping upload: File bytes/path missing. Web: $kIsWeb');
         }
@@ -249,8 +264,8 @@ class _QuestionPaperPageState extends State<QuestionPaperPage> {
             // Header (same style as syllabus)
             Row(
               children: [
-                Icon(Icons.description_outlined,
-                    color: const Color(0xFF0066FF), size: 22),
+                const Icon(Icons.description_outlined,
+                    color: Color(0xFF0066FF), size: 22),
                 const SizedBox(width: 12),
                 Expanded(
                   // allow title to shrink and ellipsize

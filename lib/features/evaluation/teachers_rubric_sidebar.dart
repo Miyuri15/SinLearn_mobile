@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'rubric_upload_form.dart';
 
 import '../../services/chat_service.dart';
 import '../../services/rubric_service.dart';
+import '../../core/utils/blocking_progress_dialog.dart';
 
 class TeachersRubricSidebar extends StatefulWidget {
   final VoidCallback? onRubricApplied;
@@ -56,12 +58,20 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     if (_sessionId != null && _sessionId!.isNotEmpty) {
       try {
         final details = await ChatService.getChatSessionDetails(_sessionId!);
-        attachedInBackend = (details.rubricId != null && details.rubricId!.isNotEmpty);
+        attachedInBackend =
+            (details.rubricId != null && details.rubricId!.isNotEmpty);
       } catch (e) {
         // ignore; fall back to local
         // ignore: avoid_print
         print('Failed to load rubric from backend: $e');
       }
+    }
+
+    // If backend has an attached rubric, persist the session-scoped flag so
+    // the UI survives relaunch even when local prefs were cleared.
+    if (attachedInBackend && _sessionId != null && _sessionId!.isNotEmpty) {
+      await prefs.setBool(_k(_rubricAppliedPrefix), true);
+      await prefs.setBool('hasRubric', true);
     }
 
     // Session-scoped local weights (fallback to legacy global keys).
@@ -73,14 +83,15 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     setState(() {
       if (attachedInBackend || exists) {
         hasRubric = true;
-        appliedRubricName =
-            prefs.getString(_k(_rubricNamePrefix)) ?? prefs.getString('rubricName');
+        appliedRubricName = prefs.getString(_k(_rubricNamePrefix)) ??
+            prefs.getString('rubricName');
         semantic =
             prefs.getInt(_k(_semanticPrefix)) ?? prefs.getInt('semantic') ?? 0;
         coverage =
             prefs.getInt(_k(_coveragePrefix)) ?? prefs.getInt('coverage') ?? 0;
-        relevance =
-            prefs.getInt(_k(_relevancePrefix)) ?? prefs.getInt('relevance') ?? 0;
+        relevance = prefs.getInt(_k(_relevancePrefix)) ??
+            prefs.getInt('relevance') ??
+            0;
       } else {
         hasRubric = false;
       }
@@ -88,11 +99,14 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
       if (customExists) {
         hasCustomRubric = true;
         customSemantic = prefs.getInt(_k(_customSemanticPrefix)) ??
-            prefs.getInt('custom_semantic') ?? 0;
+            prefs.getInt('custom_semantic') ??
+            0;
         customCoverage = prefs.getInt(_k(_customCoveragePrefix)) ??
-            prefs.getInt('custom_coverage') ?? 0;
+            prefs.getInt('custom_coverage') ??
+            0;
         customRelevance = prefs.getInt(_k(_customRelevancePrefix)) ??
-            prefs.getInt('custom_relevance') ?? 0;
+            prefs.getInt('custom_relevance') ??
+            0;
       }
     });
   }
@@ -116,8 +130,15 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
     // Persist to backend for this chat session (so it survives logout/relogin)
     if (widget.chatSessionId != null) {
       try {
+        unawaited(
+          showBlockingProgressDialog(
+            context,
+            message: 'Applying rubric...',
+          ),
+        );
         final rubricId = await RubricService.createRubric(
           name: name,
+          chatSessionId: widget.chatSessionId,
           semantic: s,
           coverage: c,
           relevance: r,
@@ -130,6 +151,10 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
       } catch (e) {
         // ignore: avoid_print
         print('Failed to attach rubric to session: $e');
+      } finally {
+        if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
       }
     } else {
       // ignore: avoid_print
@@ -177,7 +202,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Rubric removed successfully")),
+        const SnackBar(content: Text("Rubric removed successfully")),
       );
     }
   }
@@ -187,7 +212,7 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Current Rubric"),
+          title: const Text("Current Rubric"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -306,30 +331,27 @@ class _TeachersRubricSidebarState extends State<TeachersRubricSidebar> {
 
   // ---------------- Header ----------------
   Widget _buildHeader(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(
-            'question_paper.teacher_rubrics'.tr(),
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontSize: 17,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          IconButton(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.close))
-        ]),
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Text(
-          'question_paper.teacher_rubric_description'.tr(),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontSize: 10,
-            color: theme.colorScheme.onSurface.withOpacity(0.7),
+          'question_paper.teacher_rubrics'.tr(),
+          style: theme.textTheme.titleLarge?.copyWith(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
           ),
         ),
-      ],
-    );
+        IconButton(
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close))
+      ]),
+      Text(
+        'question_paper.teacher_rubric_description'.tr(),
+        style: theme.textTheme.bodyMedium?.copyWith(
+          fontSize: 10,
+          color: theme.colorScheme.onSurface.withOpacity(0.7),
+        ),
+      ),
+    ]);
   }
 
   // ---------------- Upload Card ----------------

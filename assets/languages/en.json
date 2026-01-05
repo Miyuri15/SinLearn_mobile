@@ -231,6 +231,9 @@
     "attachmentRemoved": "Attachment removed",
     "processDocuments": "Process Documents",
     "alreadyProcessed": "Already processed",
+    "statusStarting": "Starting",
+    "statusProcessing": "Processing",
+    "statusCompleted": "Completed",
     "docStepAnswerSheetsProcessing": "Answer sheets processing",
     "docStepQuestionPaperProcessing": "Question paper processing",
     "docStepSyllabusProcessing": "Syllabus processing",
@@ -253,7 +256,12 @@
     "evalStepGeneratingFeedback": "Generating feedback",
     "evalStepPreparingReport": "Preparing report",
     "viewResults": "View results",
+    "viewResultsHistory": "View results history",
     "attachAnotherAnswerSheet": "Attach another answer sheet",
-    "endEvaluation": "End evaluation"
+    "endEvaluation": "End evaluation",
+    "startNewAnswerEvaluation": "Start new answer evaluation",
+    "backToDocumentProcess": "Back to document process",
+    "replaceAttachment": "Replace attachment",
+    "removeAttachment": "Remove attachment"
   }
 }

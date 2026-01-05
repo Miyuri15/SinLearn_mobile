@@ -20,7 +20,7 @@ class _SignInFormState extends State<SignInForm> {
   final AuthService _authService = AuthService();
   bool _loading = false;
 
-  final FlutterSecureStorage _secureStorage = FlutterSecureStorage();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   @override
   void dispose() {

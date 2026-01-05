@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:math' as math;
 
 import '../../core/utils/json_cast.dart';
-import 'evaluation_process_page.dart';
 import 'evaluation_text.dart';
 
 class EvaluationResponsePage extends StatefulWidget {
@@ -31,6 +29,8 @@ class EvaluationResponsePage extends StatefulWidget {
 
 class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
   static const String _answerSheetAttachmentKey = 'evaluation_attachment';
+  static String _answerSheetClearedKey(String chatSessionId) =>
+      'active_answer_sheet_cleared:$chatSessionId';
 
   static String _historyKey(String chatSessionId) =>
       'evaluation_chat_history_v1_$chatSessionId';
@@ -38,6 +38,49 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
   final ScrollController _scrollController = ScrollController();
   List<_EvalChatEntry> _history = <_EvalChatEntry>[];
   bool _historyLoaded = false;
+
+  List<_EvalRunSummary> _buildRunSummaries() {
+    final summaries = <_EvalRunSummary>[];
+
+    // Prefer assistant report entries; each evaluation run should yield exactly one.
+    for (final e in _history) {
+      if (e.kind != _EvalChatEntryKind.assistantReport) continue;
+      summaries.add(
+        _EvalRunSummary(
+          runId: e.runId,
+          attachmentName: (e.attachmentName ?? '').trim(),
+          createdAtIso: e.createdAtIso,
+          evaluationData: e.evaluationData,
+        ),
+      );
+    }
+
+    // If no assistant reports exist (older stored history), fall back to any user entry.
+    if (summaries.isEmpty) {
+      for (final e in _history) {
+        if (e.kind != _EvalChatEntryKind.user) continue;
+        final name = (e.attachmentName ?? '').trim();
+        if (name.isEmpty) continue;
+        summaries.add(
+          _EvalRunSummary(
+            runId: e.runId,
+            attachmentName: name,
+            createdAtIso: e.createdAtIso,
+            evaluationData: null,
+          ),
+        );
+      }
+    }
+
+    // Sort oldest -> newest.
+    summaries.sort((a, b) {
+      final da = DateTime.tryParse(a.createdAtIso) ?? DateTime(1970);
+      final db = DateTime.tryParse(b.createdAtIso) ?? DateTime(1970);
+      return da.compareTo(db);
+    });
+
+    return summaries;
+  }
 
   @override
   void initState() {
@@ -140,36 +183,16 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
     }
   }
 
-  Future<void> _attachAnotherAnswerSheet() async {
-    final result = await FilePicker.platform.pickFiles(allowMultiple: false);
-    if (result == null) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('evaluation.selectFileCancelled'.tr())),
-      );
-      return;
-    }
-
-    final file = result.files.first;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_answerSheetAttachmentKey, file.name);
-
-    // Re-run evaluation using the already processed documents.
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (_) => EvaluationProcessPage(
-          chatSessionId: widget.chatSessionId,
-          attachmentName: file.name,
-          evaluationData: widget.evaluationData,
-        ),
-      ),
-    );
-  }
-
-  Future<void> _endEvaluation() async {
+  Future<void> _startNewAnswerEvaluation() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_answerSheetAttachmentKey);
+    await prefs.remove('answer_sheet_ids:${widget.chatSessionId}');
+    await prefs.remove('evaluation_session_id:${widget.chatSessionId}');
+    await prefs.setBool(_answerSheetClearedKey(widget.chatSessionId), true);
+
+    // A new answer sheet requires re-processing.
+    await prefs
+        .remove('evaluation_processed_tokens_v1:${widget.chatSessionId}');
 
     if (!mounted) return;
     Navigator.pushAndRemoveUntil(
@@ -181,9 +204,24 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
     );
   }
 
+  Future<void> _backToDocumentProcess() async {
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EvaluationTextPage(
+          chatSessionId: widget.chatSessionId,
+          initialShowProcessing: true,
+        ),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final runs = _buildRunSummaries();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -196,7 +234,7 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
             Expanded(
               child: !_historyLoaded
                   ? const SizedBox.shrink()
-                  : _history.isEmpty
+                  : runs.isEmpty
                       ? Center(
                           child: Padding(
                             padding: const EdgeInsets.all(24),
@@ -225,57 +263,61 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                       : ListView.builder(
                           controller: _scrollController,
                           padding: const EdgeInsets.all(16),
-                          itemCount: _history.length,
+                          itemCount: runs.length,
                           itemBuilder: (context, index) {
-                            final msg = _history[index];
-                            final time = _formatTime(msg.createdAtIso);
+                            final run = runs[index];
+                            final time = _formatTime(run.createdAtIso);
+                            final attachment = run.attachmentName;
 
-                            if (msg.kind ==
-                                _EvalChatEntryKind.assistantReport) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 14),
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: ConstrainedBox(
-                                    constraints: BoxConstraints(
-                                      maxWidth:
-                                          MediaQuery.of(context).size.width *
-                                              0.92,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          msg.text,
-                                          style: theme.textTheme.titleSmall
-                                              ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 14),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxWidth:
+                                        MediaQuery.of(context).size.width *
+                                            0.92,
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'evaluation.evaluationResultFor'.tr(
+                                          args: [attachment],
                                         ),
-                                        const SizedBox(height: 8),
-                                        _EvaluationReportCard(theme: theme),
-                                        const SizedBox(height: 6),
+                                        style: theme.textTheme.titleSmall
+                                            ?.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      if (attachment.isNotEmpty)
                                         Text(
-                                          time,
-                                          style: theme.textTheme.labelSmall
+                                          'evaluation.attachedAnswerSheet'
+                                              .tr(args: [attachment]),
+                                          style: theme.textTheme.bodySmall
                                               ?.copyWith(
                                             color: theme.hintColor,
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                      const SizedBox(height: 10),
+                                      _EvaluationReportCard(
+                                        theme: theme,
+                                        evaluationData: run.evaluationData,
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        time,
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                          color: theme.hintColor,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              );
-                            }
-
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 14),
-                              child: _MessageBubble(
-                                time: time,
-                                text: msg.text,
-                                fromUser: msg.kind == _EvalChatEntryKind.user,
                               ),
                             );
                           },
@@ -289,18 +331,18 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                   SizedBox(
                     height: 52,
                     child: OutlinedButton.icon(
-                      onPressed: _attachAnotherAnswerSheet,
+                      onPressed: _startNewAnswerEvaluation,
                       icon: const Icon(Icons.attach_file),
-                      label: Text('evaluation.attachAnotherAnswerSheet'.tr()),
+                      label: Text('evaluation.startNewAnswerEvaluation'.tr()),
                     ),
                   ),
                   const SizedBox(height: 10),
                   SizedBox(
                     height: 52,
                     child: FilledButton.icon(
-                      onPressed: () => _endEvaluation(),
-                      icon: const Icon(Icons.flag_outlined),
-                      label: Text('evaluation.endEvaluation'.tr()),
+                      onPressed: _backToDocumentProcess,
+                      icon: const Icon(Icons.arrow_back),
+                      label: Text('evaluation.backToDocumentProcess'.tr()),
                     ),
                   ),
                 ],
@@ -419,6 +461,20 @@ class _EvalChatEntry {
   }
 }
 
+class _EvalRunSummary {
+  const _EvalRunSummary({
+    required this.runId,
+    required this.attachmentName,
+    required this.createdAtIso,
+    required this.evaluationData,
+  });
+
+  final int? runId;
+  final String attachmentName;
+  final String createdAtIso;
+  final Map<String, dynamic>? evaluationData;
+}
+
 String _formatTime(String createdAtIso) {
   try {
     final dt = DateTime.parse(createdAtIso);
@@ -431,11 +487,54 @@ String _formatTime(String createdAtIso) {
 }
 
 class _EvaluationReportCard extends StatelessWidget {
-  const _EvaluationReportCard({required this.theme});
+  const _EvaluationReportCard({required this.theme, this.evaluationData});
   final ThemeData theme;
+  final Map<String, dynamic>? evaluationData;
+
+  String _gradeFromData() {
+    final data = evaluationData;
+    if (data == null) return 'B+';
+    final v = (data['grade'] ??
+            data['overall_grade'] ??
+            data['final_grade'] ??
+            data['overallGrade'] ??
+            data['finalGrade'])
+        ?.toString();
+    return (v != null && v.trim().isNotEmpty) ? v.trim() : 'B+';
+  }
+
+  double _scoreFromData(String key) {
+    final data = evaluationData;
+    if (data == null) return -1;
+    final raw = data[key] ??
+        data[key.replaceAll('_', '')] ??
+        data[key.replaceAll('_', ' ')];
+    if (raw is num) {
+      final v = raw.toDouble();
+      // Accept 0..1 or 0..100
+      if (v <= 1.0) return v.clamp(0.0, 1.0);
+      return (v / 100.0).clamp(0.0, 1.0);
+    }
+    if (raw is String) {
+      final v = double.tryParse(raw);
+      if (v == null) return -1;
+      if (v <= 1.0) return v.clamp(0.0, 1.0);
+      return (v / 100.0).clamp(0.0, 1.0);
+    }
+    return -1;
+  }
 
   @override
   Widget build(BuildContext context) {
+    final grade = _gradeFromData();
+    final coverage = _scoreFromData('coverage_score');
+    final accuracy = _scoreFromData('accuracy_score');
+    final clarity = _scoreFromData('clarity');
+
+    final coverageValue = coverage >= 0 ? coverage : 0.78;
+    final accuracyValue = accuracy >= 0 ? accuracy : 0.85;
+    final clarityValue = clarity >= 0 ? clarity : 0.72;
+
     return Container(
       decoration: BoxDecoration(
         color: theme.cardColor, // was Colors.white
@@ -462,15 +561,15 @@ class _EvaluationReportCard extends StatelessWidget {
                   ],
                 ),
               ),
-              _GradeBadge(grade: 'B+'),
+              _GradeBadge(grade: grade),
             ],
           ),
           const SizedBox(height: 16),
-          const _ScoreBar(labelKey: 'coverage_score', value: 0.78),
+          _ScoreBar(labelKey: 'coverage_score', value: coverageValue),
           const SizedBox(height: 10),
-          const _ScoreBar(labelKey: 'accuracy_score', value: 0.85),
+          _ScoreBar(labelKey: 'accuracy_score', value: accuracyValue),
           const SizedBox(height: 10),
-          const _ScoreBar(labelKey: 'clarity', value: 0.72),
+          _ScoreBar(labelKey: 'clarity', value: clarityValue),
           const SizedBox(height: 16),
           _BulletSection(
             icon: Icons.check_circle_outline,
@@ -915,8 +1014,7 @@ class _MessageBubble extends StatelessWidget {
                 time,
                 textAlign: fromUser ? TextAlign.right : TextAlign.left,
                 style: theme.textTheme.labelSmall?.copyWith(
-                  color: (textColor as Color?)?.withOpacity(0.7) ??
-                      theme.hintColor,
+                  color: (textColor)?.withOpacity(0.7) ?? theme.hintColor,
                 ),
               ),
             ),

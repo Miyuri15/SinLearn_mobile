@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -7,39 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/teachers_main_app_bar.dart';
 import 'evaluation_response.dart';
 import 'evaluation_doc_tokens.dart';
+import '../../models/chat_session_details.dart';
+import '../../services/chat_service.dart';
 import '../../services/evaluation_service.dart';
 
 enum _StepStatus { pending, inProgress, done }
-
-enum _DocStep {
-  answerSheets,
-  questionPaper,
-  syllabus,
-}
-
-class _DocStepState {
-  const _DocStepState({
-    this.status = _StepStatus.pending,
-    this.alreadyProcessed = false,
-    this.progress = 0,
-  });
-
-  final _StepStatus status;
-  final bool alreadyProcessed;
-  final int progress; // 0..100
-
-  _DocStepState copyWith({
-    _StepStatus? status,
-    bool? alreadyProcessed,
-    int? progress,
-  }) {
-    return _DocStepState(
-      status: status ?? this.status,
-      alreadyProcessed: alreadyProcessed ?? this.alreadyProcessed,
-      progress: progress ?? this.progress,
-    );
-  }
-}
 
 class _StepState {
   const _StepState({this.status = _StepStatus.pending, this.progress = 0});
@@ -59,11 +32,13 @@ class EvaluationProcessPage extends StatefulWidget {
   const EvaluationProcessPage({
     super.key,
     required this.chatSessionId,
+    this.assumeDocsAvailable = false,
     this.attachmentName,
     this.evaluationData,
   });
 
   final String chatSessionId;
+  final bool assumeDocsAvailable;
   final String? attachmentName;
   final Map<String, dynamic>? evaluationData;
 
@@ -72,26 +47,19 @@ class EvaluationProcessPage extends StatefulWidget {
 }
 
 class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
-  int _selectedSegment = 1;
+  final int _selectedSegment = 1;
 
-  bool _isProcessingDocs = false;
   bool _docsAvailable = false;
-  bool _docsReady = false; // processed + ready to evaluate
-  bool _needsReprocess = false;
+  String? _questionPaperName;
+  int _syllabusCount = 0;
+  bool _hasRubric = false;
 
   int _runToken = 0;
   int _currentEvaluationRunId = 0;
-  Timer? _docWatchTimer;
-  Map<String, String>? _lastObservedTokens;
-
-  Map<_DocStep, _DocStepState> _docSteps = {
-    _DocStep.answerSheets: const _DocStepState(),
-    _DocStep.questionPaper: const _DocStepState(),
-    _DocStep.syllabus: const _DocStepState(),
-  };
 
   bool _isEvaluating = false;
   bool _evaluationDone = false;
+  String? _lastStatusLine;
 
   final List<String> _evaluationSteps = [
     'evaluation.evalStepEvaluating'.tr(),
@@ -109,48 +77,11 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
   void initState() {
     super.initState();
     _startFlow();
-    _startDocWatch();
   }
 
   @override
   void dispose() {
-    _docWatchTimer?.cancel();
     super.dispose();
-  }
-
-  void _startDocWatch() {
-    _docWatchTimer?.cancel();
-    _docWatchTimer =
-        Timer.periodic(const Duration(milliseconds: 900), (_) async {
-      final prefs = await SharedPreferences.getInstance();
-      final current = EvalDocTokens.buildCurrent(prefs,
-          chatSessionId: widget.chatSessionId);
-
-      final last = _lastObservedTokens;
-      _lastObservedTokens = current;
-      if (last == null) return;
-      if (!EvalDocTokens.equals(current, last)) {
-        _handleDocumentsChanged();
-      }
-    });
-  }
-
-  void _handleDocumentsChanged() {
-    // Cancel any in-flight processing/evaluation and require explicit reprocess.
-    _runToken++;
-    if (!mounted) return;
-
-    setState(() {
-      _isProcessingDocs = false;
-      _docsReady = false;
-      _needsReprocess = true;
-      _isEvaluating = false;
-      _evaluationDone = false;
-      _resetEvaluationStates();
-    });
-
-    // Refresh displayed doc step statuses based on latest prefs.
-    _refreshDocStatus();
   }
 
   void _resetEvaluationStates() {
@@ -159,60 +90,98 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
     }
   }
 
-  Future<void> _reprocessDocumentsAndEvaluate() async {
-    if (_isProcessingDocs || _isEvaluating) return;
-    if (!_docsAvailable) return;
+  Future<void> _loadReadOnlySummary(SharedPreferences prefs) async {
+    String? questionPaperName;
+    var syllabusCount = 0;
+    var hasRubric = false;
+
+    // Prefer backend truth so it survives logout/relogin.
+    try {
+      final details =
+          await ChatService.getChatSessionDetails(widget.chatSessionId);
+
+      final qp = details.questionPaper;
+      if (qp != null) {
+        final name = (qp.filename).trim().isNotEmpty
+            ? qp.filename
+            : (qp.resourceId.isNotEmpty ? 'Resource ${qp.resourceId}' : '');
+        if (name.isNotEmpty) questionPaperName = name;
+      }
+
+      syllabusCount = details.allByType('syllabus').length;
+      hasRubric =
+          (details.rubricId != null && details.rubricId!.trim().isNotEmpty);
+    } catch (_) {
+      // Ignore backend failures; fall back to local cache.
+    }
+
+    final candidates = <String?>[
+      prefs.getString('question_paper_file:${widget.chatSessionId}'),
+      prefs.getString('question_paper_file:no-session'),
+      prefs.getString(EvalDocKeys.questionPaperFile),
+    ];
+
+    for (final raw in candidates) {
+      if (raw == null || raw.isEmpty) continue;
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          final name = decoded['name']?.toString() ?? '';
+          if (name.isNotEmpty) {
+            questionPaperName = name;
+            break;
+          }
+        }
+      } catch (_) {
+        // Some older flows stored just the filename as a plain string.
+        questionPaperName = raw;
+        break;
+      }
+    }
+
+    final syllabusList =
+        prefs.getStringList('syllabus_items:${widget.chatSessionId}') ??
+            prefs.getStringList(EvalDocKeys.syllabusItems) ??
+            const <String>[];
+    final hasRubricFromPrefs =
+        (prefs.getBool('hasRubric:${widget.chatSessionId}') ?? false) ||
+            (prefs.getBool(EvalDocKeys.hasRubric) ?? false);
 
     if (!mounted) return;
     setState(() {
-      _docsReady = false;
-      _isProcessingDocs = true;
-      _needsReprocess = false;
-      _evaluationDone = false;
-      _isEvaluating = false;
-      _resetEvaluationStates();
+      _questionPaperName = questionPaperName;
+      _syllabusCount = syllabusCount > 0 ? syllabusCount : syllabusList.length;
+      _hasRubric = hasRubric || hasRubricFromPrefs;
     });
-
-    final runId = ++_runToken;
-    final processed = await _processChangedDocuments(runId: runId);
-    if (!processed) return;
-
-    if (!mounted || runId != _runToken) return;
-    setState(() {
-      _currentEvaluationRunId = DateTime.now().microsecondsSinceEpoch;
-      _isEvaluating = true;
-    });
-    await _runEvaluation(runId: runId);
   }
 
-  String _docTitle(_DocStep step) {
-    switch (step) {
-      case _DocStep.answerSheets:
-        return 'evaluation.docStepAnswerSheetsProcessing'.tr();
-      case _DocStep.questionPaper:
-        return 'evaluation.docStepQuestionPaperProcessing'.tr();
-      case _DocStep.syllabus:
-        return 'evaluation.docStepSyllabusProcessing'.tr();
-    }
-  }
-
-  String _tokenKeyForStep(_DocStep step) {
-    switch (step) {
-      case _DocStep.answerSheets:
-        return 'answerSheets';
-      case _DocStep.questionPaper:
-        return 'questionPaper';
-      case _DocStep.syllabus:
-        return 'syllabus';
-    }
+  int _stepIndexForLine(String line) {
+    final lower = line.toLowerCase();
+    if (lower.contains('starting evaluation')) return 0;
+    if (lower.contains('evaluating answer')) return 0;
+    if (lower.contains('grading')) return 1;
+    if (lower.contains('updating existing evaluation result')) return 1;
+    if (lower.contains('mark')) return 1;
+    if (lower.contains('feedback')) return 2;
+    if (lower.contains('preparing report')) return 3;
+    if (lower.contains('finished')) return 3;
+    if (lower.contains('report')) return 3;
+    return 0;
   }
 
   Future<void> _startFlow() async {
-    // On entry: do NOT auto-reprocess. Only evaluate if docs are already processed.
-    await _refreshDocStatus();
-    if (!mounted) return;
+    final prefs = await SharedPreferences.getInstance();
+    await _loadReadOnlySummary(prefs);
 
-    if (_docsReady && !_needsReprocess) {
+    final docsAvailable =
+        widget.assumeDocsAvailable ? true : _allDocumentsAvailable(prefs);
+
+    if (!mounted) return;
+    setState(() {
+      _docsAvailable = docsAvailable;
+    });
+
+    if (docsAvailable) {
       final runId = ++_runToken;
       setState(() {
         _currentEvaluationRunId = DateTime.now().microsecondsSinceEpoch;
@@ -237,18 +206,20 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
     final hasAttachment = answerIds.isNotEmpty ||
         (prefs.getString(EvalDocKeys.attachment) ?? '').isNotEmpty;
 
-    final hasQuestionPaper =
+    final hasQuestionPaper = ((_questionPaperName ?? '').trim().isNotEmpty) ||
         (prefs.getString('question_paper_file:${widget.chatSessionId}') ??
                 prefs.getString(EvalDocKeys.questionPaperFile) ??
                 '')
             .isNotEmpty;
 
-    final hasSyllabus =
+    final hasSyllabus = (_syllabusCount > 0) ||
         (prefs.getStringList('syllabus_items:${widget.chatSessionId}') ??
                 prefs.getStringList(EvalDocKeys.syllabusItems) ??
                 const <String>[])
             .isNotEmpty;
-    final hasRubric = prefs.getBool(EvalDocKeys.hasRubric) ?? false;
+    final hasRubric = _hasRubric ||
+        (prefs.getBool('hasRubric:${widget.chatSessionId}') ?? false) ||
+        (prefs.getBool(EvalDocKeys.hasRubric) ?? false);
 
     final legacyMarks = prefs.getString(EvalDocKeys.evaluationData) ?? '';
     final paperConfirmed =
@@ -262,204 +233,138 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
         hasMarks;
   }
 
-  Future<void> _refreshDocStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    final currentTokens =
-        EvalDocTokens.buildCurrent(prefs, chatSessionId: widget.chatSessionId);
-    final processedTokens = EvalDocTokens.loadProcessed(prefs);
-
-    final docsAvailable = _allDocumentsAvailable(prefs);
-    final ordered = <_DocStep>[
-      _DocStep.answerSheets,
-      _DocStep.questionPaper,
-      _DocStep.syllabus,
-    ];
-
-    final nextStates = <_DocStep, _DocStepState>{};
-    var needsReprocess = false;
-
-    if (docsAvailable) {
-      for (final step in ordered) {
-        final key = _tokenKeyForStep(step);
-        final same = processedTokens != null &&
-            processedTokens[key] == currentTokens[key];
-        if (same) {
-          nextStates[step] = const _DocStepState(
-            status: _StepStatus.done,
-            alreadyProcessed: true,
-            progress: 100,
-          );
-        } else {
-          nextStates[step] =
-              const _DocStepState(status: _StepStatus.pending, progress: 0);
-          needsReprocess = true;
-        }
-      }
-    } else {
-      for (final step in ordered) {
-        nextStates[step] =
-            const _DocStepState(status: _StepStatus.pending, progress: 0);
-      }
-      needsReprocess = true;
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _docsAvailable = docsAvailable;
-      _docSteps = nextStates;
-      _docsReady = docsAvailable && !needsReprocess;
-      _needsReprocess = needsReprocess;
-      _isProcessingDocs = false;
-    });
-  }
-
-  Future<bool> _processChangedDocuments({required int runId}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final currentTokens =
-        EvalDocTokens.buildCurrent(prefs, chatSessionId: widget.chatSessionId);
-    final processedTokens = EvalDocTokens.loadProcessed(prefs);
-
-    final docsAvailable = _allDocumentsAvailable(prefs);
-    if (!docsAvailable) {
-      if (!mounted || runId != _runToken) return false;
-      setState(() {
-        _docsAvailable = false;
-        _docsReady = false;
-        _needsReprocess = true;
-        _isProcessingDocs = false;
-      });
-      return false;
-    }
-
-    final ordered = <_DocStep>[
-      _DocStep.answerSheets,
-      _DocStep.questionPaper,
-      _DocStep.syllabus,
-    ];
-
-    final stepsNeedingWork = <_DocStep>[];
-    final nextStates = <_DocStep, _DocStepState>{};
-    for (final step in ordered) {
-      final key = _tokenKeyForStep(step);
-      final same =
-          processedTokens != null && processedTokens[key] == currentTokens[key];
-      if (same) {
-        nextStates[step] = const _DocStepState(
-          status: _StepStatus.done,
-          alreadyProcessed: true,
-          progress: 100,
-        );
-      } else {
-        nextStates[step] =
-            const _DocStepState(status: _StepStatus.pending, progress: 0);
-        stepsNeedingWork.add(step);
-      }
-    }
-
-    if (!mounted || runId != _runToken) return false;
-    setState(() {
-      _docsAvailable = true;
-      _docSteps = nextStates;
-      _isProcessingDocs = stepsNeedingWork.isNotEmpty;
-    });
-
-    if (stepsNeedingWork.isNotEmpty) {
-      try {
-        final answerIds =
-            prefs.getStringList('answer_sheet_ids:${widget.chatSessionId}') ??
-                const <String>[];
-        final latest = answerIds.where((e) => e.isNotEmpty).isNotEmpty
-            ? answerIds.where((e) => e.isNotEmpty).last
-            : '';
-        await EvaluationService.processDocumentsStream(
-          chatSessionId: widget.chatSessionId,
-          answerResourceIds:
-              latest.isEmpty ? const <String>[] : <String>[latest],
-        );
-      } catch (e) {
-        // ignore: avoid_print
-        print('Process documents failed: $e');
-        if (!mounted || runId != _runToken) return false;
-        setState(() {
-          _isProcessingDocs = false;
-          _docsReady = false;
-          _needsReprocess = true;
-        });
-        return false;
-      }
-    }
-
-    // Process only the changed steps.
-    for (final step in ordered) {
-      if (!stepsNeedingWork.contains(step)) continue;
-      if (!mounted || runId != _runToken) return false;
-
-      setState(() {
-        _docSteps[step] = (_docSteps[step] ?? const _DocStepState()).copyWith(
-          status: _StepStatus.inProgress,
-          progress: 0,
-          alreadyProcessed: false,
-        );
-      });
-
-      for (int p = 20; p <= 100; p += 20) {
-        await Future.delayed(const Duration(milliseconds: 280));
-        if (!mounted || runId != _runToken) return false;
-        setState(() {
-          _docSteps[step] = (_docSteps[step] ?? const _DocStepState()).copyWith(
-            progress: p,
-          );
-        });
-      }
-
-      if (!mounted || runId != _runToken) return false;
-      setState(() {
-        _docSteps[step] = (_docSteps[step] ?? const _DocStepState()).copyWith(
-          status: _StepStatus.done,
-          progress: 100,
-        );
-      });
-    }
-
-    await EvalDocTokens.saveProcessed(prefs, currentTokens);
-    if (!mounted || runId != _runToken) return false;
-    setState(() {
-      _docsReady = true;
-      _needsReprocess = false;
-      _isProcessingDocs = false;
-    });
-    return true;
-  }
-
   Future<void> _runEvaluation({required int runId}) async {
-    // Simple simulated progress. Replace with real API calls when available.
-    for (int i = 0; i < _evalStates.length; i++) {
-      if (!mounted || runId != _runToken) return;
+    final prefs = await SharedPreferences.getInstance();
+    final answerIds =
+        prefs.getStringList('answer_sheet_ids:${widget.chatSessionId}') ??
+            const <String>[];
+    final latest = answerIds.where((e) => e.isNotEmpty).isNotEmpty
+        ? answerIds.where((e) => e.isNotEmpty).last
+        : '';
 
-      setState(() {
-        _evalStates[i] = _evalStates[i].copyWith(
-          status: _StepStatus.inProgress,
-          progress: 0,
-        );
-      });
-
-      // Animate progress within the step.
-      for (int p = 20; p <= 100; p += 20) {
-        await Future.delayed(const Duration(milliseconds: 320));
-        if (!mounted || runId != _runToken) return;
-        setState(() {
-          _evalStates[i] = _evalStates[i].copyWith(progress: p);
-        });
-      }
-
+    if (latest.isEmpty) {
       if (!mounted || runId != _runToken) return;
       setState(() {
-        _evalStates[i] = _evalStates[i].copyWith(status: _StepStatus.done);
+        _isEvaluating = false;
+        _evaluationDone = false;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Missing answer sheet upload')),
+      );
+      return;
     }
 
     if (!mounted || runId != _runToken) return;
     setState(() {
+      for (int i = 0; i < _evalStates.length; i++) {
+        _evalStates[i] =
+            const _StepState(status: _StepStatus.pending, progress: 0);
+      }
+      _evalStates[0] =
+          const _StepState(status: _StepStatus.inProgress, progress: 0);
+    });
+
+    var currentStep = 0;
+
+    try {
+      await EvaluationService.startEvaluationStream(
+        chatSessionId: widget.chatSessionId,
+        answerResourceIds: <String>[latest],
+        onLine: (line) {
+          if (!mounted || runId != _runToken) return;
+
+          Map<String, dynamic>? asJson;
+          try {
+            final decoded = jsonDecode(line);
+            if (decoded is Map) {
+              asJson = Map<String, dynamic>.from(decoded);
+            }
+          } catch (_) {
+            asJson = null;
+          }
+
+          final displayMessage =
+              (asJson?['message'] ?? asJson?['detail'] ?? asJson?['step'])
+                      ?.toString() ??
+                  line;
+
+          final stepHint = asJson?['step']?.toString() ?? '';
+          final status = asJson?['status']?.toString() ?? '';
+          final progressRaw = asJson?['progress'];
+
+          final hintedStep = stepHint.isNotEmpty
+              ? _stepIndexForLine(stepHint)
+              : _stepIndexForLine(line);
+
+          var p = 0;
+          if (progressRaw is num) {
+            p = progressRaw.round().clamp(0, 100);
+          }
+
+          setState(() {
+            _lastStatusLine = displayMessage;
+            if (hintedStep > currentStep) {
+              _evalStates[currentStep] = _evalStates[currentStep].copyWith(
+                status: _StepStatus.done,
+                progress: 100,
+              );
+              currentStep = hintedStep.clamp(0, _evalStates.length - 1);
+              _evalStates[currentStep] = _evalStates[currentStep].copyWith(
+                status: _StepStatus.inProgress,
+                progress: 0,
+              );
+            }
+
+            final existing = _evalStates[currentStep].progress;
+            final nextProgress = p > 0 ? p : (existing + 5).clamp(0, 99);
+            _evalStates[currentStep] = _evalStates[currentStep].copyWith(
+              status: _StepStatus.inProgress,
+              progress: nextProgress,
+            );
+
+            final statusLower = status.toLowerCase();
+            final lineLower = line.toLowerCase();
+            if (statusLower == 'completed' || statusLower == 'done') {
+              for (int i = 0; i < _evalStates.length; i++) {
+                _evalStates[i] = const _StepState(
+                  status: _StepStatus.done,
+                  progress: 100,
+                );
+              }
+            }
+
+            if (lineLower.contains('evaluation completed for session') ||
+                lineLower.contains('evaluation finished for answer document')) {
+              for (int i = 0; i < _evalStates.length; i++) {
+                _evalStates[i] = const _StepState(
+                  status: _StepStatus.done,
+                  progress: 100,
+                );
+              }
+            }
+          });
+        },
+      );
+    } catch (e) {
+      // ignore: avoid_print
+      print('startEvaluationStream failed: $e');
+      if (!mounted || runId != _runToken) return;
+      setState(() {
+        _isEvaluating = false;
+        _evaluationDone = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to stream evaluation progress')),
+      );
+      return;
+    }
+
+    if (!mounted || runId != _runToken) return;
+    setState(() {
+      for (int i = 0; i < _evalStates.length; i++) {
+        _evalStates[i] =
+            const _StepState(status: _StepStatus.done, progress: 100);
+      }
       _isEvaluating = false;
       _evaluationDone = true;
     });
@@ -484,7 +389,6 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final missingRequiredDocs = !_docsAvailable;
-    final needsReprocess = _docsAvailable && _needsReprocess;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -495,6 +399,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
         onRightIconPressed: () {},
         onAddPressed: () {},
         chatSessionId: widget.chatSessionId,
+        enableSidebars: false,
       ),
       body: SafeArea(
         child: Center(
@@ -534,68 +439,35 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
                   const SizedBox(height: 14),
                 ],
 
-                if (!missingRequiredDocs && needsReprocess) ...[
-                  _SectionCard(
-                    title: 'evaluation.docsChangedTitle'.tr(),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.refresh_outlined,
-                          size: 20,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'evaluation.docsChangedBody'.tr(),
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                ],
-
-                // Documents: show as already complete once the user is here.
                 _SectionCard(
-                  title: 'evaluation.processDocuments'.tr(),
+                  title: 'evaluation.evaluationDetails'.tr(),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      for (final step in <_DocStep>[
-                        _DocStep.answerSheets,
-                        _DocStep.questionPaper,
-                        _DocStep.syllabus,
-                      ])
-                        _RowStep(
-                          title: _docTitle(step),
-                          status:
-                              (_docSteps[step] ?? const _DocStepState()).status,
-                          trailingLabel:
-                              (_docSteps[step] ?? const _DocStepState())
-                                      .alreadyProcessed
-                                  ? 'evaluation.alreadyProcessed'.tr()
-                                  : null,
-                          progress: (_docSteps[step] ?? const _DocStepState())
-                              .progress,
+                      Text(
+                        'evaluation.attachedAnswerSheet'.tr(
+                          args: [
+                            (widget.attachmentName ?? '').isNotEmpty
+                                ? widget.attachmentName!
+                                : '—'
+                          ],
                         ),
-                      const SizedBox(height: 6),
-                      if (_isProcessingDocs)
-                        const LinearProgressIndicator(minHeight: 3),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 48,
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: (_isProcessingDocs ||
-                                  _isEvaluating ||
-                                  !_needsReprocess)
-                              ? null
-                              : _reprocessDocumentsAndEvaluate,
-                          icon: const Icon(Icons.refresh_outlined),
-                          label: Text('evaluation.reprocessDocuments'.tr()),
-                        ),
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${'question_paper.header'.tr()}: ${(_questionPaperName ?? '').isNotEmpty ? _questionPaperName! : '—'}',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${'syllabus.header'.tr()}: ${_syllabusCount > 0 ? '${_syllabusCount} file(s)' : '—'}',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${'question_paper.applied_rubric'.tr()}: ${_hasRubric ? '✓' : '—'}',
+                        style: theme.textTheme.bodyMedium,
                       ),
                     ],
                   ),
@@ -608,7 +480,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
                   title: 'evaluation.send'.tr(),
                   child: Column(
                     children: [
-                      if (missingRequiredDocs || needsReprocess) ...[
+                      if (missingRequiredDocs) ...[
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -621,9 +493,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                missingRequiredDocs
-                                    ? 'evaluation.waitingForDocuments'.tr()
-                                    : 'evaluation.waitingForReprocess'.tr(),
+                                'evaluation.waitingForDocuments'.tr(),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurface
                                       .withOpacity(0.75),
@@ -644,6 +514,19 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
                                   : null,
                           progress: _evalStates[i].progress,
                         ),
+                      if ((_lastStatusLine ?? '').isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _lastStatusLine!,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color:
+                                  theme.colorScheme.onSurface.withOpacity(0.75),
+                            ),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 8),
                       if (_isEvaluating)
                         const LinearProgressIndicator(minHeight: 3),
@@ -715,6 +598,17 @@ class _RowStep extends StatelessWidget {
   final int progress;
   final String? trailingLabel;
 
+  String _statusLabelKey() {
+    switch (status) {
+      case _StepStatus.done:
+        return 'evaluation.statusCompleted';
+      case _StepStatus.inProgress:
+        return 'evaluation.statusProcessing';
+      case _StepStatus.pending:
+        return 'evaluation.statusStarting';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -752,7 +646,20 @@ class _RowStep extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(child: Text(title, style: theme.textTheme.bodyMedium)),
           const SizedBox(width: 10),
-          if (trailingLabel != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: theme.dividerColor),
+            ),
+            child: Text(
+              _statusLabelKey().tr(),
+              style: theme.textTheme.labelMedium,
+            ),
+          ),
+          if (trailingLabel != null) ...[
+            const SizedBox(width: 8),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -761,9 +668,8 @@ class _RowStep extends StatelessWidget {
                 border: Border.all(color: theme.dividerColor),
               ),
               child: Text(trailingLabel!, style: theme.textTheme.labelMedium),
-            )
-          else
-            Text('$progress%', style: theme.textTheme.labelMedium),
+            ),
+          ],
         ],
       ),
     );

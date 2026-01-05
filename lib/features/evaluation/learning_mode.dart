@@ -44,7 +44,7 @@ class _LearningModePageState extends State<LearningModePage> {
   // store the localization key (display shows .tr())
   String? _activeSessionId;
   bool _isSending = false;
-  List<Message> _messages = [];
+  final List<Message> _messages = [];
   String _responseLevel = 'grades_9_11';
 
   final TextEditingController _inputController = TextEditingController();
@@ -296,9 +296,9 @@ class _ChatListItem extends StatelessWidget {
 // Replace previous _EmptyChatView with _ChatView that shows messages or empty prompt
 class _ChatView extends StatelessWidget {
   const _ChatView({
-    Key? key,
+    super.key,
     required this.messages,
-  }) : super(key: key);
+  });
 
   final List<Message> messages;
 
@@ -369,7 +369,7 @@ class _ChatView extends StatelessWidget {
                             decoration: BoxDecoration(
                               color: m.fromUser
                                   ? Colors.white.withOpacity(0.06)
-                                  : theme.colorScheme.background,
+                                  : theme.colorScheme.surface,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -398,7 +398,7 @@ class _ChatView extends StatelessWidget {
                       '${MaterialLocalizations.of(context).formatShortDate(m.time)} '
                       '${TimeOfDay.fromDateTime(m.time).format(context)}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                          color: (textColor as Color?)?.withOpacity(0.7) ??
+                          color: (textColor)?.withOpacity(0.7) ??
                               Colors.grey),
                     ),
                   ],
@@ -519,9 +519,9 @@ class _InputBarState extends State<_InputBar>
 
   // small animated waveform widget used inside recording panel
   Widget _waveform(BuildContext context) {
-    final barCount = 12;
-    final maxBarHeight = 28.0;
-    final minBarHeight = 6.0;
+    const barCount = 12;
+    const maxBarHeight = 28.0;
+    const minBarHeight = 6.0;
 
     return AnimatedBuilder(
       animation: _animController,

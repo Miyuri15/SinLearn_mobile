@@ -4,9 +4,10 @@ import '../../core/network/api_client.dart';
 
 class RubricService {
   /// CREATE RUBRIC
-  /// Backend: POST /api/v1/rubrics/
+  /// Backend: POST /api/v1/rubrics/?chat_session_id={uuid}
   static Future<String> createRubric({
     required String name,
+    String? chatSessionId,
     int? semantic,
     int? coverage,
     int? relevance,
@@ -70,33 +71,53 @@ class RubricService {
       if (source != null) 'source': source,
     };
 
-    try {
-      final res = await ApiClient.dio.post(
-        '/api/v1/rubrics/',
-        data: payload,
-      );
+    final pathsToTry = <String>[
+      '/api/v1/rubrics/',
+      '/rubrics/',
+    ];
 
-      final data = res.data;
-      // ignore: avoid_print
-      print('createRubric payload: $payload');
-      // ignore: avoid_print
-      print('createRubric response: $data');
+    DioException? last404;
+    for (final path in pathsToTry) {
+      try {
+        final res = await ApiClient.dio.post(
+          path,
+          data: payload,
+          queryParameters: {
+            if (chatSessionId != null && chatSessionId.trim().isNotEmpty)
+              'chat_session_id': chatSessionId.trim(),
+          },
+        );
 
-      final id = extractId(data);
-      if (id != null && id.isNotEmpty) return id;
+        final data = res.data;
+        // ignore: avoid_print
+        print('createRubric payload: $payload');
+        // ignore: avoid_print
+        print('createRubric response: $data');
 
-      throw StateError(
-          'Unexpected rubric create response: ${data.runtimeType}');
-    } on DioException catch (e) {
-      // ignore: avoid_print
-      print('createRubric failed payload: $payload');
-      // ignore: avoid_print
-      print('createRubric failed response: ${e.response?.data}');
-      if (e.response?.statusCode == 422) {
+        final id = extractId(data);
+        if (id != null && id.isNotEmpty) return id;
+
         throw StateError(
-            'Rubric create failed (422). Server said: ${e.response?.data}');
+            'Unexpected rubric create response: ${data.runtimeType}');
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          last404 = e;
+          continue;
+        }
+        // ignore: avoid_print
+        print('createRubric failed payload: $payload');
+        // ignore: avoid_print
+        print('createRubric failed response: ${e.response?.data}');
+        if (e.response?.statusCode == 422) {
+          throw StateError(
+              'Rubric create failed (422). Server said: ${e.response?.data}');
+        }
+        rethrow;
       }
-      rethrow;
     }
+
+    throw StateError(
+      'rubrics endpoint not found. Last error: ${last404?.message}',
+    );
   }
 }

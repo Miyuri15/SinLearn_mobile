@@ -55,8 +55,8 @@ class EvaluationHeader extends StatelessWidget implements PreferredSizeWidget {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(20),
                               onTap: () {},
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
                                     horizontal: 16, vertical: 10),
                                 child: Icon(Icons.menu_book_outlined,
                                     color: primaryBlue),
@@ -71,8 +71,8 @@ class EvaluationHeader extends StatelessWidget implements PreferredSizeWidget {
                             child: InkWell(
                               borderRadius: BorderRadius.circular(20),
                               onTap: () {},
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 10),
                                 child: Icon(Icons.checklist_rtl_outlined,
                                     color: Colors.black54),

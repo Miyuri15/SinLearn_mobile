@@ -11,6 +11,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onAddPressed;
   final VoidCallback? onRubricApplied;
   final String? chatSessionId;
+  final bool enableSidebars;
 
   const MainAppBar({
     super.key,
@@ -21,6 +22,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onAddPressed,
     this.onRubricApplied,
     this.chatSessionId,
+    this.enableSidebars = true,
   });
 
   @override
@@ -63,7 +65,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant
+                    color: theme.colorScheme.surfaceContainerHighest
                         .withOpacity(0.5), // was 0xFFF7F9FC
                     borderRadius: BorderRadius.circular(28),
                   ),
@@ -87,11 +89,12 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
 
                 // TEACHERS RUBRIC -> right-side sidebar
                 // show rubric icon only in Evaluation mode (selectedIndex == 1)
-                if (selectedIndex == 1)
+                if (enableSidebars && selectedIndex == 1)
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 6),
                     decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withOpacity(0.5),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -106,43 +109,43 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
 
                 // BOOK ICON -> Syllabus (sidebar)
-                Builder(
-                  builder: (ctx) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 6),
-                      decoration: BoxDecoration(
-                        color:
-                            theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: Icon(Icons.book,
-                            size: 20, color: theme.colorScheme.onSurface),
+                if (enableSidebars) ...[
+                  Builder(
+                    builder: (ctx) {
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.book,
+                              size: 20, color: theme.colorScheme.onSurface),
+                          padding: const EdgeInsets.all(8),
+                          splashRadius: 20,
+                          onPressed: () => showSyllabusSidebar(ctx,
+                              chatSessionId:
+                                  chatSessionId), // opens as right panel
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Builder(
+                    builder: (ctx) {
+                      return IconButton(
+                        icon: Icon(Icons.add,
+                            size: 22, color: theme.colorScheme.onSurface),
                         padding: const EdgeInsets.all(8),
                         splashRadius: 20,
-                        onPressed: () => showSyllabusSidebar(ctx,
+                        onPressed: () => showQuestionPaperSidebar(ctx,
                             chatSessionId:
                                 chatSessionId), // opens as right panel
-                      ),
-                    );
-                  },
-                ),
-
-                const SizedBox(width: 8),
-
-                // ADD BUTTON -> Question Paper (sidebar)
-                Builder(
-                  builder: (ctx) {
-                    return IconButton(
-                      icon: Icon(Icons.add,
-                          size: 22, color: theme.colorScheme.onSurface),
-                      padding: const EdgeInsets.all(8),
-                      splashRadius: 20,
-                      onPressed: () => showQuestionPaperSidebar(ctx,
-                          chatSessionId: chatSessionId), // opens as right panel
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
+                ],
               ],
             ),
           ),

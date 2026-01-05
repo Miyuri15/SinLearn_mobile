@@ -62,7 +62,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceVariant
+                color: theme.colorScheme.surfaceContainerHighest
                     .withOpacity(0.5), // was 0xFFF7F9FC
                 borderRadius: BorderRadius.circular(28),
               ),
@@ -90,7 +90,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
               Container(
                 margin: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
@@ -110,7 +110,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                 return Container(
                   margin: const EdgeInsets.symmetric(horizontal: 6),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.surfaceVariant.withOpacity(0.5),
+                    color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
