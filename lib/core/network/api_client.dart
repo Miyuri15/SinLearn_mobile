@@ -4,7 +4,7 @@ import 'token_storage.dart';
 class ApiClient {
   static final Dio dio = Dio(
     BaseOptions(
-      baseUrl: 'http://127.0.0.1:8000', // ⚠️ change for device
+      baseUrl: 'https://a7ca1788b525.ngrok-free.app', // ⚠️ change for device
       connectTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 60),
       receiveTimeout: const Duration(seconds: 60),

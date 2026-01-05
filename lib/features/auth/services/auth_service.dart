@@ -41,6 +41,7 @@ class AuthService {
 
       return response.data;
     } on DioException catch (e) {
+      print('AuthService signIn error: $e');
       if (e.response != null) {
         throw Exception(e.response?.data['detail'] ?? 'Login failed');
       }
