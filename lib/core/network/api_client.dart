@@ -1,11 +1,14 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:sinlearn_mobile/features/auth/services/auth_service.dart';
 import 'package:sinlearn_mobile/core/auth/auth_refresh_lock.dart';
 import 'token_storage.dart';
 
+typedef RefreshCallback = Future<void> Function();
+
 class ApiClient {
   static CancelToken cancelToken = CancelToken();
+
+  static late RefreshCallback onRefresh;
 
   static final Dio dio = Dio(
     BaseOptions(
@@ -17,6 +20,7 @@ class ApiClient {
   )..interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
+          // Attach global cancel token
           options.cancelToken ??= cancelToken;
 
           if (options.extra['skipAuth'] == true) {
@@ -35,9 +39,7 @@ class ApiClient {
 
           try {
             if (await TokenStorage.shouldRefresh()) {
-              await AuthRefreshLock.run(
-                () => AuthService().refreshToken(),
-              );
+              await AuthRefreshLock.run(() => onRefresh());
             }
 
             // Attach fresh token
@@ -56,7 +58,7 @@ class ApiClient {
 
             return handler.next(options);
           } on DioException catch (e, st) {
-            debugPrint('REFRESH FAILED (DioException): ${e.message}');
+            debugPrint('ApiClient refresh failed: ${e.message}');
             debugPrint('Status: ${e.response?.statusCode}');
             debugPrint('Data: ${e.response?.data}');
             debugPrintStack(stackTrace: st);
@@ -77,7 +79,6 @@ class ApiClient {
           }
         },
         onError: (e, handler) async {
-          // 🔕 Skip retry for refresh calls
           if (e.requestOptions.extra['skipAuth'] == true) {
             return handler.next(e);
           }
@@ -85,9 +86,7 @@ class ApiClient {
           // Retry once on 401
           if (e.response?.statusCode == 401) {
             try {
-              await AuthRefreshLock.run(
-                () => AuthService().refreshToken(),
-              );
+              await AuthRefreshLock.run(() => onRefresh());
 
               final newToken = await TokenStorage.getAccessToken();
               if (newToken != null && newToken.isNotEmpty) {

@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sinlearn_mobile/core/auth/auth_gate.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'utils/timeago_si.dart';
+import 'package:sinlearn_mobile/core/network/api_client.dart';
+import 'package:sinlearn_mobile/features/auth/services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,6 +16,8 @@ void main() async {
   // Load the saved theme preference
   final prefs = await SharedPreferences.getInstance();
   final isDark = prefs.getBool('isDark') ?? false;
+
+  ApiClient.onRefresh = () => AuthService().refreshToken();
 
   runApp(
     EasyLocalization(
