@@ -8,6 +8,7 @@ import '../evaluation/evaluation_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import '../../services/chat_service.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 // Model
 class ChatEntry {
@@ -55,35 +56,40 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
     try {
       final sessions = await ChatService.listChatSessions();
       if (!mounted) return;
-      
+
       setState(() {
         _all
           ..clear()
           ..addAll(sessions.map((s) => ChatEntry(
-            id: s.id,
-            title: s.title ?? (s.mode == 'learning' ? 'recent_chats.new_learning'.tr() : 'recent_chats.new_evaluation'.tr()),
-            type: s.mode == 'learning' ? ChatType.learning : ChatType.evaluation,
-            createdAt: DateTime.tryParse(s.createdAt) ?? DateTime.now(),
-            messageCount: 0, 
-          )));
-          
-          // Sort by createdAt desc
-          _all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          
-          if (_all.isNotEmpty) {
-             _activeId = _all.first.id;
-          }
+                id: s.id,
+                title: s.title ??
+                    (s.mode == 'learning'
+                        ? 'recent_chats.new_learning'.tr()
+                        : 'recent_chats.new_evaluation'.tr()),
+                type: s.mode == 'learning'
+                    ? ChatType.learning
+                    : ChatType.evaluation,
+                createdAt: DateTime.tryParse(s.createdAt) ?? DateTime.now(),
+                messageCount: 0,
+              )));
+
+        // Sort by createdAt desc
+        _all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+        if (_all.isNotEmpty) {
+          _activeId = _all.first.id;
+        }
       });
     } catch (e) {
       print("Error loading chats: $e");
-      // If API fails, maybe show empty or cached? 
+      // If API fails, maybe show empty or cached?
       // For now, let's not seed fake data to avoid confusion.
     }
   }
 
   Future<void> _saveChats() async {
-    // We might not need to save to local storage if we are fully API driven, 
-    // but keeping it for offline support could be useful. 
+    // We might not need to save to local storage if we are fully API driven,
+    // but keeping it for offline support could be useful.
     // However, syncing is complex. Let's skip saving for now to rely on API.
   }
 
@@ -98,9 +104,10 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
 
       final entry = ChatEntry(
         id: session.id,
-        title: session.title ?? (type == ChatType.learning
-            ? 'recent_chats.new_learning'.tr()
-            : 'recent_chats.new_evaluation'.tr()),
+        title: session.title ??
+            (type == ChatType.learning
+                ? 'recent_chats.new_learning'.tr()
+                : 'recent_chats.new_evaluation'.tr()),
         type: type,
         createdAt: DateTime.now(),
       );
@@ -118,8 +125,8 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
         Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const LearningModePage()));
       } else {
-        Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
       }
     } catch (e) {
       if (mounted) {
@@ -130,15 +137,11 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
     }
   }
 
-  String _relative(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 1) return 'recent_chats.less_minute'.tr();
-    if (diff.inMinutes == 1) return 'recent_chats.minute_ago'.tr();
-    if (diff.inMinutes < 60) {
-      return 'recent_chats.minutes_ago'.tr(args: [diff.inMinutes.toString()]);
-    }
-    if (diff.inHours == 1) return 'recent_chats.hour_ago'.tr();
-    return 'recent_chats.hours_ago'.tr(args: [diff.inHours.toString()]);
+  String _relative(DateTime time, BuildContext context) {
+    return timeago.format(
+      time,
+      locale: context.locale.languageCode,
+    );
   }
 
   List<ChatEntry> get _filtered {
@@ -158,7 +161,6 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
 
   @override
   Widget build(BuildContext context) {
-
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _checkVersionAndReload());
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -236,7 +238,7 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                   return _RecentItem(
                     key: ValueKey(item.id), // stable key
                     entry: item,
-                    timeLabel: _relative(item.createdAt),
+                    timeLabel: _relative(item.createdAt, context),
                     active: active,
                     onTap: () => setState(() => _activeId = item.id),
                     isDark: isDark,
@@ -382,12 +384,11 @@ class _RecentItem extends StatelessWidget {
         // navigate to interface for this chat type
         Navigator.of(context).pop();
         if (entry.type == ChatType.learning) {
-
           Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const LearningModePage()));
         } else {
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
         }
       },
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
