@@ -3,6 +3,8 @@ import 'package:easy_localization/easy_localization.dart';
 import 'services/auth_service.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+enum InputFieldType { name, email, password }
+
 class SignUpForm extends StatefulWidget {
   final VoidCallback onSignUpSuccess;
   const SignUpForm({super.key, required this.onSignUpSuccess});
@@ -56,24 +58,43 @@ class _SignUpFormState extends State<SignUpForm> {
     return Column(
       children: [
         _buildLabel('name'.tr(), labelColor, isSmallPhone),
-        _buildInput(_nameCtrl, _nameFocus, _emailFocus, false, 'name_hint'.tr(),
-            hintColor, surfaceFill, borderColor, isSmallPhone),
+        _buildInput(
+          _nameCtrl,
+          _nameFocus,
+          _emailFocus,
+          'name_hint'.tr(),
+          hintColor,
+          surfaceFill,
+          borderColor,
+          isSmallPhone,
+          InputFieldType.name,
+        ),
         SizedBox(height: isSmallPhone ? 10 : 12),
         _buildLabel('email'.tr(), labelColor, isSmallPhone),
         _buildInput(
-            _emailCtrl,
-            _emailFocus,
-            _passwordFocus,
-            false,
-            'email_hint'.tr(),
-            hintColor,
-            surfaceFill,
-            borderColor,
-            isSmallPhone),
+          _emailCtrl,
+          _emailFocus,
+          _passwordFocus,
+          'email_hint'.tr(),
+          hintColor,
+          surfaceFill,
+          borderColor,
+          isSmallPhone,
+          InputFieldType.email,
+        ),
         SizedBox(height: isSmallPhone ? 10 : 12),
         _buildLabel('password'.tr(), labelColor, isSmallPhone),
-        _buildInput(_pwdCtrl, _passwordFocus, null, true, 'password_hint'.tr(),
-            hintColor, surfaceFill, borderColor, isSmallPhone),
+        _buildInput(
+          _pwdCtrl,
+          _passwordFocus,
+          null,
+          'password_hint'.tr(),
+          hintColor,
+          surfaceFill,
+          borderColor,
+          isSmallPhone,
+          InputFieldType.password,
+        ),
         SizedBox(height: isSmallPhone ? 10 : 12),
         _buildLabel('user_type'.tr(), labelColor, isSmallPhone),
         Row(
@@ -195,54 +216,83 @@ class _SignUpFormState extends State<SignUpForm> {
   }
 
   Widget _buildInput(
-      TextEditingController ctrl,
-      FocusNode focus,
-      FocusNode? next,
-      bool isPwd,
-      String hint,
-      Color? hintColor,
-      Color fill,
-      Color border,
-      bool isSmall) {
+    TextEditingController ctrl,
+    FocusNode focus,
+    FocusNode? next,
+    String hint,
+    Color? hintColor,
+    Color fill,
+    Color border,
+    bool isSmall,
+    InputFieldType type,
+  ) {
+    final bool isPwd = type == InputFieldType.password;
+
+    late TextCapitalization capitalization;
+    late TextInputType keyboardType;
+    late List<String> autofill;
+
+    switch (type) {
+      case InputFieldType.name:
+        capitalization = TextCapitalization.words;
+        keyboardType = TextInputType.name;
+        autofill = const [AutofillHints.name];
+        break;
+
+      case InputFieldType.email:
+        capitalization = TextCapitalization.none;
+        keyboardType = TextInputType.emailAddress;
+        autofill = const [AutofillHints.email];
+        break;
+
+      case InputFieldType.password:
+        capitalization = TextCapitalization.none;
+        keyboardType = TextInputType.text;
+        autofill = const [AutofillHints.password];
+        break;
+    }
+
     return Container(
-      decoration: BoxDecoration(
-        color: fill,
-        borderRadius: BorderRadius.circular(isSmall ? 14 : 18),
-        border: Border.all(color: border),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 6,
-              offset: const Offset(0, 2))
-        ],
-      ),
-      child: TextFormField(
-        controller: ctrl,
-        focusNode: focus,
-        obscureText: isPwd && !_showPassword,
-        keyboardType: isPwd ? TextInputType.text : TextInputType.emailAddress,
-        textInputAction:
-            next != null ? TextInputAction.next : TextInputAction.done,
-        onEditingComplete: () =>
-            next != null ? next.requestFocus() : focus.unfocus(),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: hintColor, fontSize: isSmall ? 13 : null),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.all(isSmall ? 12 : 14),
-          suffixIcon: isPwd
-              ? IconButton(
-                  icon: Icon(
-                    _showPassword ? Icons.visibility_off : Icons.visibility,
-                  ),
-                  onPressed: () {
-                    setState(() => _showPassword = !_showPassword);
-                  },
-                )
-              : null,
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(isSmall ? 14 : 18),
+          border: Border.all(color: border),
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 6,
+                offset: const Offset(0, 2))
+          ],
         ),
-      ),
-    );
+        child: TextFormField(
+          controller: ctrl,
+          focusNode: focus,
+          obscureText: isPwd && !_showPassword,
+          keyboardType: keyboardType,
+          textCapitalization: capitalization,
+          autofillHints: autofill,
+          textInputAction:
+              next != null ? TextInputAction.next : TextInputAction.done,
+          onEditingComplete: () =>
+              next != null ? next.requestFocus() : focus.unfocus(),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle:
+                TextStyle(color: hintColor, fontSize: isSmall ? 13 : null),
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.all(isSmall ? 12 : 14),
+            suffixIcon: isPwd
+                ? IconButton(
+                    icon: Icon(
+                      _showPassword ? Icons.visibility_off : Icons.visibility,
+                    ),
+                    onPressed: () {
+                      setState(() => _showPassword = !_showPassword);
+                    },
+                  )
+                : null,
+          ),
+        ));
   }
 
   Widget _buildUserTypeBtn(String type, IconData icon, bool isSmall,

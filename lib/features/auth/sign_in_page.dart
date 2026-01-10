@@ -190,6 +190,11 @@ class _SignInFormState extends State<SignInForm> {
         focusNode: focus,
         obscureText: isPwd && !_showPassword,
         keyboardType: isPwd ? TextInputType.text : TextInputType.emailAddress,
+        textCapitalization:
+            isPwd ? TextCapitalization.none : TextCapitalization.none,
+        autofillHints: isPwd
+            ? const [AutofillHints.password]
+            : const [AutofillHints.email],
         textInputAction:
             next != null ? TextInputAction.next : TextInputAction.done,
         onEditingComplete: () =>
