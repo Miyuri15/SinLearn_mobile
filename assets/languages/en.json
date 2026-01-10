@@ -45,9 +45,9 @@
   "ask_question_hint": "Ask a question...",
   "type_answer_hint": "Type your answer or upload a file...",
   "response_level": "Response Level",
-  "grades_6_8": "Grades 6-8",
-  "grades_9_11": "Grades 9-11",
-  "grades_12_plus": "Grades 12+",
+  "grade_6_8": "Grades 6-8",
+  "grade_9_11": "Grades 9-11",
+  "grade_12_13": "Grades 12-13",
   "evaluation_mode": "Evaluation Mode",
   "recording": "Recording",
 

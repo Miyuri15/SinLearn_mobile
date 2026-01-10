@@ -3,9 +3,11 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:sinlearn_mobile/core/network/api_client.dart';
 import 'package:sinlearn_mobile/core/network/token_storage.dart';
 import 'package:sinlearn_mobile/features/auth/auth_page.dart';
+import 'package:sinlearn_mobile/core/utils/app_toast.dart';
+import 'package:sinlearn_mobile/core/utils/error_handler.dart';
 import '../settings/Settings_Teachers.dart';
 import '../../main.dart' show MyApp;
-import '../evaluation/learning_mode.dart';
+import '../learning/learning_mode.dart';
 import '../evaluation/evaluation_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/chat_service.dart';
@@ -47,10 +49,6 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
   void initState() {
     super.initState();
     _loadChats();
-  }
-
-  Future<void> _seedInitialChats() async {
-    // No-op: We don't want fake chats anymore.
   }
 
   Future<void> _loadChats() async {
@@ -131,9 +129,7 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create session: $e')),
-        );
+        AppToast.error(context, ErrorHandler.getErrorMessage(e));
       }
     }
   }
@@ -385,11 +381,11 @@ class _RecentItem extends StatelessWidget {
       ),
       onTap: () {
         onTap();
-        // navigate to interface for this chat type
+        // navigate to interface for this chat type with session ID
         Navigator.of(context).pop();
         if (entry.type == ChatType.learning) {
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LearningModePage()));
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => LearningModePage(chatSessionId: entry.id)));
         } else {
           Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));

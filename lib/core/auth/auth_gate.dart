@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:sinlearn_mobile/core/network/token_storage.dart';
 import 'package:sinlearn_mobile/features/auth/auth_page.dart';
-import 'package:sinlearn_mobile/features/evaluation/learning_mode.dart';
+import 'package:sinlearn_mobile/features/learning/learning_mode.dart';
 
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
