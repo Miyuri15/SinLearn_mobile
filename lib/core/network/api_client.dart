@@ -2,6 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:sinlearn_mobile/core/auth/auth_refresh_lock.dart';
 import 'token_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+final baseUrl = dotenv.env['API_BASE_URL'];
 
 typedef RefreshCallback = Future<void> Function();
 
@@ -12,7 +15,7 @@ class ApiClient {
 
   static final Dio dio = Dio(
     BaseOptions(
-      baseUrl: 'https://6c55fa6a92a7.ngrok-free.app',
+      baseUrl: baseUrl ?? '',
       connectTimeout: const Duration(seconds: 30),
       sendTimeout: const Duration(seconds: 60),
       receiveTimeout: const Duration(seconds: 60),

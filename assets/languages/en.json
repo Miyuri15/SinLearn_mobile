@@ -263,5 +263,24 @@
     "backToDocumentProcess": "Back to document process",
     "replaceAttachment": "Replace attachment",
     "removeAttachment": "Remove attachment"
+  },
+  "error": {
+    "unknown": "An unexpected error occurred. Please try again.",
+    "timeout": "Connection timeout. Please check your internet and try again.",
+    "network": "Network error. Please check your internet connection.",
+    "invalid_format": "Invalid format. Please try again.",
+    "cancelled": "Operation cancelled.",
+    "invalid_input": "Invalid input. Please check your information.",
+    "invalid_credentials": "Invalid email or password. Please try again.",
+    "access_denied": "Access denied. You don't have permission to perform this action.",
+    "not_found": "The requested resource was not found.",
+    "conflict": "This resource already exists.",
+    "validation_failed": "Validation failed. Please check your input.",
+    "too_many_requests": "Too many requests. Please wait a moment and try again.",
+    "server_error": "Server error. Please try again later.",
+    "service_unavailable": "Service unavailable. Please try again later."
+  },
+  "auth": {
+    "login_successful": "Login successful"
   }
 }

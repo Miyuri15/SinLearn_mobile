@@ -44,6 +44,7 @@ dependencies:
   flutter_secure_storage: ^8.0.0
   timeago: ^3.6.1
   jwt_decoder: ^2.0.1
+  flutter_dotenv: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -61,6 +62,7 @@ flutter:
 
   # Asset folders for localization, fonts, images, icons
   assets:
+    - .env
     - assets/languages/
     - assets/fonts/
     - assets/icons/

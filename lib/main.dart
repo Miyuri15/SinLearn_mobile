@@ -6,10 +6,13 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'utils/timeago_si.dart';
 import 'package:sinlearn_mobile/core/network/api_client.dart';
 import 'package:sinlearn_mobile/features/auth/services/auth_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
+
+  await dotenv.load(fileName: ".env");
 
   timeago.setLocaleMessages('si', SiMessages());
 
