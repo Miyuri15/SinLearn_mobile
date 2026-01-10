@@ -1,8 +1,12 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:sinlearn_mobile/features/auth/services/auth_service.dart';
+import 'package:sinlearn_mobile/core/auth/auth_refresh_lock.dart';
 import 'token_storage.dart';
 
 class ApiClient {
+  static CancelToken cancelToken = CancelToken();
+
   static final Dio dio = Dio(
     BaseOptions(
       baseUrl: 'https://6c55fa6a92a7.ngrok-free.app',
@@ -13,45 +17,96 @@ class ApiClient {
   )..interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) async {
-          if (await TokenStorage.shouldRefresh()) {
-            try {
-              await AuthService().refreshToken();
-            } catch (_) {
-              await TokenStorage.clear();
-              return handler.reject(
-                DioException(
-                  requestOptions: options,
-                  error: 'Session expired',
-                ),
+          options.cancelToken ??= cancelToken;
+
+          if (options.extra['skipAuth'] == true) {
+            return handler.next(options);
+          }
+
+          final accessToken = await TokenStorage.getAccessToken();
+          if (accessToken == null) {
+            return handler.reject(
+              DioException(
+                requestOptions: options,
+                error: 'User logged out',
+              ),
+            );
+          }
+
+          try {
+            if (await TokenStorage.shouldRefresh()) {
+              await AuthRefreshLock.run(
+                () => AuthService().refreshToken(),
               );
             }
-          }
 
-          final token = await TokenStorage.getAccessToken();
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
+            // Attach fresh token
+            final token = await TokenStorage.getAccessToken();
+            if (token != null && token.isNotEmpty) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
 
-          if (options.data is FormData) {
-            options.headers.remove('Content-Type');
-            options.contentType = 'multipart/form-data';
-          } else {
-            options.contentType = Headers.jsonContentType;
-          }
+            // Content-Type handling
+            if (options.data is FormData) {
+              options.headers.remove('Content-Type');
+              options.contentType = 'multipart/form-data';
+            } else {
+              options.contentType = Headers.jsonContentType;
+            }
 
-          return handler.next(options);
+            return handler.next(options);
+          } on DioException catch (e, st) {
+            debugPrint('REFRESH FAILED (DioException): ${e.message}');
+            debugPrint('Status: ${e.response?.statusCode}');
+            debugPrint('Data: ${e.response?.data}');
+            debugPrintStack(stackTrace: st);
+
+            await TokenStorage.clear();
+            return handler.reject(e);
+          } catch (e, st) {
+            debugPrint('ApiClient onRequest error: $e');
+            debugPrintStack(stackTrace: st);
+
+            await TokenStorage.clear();
+            return handler.reject(
+              DioException(
+                requestOptions: options,
+                error: 'Session expired',
+              ),
+            );
+          }
         },
         onError: (e, handler) async {
-          // Fallback if backend still returns 401
+          // 🔕 Skip retry for refresh calls
+          if (e.requestOptions.extra['skipAuth'] == true) {
+            return handler.next(e);
+          }
+
+          // Retry once on 401
           if (e.response?.statusCode == 401) {
             try {
-              await AuthService().refreshToken();
+              await AuthRefreshLock.run(
+                () => AuthService().refreshToken(),
+              );
+
               final newToken = await TokenStorage.getAccessToken();
-              e.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+              if (newToken != null && newToken.isNotEmpty) {
+                e.requestOptions.headers['Authorization'] = 'Bearer $newToken';
+              }
 
               final response = await dio.fetch(e.requestOptions);
               return handler.resolve(response);
-            } catch (_) {
+            } on DioException catch (err, st) {
+              debugPrint('401 retry refresh failed: ${err.message}');
+              debugPrint('Status: ${err.response?.statusCode}');
+              debugPrint('Data: ${err.response?.data}');
+              debugPrintStack(stackTrace: st);
+
+              await TokenStorage.clear();
+            } catch (err, st) {
+              debugPrint('401 retry refresh failed (unknown): $err');
+              debugPrintStack(stackTrace: st);
+
               await TokenStorage.clear();
             }
           }
@@ -60,4 +115,9 @@ class ApiClient {
         },
       ),
     );
+
+  static void reset() {
+    cancelToken.cancel('User logged out');
+    cancelToken = CancelToken();
+  }
 }

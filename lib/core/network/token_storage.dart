@@ -21,17 +21,26 @@ class TokenStorage {
     final token = await getAccessToken();
     if (token == null) return true;
 
-    final expiry = JwtDecoder.getExpirationDate(token);
-    final now = DateTime.now();
-
-    return expiry.isBefore(now.add(Duration(minutes: bufferMinutes)));
+    try {
+      final expiry = JwtDecoder.getExpirationDate(token);
+      final now = DateTime.now();
+      return expiry.isBefore(now.add(Duration(minutes: bufferMinutes)));
+    } catch (_) {
+      // If token decoding fails, force a refresh.
+      return true;
+    }
   }
 
   static Future<bool> isLoggedIn() async {
     final token = await getAccessToken();
     if (token == null) return false;
 
-    return !JwtDecoder.isExpired(token);
+    try {
+      return !JwtDecoder.isExpired(token);
+    } catch (_) {
+      // If token decoding fails, treat as not logged in.
+      return false;
+    }
   }
 
   static Future<void> clear() async {
