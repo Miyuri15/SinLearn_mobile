@@ -2,15 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../models/message.dart';
 
-/// Displays the chat message list with support for text, attachments, and resources.
-///
-/// Features:
-/// - User vs AI message styling
-/// - Grade level badges
-/// - Local file attachments display
-/// - Resource attachments from API (clickable)
-/// - Timestamps
-/// - Empty state with helpful prompts
+/// Displays the chat message list with modern bubble styling and attachment previews.
 class ChatView extends StatelessWidget {
   const ChatView({
     super.key,
@@ -21,361 +13,558 @@ class ChatView extends StatelessWidget {
   final List<Message> messages;
   final bool isLoading;
 
-  /// Format grade level string for display
-  String _formatGradeLevel(String gradeLevel) {
-    switch (gradeLevel) {
-      case 'grade_6_8':
-      case 'grades_6_8':
-        return 'Grades 6-8';
-      case 'grade_9_11':
-      case 'grades_9_11':
-        return 'Grades 9-11';
-      case 'grade_12_13':
-      case 'grades_12_13':
-        return 'Grades 12-13';
-      case 'grade_12_plus':
-      case 'grades_12_plus':
-        return 'Grades 12+';
-      default:
-        return gradeLevel;
-    }
-  }
-
-  /// Show resource viewer dialog
-  void _viewResource(BuildContext context, String resourceId) async {
+  /// Show resource viewer in a modern bottom sheet
+  void _viewResource(BuildContext context, String resourceId) {
+    final theme = Theme.of(context);
     final resourceUrl =
         'http://127.0.0.1:8000/api/v1/resources/$resourceId/view';
 
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            const Icon(Icons.attach_file),
-            const SizedBox(width: 8),
-            const Expanded(child: Text('Resource')),
-            IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
-        content: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.8,
-          height: MediaQuery.of(context).size.height * 0.7,
-          child: Column(
-            children: [
-              // Resource URL display
-              Container(
-                padding: const EdgeInsets.all(8),
+        child: Column(
+          children: [
+            // Handle bar
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.symmetric(vertical: 12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceVariant,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        resourceUrl,
-                        style: Theme.of(context).textTheme.bodySmall,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.copy, size: 18),
-                      onPressed: () {
-                        // TODO: Implement clipboard copy
-                        debugPrint('Copy URL: $resourceUrl');
-                      },
-                    ),
-                  ],
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 12),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.description,
+                        color: theme.colorScheme.primary),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Resource Preview',
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'ID: $resourceId',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.hintColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
 
-              // Resource preview (could be enhanced with WebView)
-              Expanded(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.description, size: 64),
-                      const SizedBox(height: 16),
-                      Text('Resource ID: $resourceId'),
-                      const SizedBox(height: 8),
-                      ElevatedButton.icon(
+            // Content
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.web_asset, size: 64, color: theme.disabledColor),
+                    const SizedBox(height: 16),
+                    Text(
+                      'External Content',
+                      style: theme.textTheme.headlineSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              resourceUrl,
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(fontFamily: 'monospace'),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(Icons.copy, size: 16, color: theme.hintColor),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton.icon(
                         onPressed: () {
-                          // TODO: Implement url_launcher integration
+                          // TODO: Launch URL
                           debugPrint('Opening: $resourceUrl');
                         },
                         icon: const Icon(Icons.open_in_browser),
                         label: const Text('Open in Browser'),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Build a single message bubble
-  Widget _buildMessageBubble(BuildContext context, Message message) {
-    final theme = Theme.of(context);
-    final align =
-        message.fromUser ? Alignment.centerRight : Alignment.centerLeft;
-    final bgColor =
-        message.fromUser ? const Color(0xFF1E63FF) : theme.colorScheme.surface;
-    final textColor =
-        message.fromUser ? Colors.white : theme.textTheme.bodyLarge?.color;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Align(
-        alignment: align,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * 0.75,
-          ),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Grade level badge
-                if (message.gradeLevel != null)
-                  _buildGradeLevelBadge(theme, message, textColor),
-
-                // Message text
-                if (message.text.isNotEmpty)
-                  Text(
-                    message.text,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: textColor,
-                    ),
-                  ),
-
-                // Local file attachments
-                if (message.attachments != null &&
-                    message.attachments!.isNotEmpty)
-                  _buildLocalAttachments(theme, message, textColor),
-
-                // Resource attachments from API
-                if (message.resourceIds != null &&
-                    message.resourceIds!.isNotEmpty)
-                  _buildResourceAttachments(context, theme, message, textColor),
-
-                // Timestamp
-                const SizedBox(height: 6),
-                Text(
-                  '${MaterialLocalizations.of(context).formatShortDate(message.time)} '
-                  '${TimeOfDay.fromDateTime(message.time).format(context)}',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: textColor?.withOpacity(0.7) ?? Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// Build grade level badge
-  Widget _buildGradeLevelBadge(
-    ThemeData theme,
-    Message message,
-    Color? textColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: message.fromUser
-            ? Colors.white.withOpacity(0.15)
-            : theme.colorScheme.primaryContainer.withOpacity(0.3),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        _formatGradeLevel(message.gradeLevel!),
-        style: theme.textTheme.bodySmall?.copyWith(
-          color: message.fromUser
-              ? Colors.white.withOpacity(0.9)
-              : theme.colorScheme.onSurface,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
-  /// Build local file attachments
-  Widget _buildLocalAttachments(
-    ThemeData theme,
-    Message message,
-    Color? textColor,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          children: message.attachments!.map((file) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              decoration: BoxDecoration(
-                color: message.fromUser
-                    ? Colors.white.withOpacity(0.06)
-                    : theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.insert_drive_file, size: 16),
-                  const SizedBox(width: 6),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 200),
-                    child: Text(
-                      file.name,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: textColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  /// Build resource attachments from API
-  Widget _buildResourceAttachments(
-    BuildContext context,
-    ThemeData theme,
-    Message message,
-    Color? textColor,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 6,
-          children: message.resourceIds!.map((resourceId) {
-            return InkWell(
-              onTap: () => _viewResource(context, resourceId),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: message.fromUser
-                      ? Colors.white.withOpacity(0.12)
-                      : theme.colorScheme.surfaceVariant.withOpacity(0.5),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: message.fromUser
-                        ? Colors.white.withOpacity(0.3)
-                        : theme.colorScheme.outline.withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.attach_file,
-                      size: 18,
-                      color: textColor?.withOpacity(0.8),
-                    ),
-                    const SizedBox(width: 6),
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 180),
-                      child: Text(
-                        'Resource',
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: textColor?.withOpacity(0.9),
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      Icons.open_in_new,
-                      size: 14,
-                      color: textColor?.withOpacity(0.6),
                     ),
                   ],
                 ),
               ),
-            );
-          }).toList(),
+            ),
+          ],
         ),
-      ],
-    );
-  }
-
-  /// Build empty state
-  Widget _buildEmptyState(ThemeData theme) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'start_conversation'.tr(),
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'type_question'.tr(),
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: Colors.grey[450],
-            ),
-          ),
-        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    if (messages.isEmpty && !isLoading) {
+      return const _EmptyStateView();
+    }
+
+    return Stack(
+      children: [
+        ListView.builder(
+          padding: const EdgeInsets.fromLTRB(
+              16, 20, 16, 100), // Extra bottom padding for input
+          itemCount: messages.length,
+          itemBuilder: (context, index) {
+            final isFirst = index == 0;
+            final prevMessage = isFirst ? null : messages[index - 1];
+            final currentMessage = messages[index];
+
+            // Check if we should show date separator (e.g., if day changed)
+            bool showDateSeparator = false;
+            if (prevMessage != null) {
+              final prevDate = DateTime(prevMessage.time.year,
+                  prevMessage.time.month, prevMessage.time.day);
+              final currDate = DateTime(currentMessage.time.year,
+                  currentMessage.time.month, currentMessage.time.day);
+              if (currDate.difference(prevDate).inDays > 0) {
+                showDateSeparator = true;
+              }
+            } else {
+              showDateSeparator = true; // Show for first message
+            }
+
+            return Column(
+              children: [
+                if (showDateSeparator)
+                  _DateSeparator(date: currentMessage.time),
+                _MessageBubble(
+                  message: currentMessage,
+                  onViewResource: (id) => _viewResource(context, id),
+                ),
+              ],
+            );
+          },
+        ),
+        if (isLoading)
+          const Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Card(
+                elevation: 4,
+                shape: StadiumBorder(),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2)),
+                      SizedBox(width: 12),
+                      Text("SinLearn is thinking..."),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _DateSeparator extends StatelessWidget {
+  final DateTime date;
+  const _DateSeparator({required this.date});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            decoration: BoxDecoration(
+              color: Theme.of(context).dividerColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              DateFormat.yMMMd().format(date),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).hintColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MessageBubble extends StatelessWidget {
+  final Message message;
+  final Function(String) onViewResource;
+
+  const _MessageBubble({
+    required this.message,
+    required this.onViewResource,
+  });
+
+  String _formatGradeLevel(String gradeLevel) {
+    switch (gradeLevel) {
+      case 'grade_6_8':
+        return 'Grades 6-8';
+      case 'grade_9_11':
+        return 'Grades 9-11';
+      case 'grade_12_13':
+        return 'Grades 12-13';
+      case 'grade_12_plus':
+        return 'Grades 12+';
+      default:
+        return gradeLevel;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isUser = message.fromUser;
+
+    // Design variables
+    final bubbleColor = isUser
+        ? const Color(0xFF1E63FF)
+        : theme.colorScheme.surfaceContainerHighest.withOpacity(0.4);
+
+    final textColor = isUser ? Colors.white : theme.textTheme.bodyLarge?.color;
+
+    final borderRadius = BorderRadius.only(
+      topLeft: const Radius.circular(20),
+      topRight: const Radius.circular(20),
+      bottomLeft: Radius.circular(isUser ? 20 : 4),
+      bottomRight: Radius.circular(isUser ? 4 : 20),
+    );
+
+    return Align(
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        constraints:
+            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+        child: Column(
+          crossAxisAlignment:
+              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          children: [
+            // Grade Badge (Only for AI)
+            if (!isUser && message.gradeLevel != null)
+              Container(
+                margin: const EdgeInsets.only(bottom: 4, left: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                      color: theme.colorScheme.primary.withOpacity(0.2)),
+                ),
+                child: Text(
+                  _formatGradeLevel(message.gradeLevel!),
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+
+            // Main Bubble
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              decoration: BoxDecoration(
+                color: bubbleColor,
+                borderRadius: borderRadius,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Text Content
+                  if (message.text.isNotEmpty)
+                    Text(
+                      message.text,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: textColor,
+                        height: 1.4,
+                      ),
+                    ),
+
+                  // Attachments (Local)
+                  if (message.attachments != null &&
+                      message.attachments!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: message.attachments!
+                            .map((file) => _AttachmentTile(
+                                  name: file.name,
+                                  isUser: isUser,
+                                  icon: Icons.upload_file,
+                                  subtitle: 'Uploaded file',
+                                ))
+                            .toList(),
+                      ),
+                    ),
+
+                  // Resources (API)
+                  if (message.resourceIds != null &&
+                      message.resourceIds!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: message.resourceIds!
+                            .map((id) => GestureDetector(
+                                  onTap: () => onViewResource(id),
+                                  child: _AttachmentTile(
+                                    name: 'Learning Resource',
+                                    isUser: isUser,
+                                    icon: Icons.menu_book_rounded,
+                                    subtitle: 'Tap to view content',
+                                    showArrow: true,
+                                  ),
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // Timestamp
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
+              child: Text(
+                DateFormat('h:mm a').format(message.time),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.disabledColor,
+                  fontSize: 10,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AttachmentTile extends StatelessWidget {
+  final String name;
+  final String subtitle;
+  final bool isUser;
+  final IconData icon;
+  final bool showArrow;
+
+  const _AttachmentTile({
+    required this.name,
+    required this.subtitle,
+    required this.isUser,
+    required this.icon,
+    this.showArrow = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isUser
+            ? Colors.white.withOpacity(0.2)
+            : Colors.white.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: isUser
+                  ? Colors.white.withOpacity(0.3)
+                  : const Color(0xFFF0F4FF),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              size: 16,
+              color: isUser ? Colors.white : const Color(0xFF1E63FF),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    color: isUser ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color:
+                        isUser ? Colors.white.withOpacity(0.8) : Colors.black54,
+                    fontSize: 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (showArrow)
+            Icon(Icons.arrow_forward_ios,
+                size: 10, color: isUser ? Colors.white70 : Colors.grey),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyStateView extends StatelessWidget {
+  const _EmptyStateView();
+
+  @override
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
+    return Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.primaryColor.withOpacity(0.08),
+                shape: BoxShape.circle,
+              ),
+              child:
+                  Icon(Icons.auto_awesome, size: 48, color: theme.primaryColor),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'start_conversation'.tr(),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.textTheme.titleLarge?.color,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'type_question'.tr(),
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.hintColor,
+              ),
+            ),
+            const SizedBox(height: 40),
 
-    if (messages.isEmpty) {
-      return _buildEmptyState(theme);
-    }
+            // Suggestion Chips (Optional visual flair)
+            Wrap(
+              spacing: 8,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: [
+                _SuggestionChip(label: "Translate Sinhala text"),
+                _SuggestionChip(label: "Explain a math problem"),
+                _SuggestionChip(label: "Summarize a document"),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        return _buildMessageBubble(context, messages[index]);
-      },
+class _SuggestionChip extends StatelessWidget {
+  final String label;
+  const _SuggestionChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        border:
+            Border.all(color: Theme.of(context).dividerColor.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context)
+            .textTheme
+            .bodySmall
+            ?.copyWith(fontWeight: FontWeight.w500),
+      ),
     );
   }
 }
