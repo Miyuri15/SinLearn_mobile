@@ -43,6 +43,7 @@ dependencies:
   # Secure storage for sensitive tokens
   flutter_secure_storage: ^8.0.0
   timeago: ^3.6.1
+  jwt_decoder: ^2.0.1
 
 dev_dependencies:
   flutter_test:

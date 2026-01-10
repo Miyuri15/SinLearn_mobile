@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'features/auth/auth_page.dart';
+import 'package:sinlearn_mobile/core/auth/auth_gate.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'utils/timeago_si.dart';
 
@@ -82,7 +82,7 @@ class _MyAppState extends State<MyApp> {
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
-      home: const AuthPage(),
+      home: const AuthGate(),
     );
   }
 }

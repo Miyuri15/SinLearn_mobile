@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
-import '../../../core/network/api_client.dart';
+import 'package:sinlearn_mobile/core/network/api_client.dart';
+import 'package:sinlearn_mobile/core/network/token_storage.dart';
 
 class AuthService {
   Future<Map<String, dynamic>> signUp({
@@ -15,6 +16,13 @@ class AuthService {
           "email": email,
           "password": password,
         },
+      );
+
+      final data = response.data;
+
+      await TokenStorage.saveTokens(
+        accessToken: data['access_token'],
+        refreshToken: data['refresh_token'],
       );
 
       return response.data;
@@ -39,6 +47,13 @@ class AuthService {
         },
       );
 
+      final data = response.data;
+
+      await TokenStorage.saveTokens(
+        accessToken: data['access_token'],
+        refreshToken: data['refresh_token'],
+      );
+
       return response.data;
     } on DioException catch (e) {
       if (e.response != null) {
@@ -46,5 +61,22 @@ class AuthService {
       }
       throw Exception('Network error');
     }
+  }
+
+  Future<void> refreshToken() async {
+    final refreshToken = await TokenStorage.getRefreshToken();
+    if (refreshToken == null) throw Exception('No refresh token');
+
+    final response = await ApiClient.dio.post(
+      '/api/v1/auth/refresh',
+      data: {'refresh_token': refreshToken},
+    );
+
+    final data = response.data;
+
+    await TokenStorage.saveTokens(
+      accessToken: data['access_token'],
+      refreshToken: data['refresh_token'],
+    );
   }
 }
