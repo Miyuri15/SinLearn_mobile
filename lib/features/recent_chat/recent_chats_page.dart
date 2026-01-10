@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:sinlearn_mobile/core/network/api_client.dart';
+import 'package:sinlearn_mobile/core/network/token_storage.dart';
 import 'package:sinlearn_mobile/features/auth/auth_page.dart';
 import '../settings/Settings_Teachers.dart';
 import '../../main.dart' show MyApp;
 import '../evaluation/learning_mode.dart';
 import '../evaluation/evaluation_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../../services/chat_service.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
@@ -279,11 +280,14 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                   _FooterButton(
                     icon: Icons.logout,
                     label: 'recent_chats.logout'.tr(),
-                    onTap: () {
-                      Navigator.of(context).pushReplacement(
+                    onTap: () async {
+                      await TokenStorage.clear();
+                      ApiClient.reset();
+                      Navigator.of(context).pushAndRemoveUntil(
                         MaterialPageRoute(
                           builder: (context) => const AuthPage(),
                         ),
+                        (route) => false,
                       );
                     },
                   ),
