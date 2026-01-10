@@ -77,7 +77,7 @@ class _LearningModePageState extends State<LearningModePage> {
             Message(
               text: apiMsg.content,
               fromUser: apiMsg.role == 'user',
-              time: localTime, // ✅ Option A: device local time
+              time: localTime,
               gradeLevel: apiMsg.gradeLevel,
               resourceIds: apiMsg.resourceIds,
             ),
