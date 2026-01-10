@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 import '../../core/network/api_client.dart';
 import '../models/chat_models.dart';
 import '../models/chat_session_details.dart';
@@ -174,6 +176,12 @@ class ChatService {
     }
 
     return updated;
+  }
+
+  static Future<List<ChatMessage>> listChatMessages(String sessionId) async {
+    final res = await ApiClient.dio.get("/api/v1/messages/sessions/$sessionId");
+    debugPrint('listChatMessages response: ${res.data}');
+    return (res.data as List).map((e) => ChatMessage.fromJson(e)).toList();
   }
 
   /// DELETE CHAT

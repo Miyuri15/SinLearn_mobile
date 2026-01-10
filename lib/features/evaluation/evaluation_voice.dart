@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'learning_mode.dart';
+import '../learning/learning_mode.dart';
 
 class EvaluationVoicePage extends StatefulWidget {
   const EvaluationVoicePage({super.key});

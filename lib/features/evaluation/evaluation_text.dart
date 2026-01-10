@@ -8,7 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:easy_localization/easy_localization.dart';
-import 'learning_mode.dart';
+import '../learning/learning_mode.dart';
 import '../../widgets/teachers_main_app_bar.dart';
 import '../recent_chat/recent_chats_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';

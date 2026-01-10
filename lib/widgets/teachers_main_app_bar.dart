@@ -116,7 +116,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
 
                 // BOOK ICON -> Syllabus (sidebar)
-                if (enableSidebars) ...[
+                if (enableSidebars && selectedIndex == 1) ...[
                   Builder(
                     builder: (ctx) {
                       return Container(

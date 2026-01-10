@@ -4,7 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'services/auth_service.dart';
 import '../../core/utils/error_handler.dart';
 import '../../core/utils/app_toast.dart';
-import '../evaluation/learning_mode.dart';
+import '../learning/learning_mode.dart';
 
 class SignInForm extends StatefulWidget {
   const SignInForm({super.key});
