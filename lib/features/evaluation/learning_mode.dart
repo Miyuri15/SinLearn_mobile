@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:sinlearn_mobile/models/chat_models.dart';
 import 'evaluation_text.dart';
 import 'heder.dart';
 import '../../widgets/teachers_main_app_bar.dart';
@@ -14,11 +17,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:math' as math;
 import '../../services/message_service.dart';
+import '../../services/resource_service.dart';
+import '../../services/chat_service.dart';
+import 'package:dio/dio.dart' show MultipartFile;
+import 'dart:typed_data';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 
 class LearningModePage extends StatefulWidget {
   const LearningModePage({super.key});
-
 
   @override
   State<LearningModePage> createState() => _LearningModePageState();
@@ -44,11 +54,10 @@ class _LearningModePageState extends State<LearningModePage> {
   String? _activeSessionId;
   bool _isSending = false;
   List<Message> _messages = [];
-  String _responseLevel = 'grades_9_11';
+  String _responseLevel = 'grade_9_11';
 
   final TextEditingController _inputController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
-
 
   @override
   void dispose() {
@@ -90,13 +99,13 @@ class _LearningModePageState extends State<LearningModePage> {
   Future<void> _handleSendFromInputBar(
       String text,
       List<PlatformFile> attachments,
+      Uint8List? voiceRecording, // Accept the voice recording as a parameter
       ) async {
-    if (_isSending) return;
-
+    if (_isSending) return;  // Prevents sending if already in progress
     setState(() {
       _isSending = true;
 
-      // 1️⃣ Optimistic UI
+      // Optimistic UI: Add the user's message immediately
       _messages.add(
         Message(
           text: text,
@@ -106,51 +115,186 @@ class _LearningModePageState extends State<LearningModePage> {
       );
     });
 
-    try {
-      final payload = {
-        "content": text,
-        "modality": "text",
-        "grade_level": _responseLevel,
-      };
+    List<Map<String, dynamic>> uploadedResources = [];
 
-      final resp = await MessageService.postMessage(
-        sessionId: _activeSessionId,
-        payload: payload,
+    // Upload attachments first so backend receives resource ids
+    if (attachments.isNotEmpty) {
+      try {
+        final files = attachments.map((f) {
+          final bytes = f.bytes ?? Uint8List(0);
+          return MultipartFile.fromBytes(bytes, filename: f.name);
+        }).toList();
+
+        final resp = await ResourceService.uploadResources(files);
+        uploadedResources = resp
+            .map((r) => {'resource_id': r.resourceId, 'display_name': r.filename})
+            .toList();
+      } catch (err) {
+        debugPrint('Failed to upload files: $err');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to upload files')),
+          );
+        }
+        setState(() => _isSending = false);
+        return;
+      }
+    }
+
+    // If there's a voice message, handle it
+    if (voiceRecording != null) {
+      await _handleVoiceSend(voiceRecording, attachments);  // Handle the voice message
+    } else {
+      // Otherwise, send a text message
+      try {
+        final resourceAttachments = uploadedResources
+            .map((item) => {
+          'resource_id': item['resource_id'],
+          'display_name': item['display_name'],
+          'attachment_type': 'file',
+        })
+            .toList();
+
+        final payload = {
+          "content": text,
+          "modality": "text",  // Indicate this is a text message
+          "grade_level": _responseLevel,
+          if (resourceAttachments.isNotEmpty) 'attachments': resourceAttachments,
+        };
+
+        final resp = await ChatService.postMessage(
+          sessionId: _activeSessionId,
+          payload: payload,
+        );
+
+        // 2️⃣ Capture session id
+        final newSessionId = resp["session_id"] ??
+            resp["session"]?["id"] ??
+            resp["chat_id"] ??
+            resp["id"];
+
+        final createdMessageId =
+            resp["message_id"] ?? resp["message"]?['id'] ?? resp["id"];
+
+        if (_activeSessionId == null && newSessionId != null) {
+          _activeSessionId = newSessionId;
+        }
+
+        // Append assistant reply ONLY if backend returns it
+        if (resp["assistant_message"] != null) {
+          setState(() {
+            _messages.add(
+              Message(
+                text: resp["assistant_message"]["content"].toString(),
+                fromUser: false,
+              ),
+            );
+          });
+        }
+
+        // Refresh session messages from backend to get canonical state
+        final sessionToRefresh = newSessionId ?? _activeSessionId;
+        if (sessionToRefresh != null) {
+          try {
+            final serverMessages =
+            await ChatService.listSessionMessages(sessionToRefresh);
+            if (!mounted) return;
+            setState(() {
+              _messages = serverMessages
+                  .map((m) => Message(
+                text: m.content is String
+                    ? m.content as String
+                    : m.content.toString(),
+                fromUser: m.role == 'user',
+                time: DateTime.parse(m.createdAt),
+              ))
+                  .toList();
+            });
+          } catch (err) {
+            debugPrint('Failed to refresh messages: $err');
+          }
+        }
+      } catch (e) {
+        debugPrint("❌ Send failed: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Failed to send message")),
+          );
+        }
+      } finally {
+        setState(() => _isSending = false);
+      }
+    }
+  }
+
+
+  // Voice send helper: accepts raw audio bytes (e.g. recorded wav)
+  Future<void> _handleVoiceSend(
+      Uint8List audioBytes, List<PlatformFile> attachments) async {
+    if (_isSending) return;  // Prevents sending if already in progress
+    setState(() => _isSending = true);
+
+    List<Map<String, dynamic>> uploadedResources = [];
+
+    // Upload attachments first, if any
+    if (attachments.isNotEmpty) {
+      try {
+        final files = attachments.map((f) {
+          final bytes = f.bytes ?? Uint8List(0);
+          return MultipartFile.fromBytes(bytes, filename: f.name);
+        }).toList();
+
+        // Upload resources to the backend
+        final resp = await ResourceService.uploadResources(files);
+        uploadedResources = resp
+            .map((r) => {'resource_id': r.resourceId, 'display_name': r.filename})
+            .toList();
+      } catch (err) {
+        debugPrint('Failed to upload files: $err');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to upload files')),
+          );
+        }
+        setState(() => _isSending = false);
+        return;
+      }
+    }
+
+    try {
+      // Prepare the audio file for the API
+      final audioFile = MultipartFile.fromBytes(audioBytes, filename: 'voice.wav');
+
+      // Post the voice QA request to the backend
+      final data = await ChatService.postVoiceQA(
+        audio: audioFile,
+        sessionId: _activeSessionId ?? 'undefined',  // Ensure session ID is valid
+        resourceIds: uploadedResources.map((r) => r['resource_id'] as String).toList(),
+        topK: 3,
       );
 
-      // 2️⃣ Capture session id
-      final newSessionId =
-          resp["session_id"] ??
-              resp["session"]?["id"] ??
-              resp["chat_id"] ??
-              resp["id"];
-
-      if (_activeSessionId == null && newSessionId != null) {
-        _activeSessionId = newSessionId;
+      // If a new session is returned, update the session ID
+      if (data.sessionId.isNotEmpty && _activeSessionId == null) {
+        _activeSessionId = data.sessionId;
       }
 
-      // 3️⃣ Append assistant reply
-      if (resp["assistant_message"] != null) {
-        setState(() {
-          _messages.add(
-            Message(
-              text: resp["assistant_message"]["content"].toString(),
-              fromUser: false,
-            ),
-          );
-        });
-      }
-    } catch (e) {
-      debugPrint("❌ Send failed: $e");
+      setState(() {
+        // Add the voice question and answer to the message list
+        _messages.addAll([
+          Message(text: data.question, fromUser: true),  // User's question (voice input)
+          Message(text: data.answer, fromUser: false),  // Assistant's answer
+        ]);
+      });
+    } catch (err) {
+      debugPrint('Voice processing failed: $err');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Failed to send message")),
+          const SnackBar(content: Text('Voice processing failed')),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
+      // Reset sending state after completion
+      setState(() => _isSending = false);
     }
   }
 
@@ -174,7 +318,8 @@ class _LearningModePageState extends State<LearningModePage> {
 
           if (index == 1) {
             // Generate a new session ID for evaluation
-            final newSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+            final newSessionId =
+                DateTime.now().millisecondsSinceEpoch.toString();
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
@@ -187,38 +332,42 @@ class _LearningModePageState extends State<LearningModePage> {
         onRightIconPressed: () {},
         onAddPressed: () {},
       ),
+      resizeToAvoidBottomInset: true,
       body: Row(
         children: [
           if (isWide)
             SizedBox(
                 width: sidebarWidth,
                 child: _Sidebar(
-                    theme: theme, searchController: _searchController)),
+                    theme: theme,
+                    searchController: _searchController,
+                    onSessionSelected: _openSession)),
 
           // RIGHT SIDE
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Divider(height: 1),
+              child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Divider(height: 1),
 
-                // ===== Chat Body =====
-                Expanded(child: _ChatView(messages: _messages)),
+              // CHAT AREA (only scrollable area)
+              Expanded(
+                child: _ChatView(messages: _messages),
+              ),
 
-                const Divider(height: 1),
+              const Divider(height: 1),
 
-                // ===== Input Bar =====
-                _InputBar(
-                  controller: _inputController,
-                  responseLevel: _responseLevel,
-                  onResponseLevelChanged: (v) {
-                    setState(() => _responseLevel = v);
-                  },
-                  onSend: _handleSendFromInputBar,
-                ),
-              ],
-            ),
-          ),
+              // INPUT BAR (fixed)
+              _InputBar(
+                controller: _inputController,
+                responseLevel: _responseLevel,
+                onResponseLevelChanged: (v) {
+                  setState(() => _responseLevel = v);
+                },
+                onSend: _handleSendFromInputBar,
+              ),
+            ],
+          )),
         ],
       ),
     );
@@ -228,22 +377,78 @@ class _LearningModePageState extends State<LearningModePage> {
   Widget _buildDrawer(BuildContext context) {
     return const RecentChatsDrawer();
   }
+
+  // Open a session from the sidebar: set active session and load messages
+  Future<void> _openSession(ChatSession session) async {
+    final sessionId = session.id;
+
+    setState(() {
+      _activeSessionId = sessionId;
+    });
+
+    try {
+      final serverMessages =
+          await ChatService.listSessionMessages(_activeSessionId!);
+
+      for (final m in serverMessages) {
+        print('''
+          ChatMessage
+          role      : ${m.role}
+          content   : ${m.content}
+          createdAt : ${m.createdAt}
+          ''');
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _messages = serverMessages
+            .map((m) => Message(
+                  text: m.content is String
+                      ? m.content as String
+                      : m.content.toString(),
+                  fromUser: m.role == 'user',
+                  time: DateTime.parse(m.createdAt),
+                ))
+            .toList();
+      });
+    } catch (err) {
+      debugPrint('Failed to load session messages: $err');
+    }
+  }
 }
 
 // ============================================================================
 //                                 SIDEBAR
 // ============================================================================
-class _Sidebar extends StatelessWidget {
+class _Sidebar extends StatefulWidget {
   const _Sidebar({
     required this.theme,
     required this.searchController,
-  });
+    this.onSessionSelected,
+    Key? key,
+  }) : super(key: key);
 
   final ThemeData theme;
   final TextEditingController searchController;
+  final ValueChanged<ChatSession>? onSessionSelected;
+
+  @override
+  State<_Sidebar> createState() => _SidebarState();
+}
+
+class _SidebarState extends State<_Sidebar> {
+  late Future<List<ChatSession>> _sessionsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _sessionsFuture = ChatService.listChatSessions();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final theme = widget.theme;
     return Container(
       width: 320,
       decoration: BoxDecoration(
@@ -255,24 +460,66 @@ class _Sidebar extends StatelessWidget {
         children: [
           const EvaluationHeader(),
           Expanded(
-            child: ListView(
-              children: const [
-                _ChatListItem(
-                  title: 'New Learning Chat',
-                  subtitle: '0 messages • less than a minute ago',
-                  icon: Icons.menu_book_outlined,
-                ),
-                _ChatListItem(
-                  title: 'New Evaluation Chat',
-                  subtitle: '1 messages • 33 minutes ago',
-                  icon: Icons.assignment_turned_in_outlined,
-                ),
-                _ChatListItem(
-                  title: 'New Learning Chat',
-                  subtitle: '0 messages • about 1 hour ago',
-                  icon: Icons.menu_book_outlined,
-                ),
-              ],
+            child: FutureBuilder<List<ChatSession>>(
+              future: _sessionsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Text('Failed to load chats',
+                          style: theme.textTheme.bodyMedium),
+                    ),
+                  );
+                }
+
+                final sessions = snapshot.data ?? [];
+
+                if (sessions.isEmpty) {
+                  return ListView(
+                    children: const [
+                      _ChatListItem(
+                        title: 'New Learning Chat',
+                        subtitle: '0 messages • less than a minute ago',
+                        icon: Icons.menu_book_outlined,
+                      ),
+                      _ChatListItem(
+                        title: 'New Evaluation Chat',
+                        subtitle: '1 messages • 33 minutes ago',
+                        icon: Icons.assignment_turned_in_outlined,
+                      ),
+                      _ChatListItem(
+                        title: 'New Learning Chat',
+                        subtitle: '0 messages • about 1 hour ago',
+                        icon: Icons.menu_book_outlined,
+                      ),
+                    ],
+                  );
+                }
+
+                return ListView(
+                  children: sessions.map((s) {
+                    final icon = s.mode == 'learning'
+                        ? Icons.menu_book_outlined
+                        : Icons.assignment_turned_in_outlined;
+                    final title = s.title ??
+                        (s.mode == 'learning'
+                            ? 'New Learning Chat'
+                            : 'New Evaluation Chat');
+                    // Keep the existing simple subtitle style for now
+                    final subtitle = '0 messages • less than a minute ago';
+                    return _ChatListItem(
+                        title: title,
+                        subtitle: subtitle,
+                        icon: icon,
+                        onTap: () => widget.onSessionSelected?.call(s));
+                  }).toList(),
+                );
+              },
             ),
           ),
           Padding(
@@ -300,11 +547,13 @@ class _ChatListItem extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.icon,
+    this.onTap,
   });
 
   final String title;
   final String subtitle;
   final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -321,7 +570,7 @@ class _ChatListItem extends StatelessWidget {
         ),
         selected: title.contains("Learning"),
         selectedTileColor: Colors.green.withOpacity(0.08),
-        onTap: () {},
+        onTap: onTap,
       ),
     );
   }
@@ -453,17 +702,17 @@ class _ChatView extends StatelessWidget {
 // Replace previous StatelessWidget _InputBar with a StatefulWidget so attachments can be shown
 class _InputBar extends StatefulWidget {
   const _InputBar({
+    Key? key,
     required this.controller,
     required this.responseLevel,
     required this.onResponseLevelChanged,
-    required this.onSend,
-  });
+    required this.onSend,  // Updated this part
+  }) : super(key: key);
 
   final TextEditingController controller;
   final String responseLevel;
   final ValueChanged<String> onResponseLevelChanged;
-  final void Function(String text, List<PlatformFile> attachments)
-      onSend; // changed
+  final Future<void> Function(String text, List<PlatformFile> attachments, Uint8List? voiceRecording) onSend;  // Updated signature
 
   @override
   State<_InputBar> createState() => _InputBarState();
@@ -473,20 +722,48 @@ class _InputBar extends StatefulWidget {
 class _InputBarState extends State<_InputBar>
     with SingleTickerProviderStateMixin {
   final List<PlatformFile> _attachedFiles = [];
-
+  Uint8List? pendingVoice; // Holds the recorded audio
   String get responseLevel => widget.responseLevel;
   TextEditingController get controller => widget.controller;
-
+  final AudioRecorder _recorder = AudioRecorder();
   // recording state + animation
   bool _isRecording = false;
   late final AnimationController _animController;
+  Duration _currentPosition = Duration.zero;
+  Duration _totalDuration = Duration.zero;
+  bool _isPlaying = false;
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
 
   @override
   void initState() {
     super.initState();
+
+    _audioPlayer.setReleaseMode(ReleaseMode.stop);
+
     _animController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 800));
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+
+    _audioPlayer.onDurationChanged.listen((d) {
+      setState(() => _totalDuration = d);
+    });
+
+    _audioPlayer.onPositionChanged.listen((p) {
+      setState(() => _currentPosition = p);
+    });
+
+    _audioPlayer.onPlayerComplete.listen((event) {
+      if (mounted) {
+        setState(() {
+          _isPlaying = false;
+          _currentPosition = Duration.zero;
+        });
+      }
+    });
   }
+
 
   @override
   void dispose() {
@@ -501,7 +778,6 @@ class _InputBarState extends State<_InputBar>
   }
 
   Future<void> _pickAndAttachFile() async {
-
     final result = await FilePicker.platform
         .pickFiles(allowMultiple: false, withData: true, type: FileType.any);
     if (result == null) {
@@ -518,38 +794,237 @@ class _InputBarState extends State<_InputBar>
     setState(() => _attachedFiles.add(file));
   }
 
-  void _startRecording() {
-    setState(() => _isRecording = true);
-    _animController.repeat();
+  Future<void> _stopRecording() async {
+    _animController.stop();
+
+    try {
+      final String? path = await _recorder.stop();
+
+      if (path == null) {
+        debugPrint('No audio file recorded');
+        return;
+      }
+
+      final file = File(path);
+      final Uint8List audioBytes = await file.readAsBytes();
+
+      setState(() {
+        pendingVoice = audioBytes;
+        _isRecording = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Recording saved! Ready to send.'),
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error stopping recording: $e');
+    }
   }
 
-  void _stopRecording() {
-    _animController.stop();
-    setState(() => _isRecording = false);
-    // optional: you could add a message or attach recorded audio here
+
+  Future<void> _startRecording() async {
+    if (await _recorder.hasPermission()) {
+      final Directory tempDir = await getTemporaryDirectory();
+
+      final String filePath =
+          '${tempDir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+
+      await _recorder.start(
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+        ),
+        path: filePath,
+      );
+
+      setState(() => _isRecording = true);
+      _animController.repeat();
+    }
   }
+
+
 
   void _cancelRecording() {
     _animController.stop();
     setState(() => _isRecording = false);
   }
 
+  Future<void> _togglePlayback() async {
+    if (pendingVoice == null) return;
+
+    if (_isPlaying) {
+      await _audioPlayer.pause();
+      setState(() => _isPlaying = false);
+    } else {
+      if (_currentPosition == Duration.zero) {
+        // First time play
+        await _audioPlayer.play(BytesSource(pendingVoice!));
+      } else {
+        // Resume from pause
+        await _audioPlayer.resume();
+      }
+
+      setState(() => _isPlaying = true);
+    }
+  }
+
+
+
   void _send() {
     final text = controller.text.trim();
-    if (text.isEmpty && _attachedFiles.isEmpty) return;
+    if (text.isEmpty && _attachedFiles.isEmpty && pendingVoice == null) return;  // Check for voice as well
 
+    // Check if voice is recorded, if yes, send voice as well
     widget.onSend(
       text,
       List<PlatformFile>.from(_attachedFiles),
+      pendingVoice,  // Send the recorded voice along with other data
     );
 
     setState(() {
       controller.clear();
       _attachedFiles.clear();
+      pendingVoice = null;  // Clear the voice after sending
     });
   }
 
+  String _formatDuration(Duration d) {
+    final minutes = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return "$minutes:$seconds";
+  }
 
+
+  Widget _buildResponseLevel({
+    required ThemeData theme,
+    required bool isSmallPhone,
+    required bool narrow,
+  }) {
+    return Row(
+      children: [
+        if (narrow) ...[
+          Text('response_level'.tr(),
+              style: theme.textTheme.bodySmall),
+          const SizedBox(width: 8),
+        ],
+        Expanded(
+          child: Container(
+            padding: EdgeInsets.symmetric(
+                horizontal: isSmallPhone ? 6 : 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: theme.dividerColor.withOpacity(0.12),
+              ),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: responseLevel,
+                isExpanded: true,
+                items: [
+                  DropdownMenuItem(
+                      value: 'grade_6_8',
+                      child: Center(child: Text('grades_6_8'.tr()))),
+                  DropdownMenuItem(
+                      value: 'grade_9_11',
+                      child: Center(child: Text('grades_9_11'.tr()))),
+                  DropdownMenuItem(
+                      value: 'grade_12_plus',
+                      child: Center(child: Text('grades_12_plus'.tr()))),
+                ],
+                onChanged: (v) {
+                  if (v != null)
+                    widget.onResponseLevelChanged(v);
+                },
+                dropdownColor: theme.colorScheme.surface,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInputRow({
+    required ThemeData theme,
+    required bool isSmallPhone,
+    bool addShadow = false,
+  }) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: theme.dividerColor.withOpacity(0.12),
+              ),
+              boxShadow: addShadow &&
+                  theme.brightness == Brightness.light
+                  ? [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.01),
+                  blurRadius: 6,
+                )
+              ]
+                  : [],
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    minLines: 1,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      hintText: 'ask_question_hint'.tr(),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: _pickAndAttachFile,
+                  icon: const Icon(Icons.attach_file),
+                ),
+                IconButton(
+                  onPressed: _isRecording
+                      ? _stopRecording
+                      : _startRecording,
+                  icon: Icon(
+                    _isRecording
+                        ? Icons.mic
+                        : Icons.mic_none,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          height: 52,
+          width: 52,
+          child: ElevatedButton(
+            onPressed: _send,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E63FF),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: EdgeInsets.zero,
+            ),
+            child: const Icon(Icons.send_rounded,
+                color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
 
   // small animated waveform widget used inside recording panel
   Widget _waveform(BuildContext context) {
@@ -583,6 +1058,113 @@ class _InputBarState extends State<_InputBar>
       },
     );
   }
+
+  Widget _buildAudioPlaybackBar(ThemeData theme) {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.black87,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                // Play button
+                GestureDetector(
+                  onTap: _togglePlayback,
+                  child: Icon(
+                    _isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // Current time
+                Text(
+                  _formatDuration(_currentPosition),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // Progress slider
+                Expanded(
+                  child: Slider(
+                    value: _currentPosition.inMilliseconds.toDouble(),
+                    max: _totalDuration.inMilliseconds
+                        .toDouble()
+                        .clamp(1, double.infinity),
+                    activeColor: Colors.purpleAccent,
+                    inactiveColor: Colors.grey,
+                    onChanged: (value) async {
+                      final position =
+                      Duration(milliseconds: value.toInt());
+                      await _audioPlayer.seek(position);
+                    },
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // Total duration
+                Text(
+                  _formatDuration(_totalDuration),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                  ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // Delete button
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      pendingVoice = null;
+                      _currentPosition = Duration.zero;
+                      _totalDuration = Duration.zero;
+                    });
+                  },
+                  child: const Icon(
+                    Icons.close,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(width: 12),
+
+        // Send button
+        SizedBox(
+          height: 52,
+          width: 52,
+          child: ElevatedButton(
+            onPressed: _send,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1E63FF),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              padding: EdgeInsets.zero,
+            ),
+            child: const Icon(Icons.send_rounded,
+                color: Colors.white),
+          ),
+        ),
+      ],
+    );
+  }
+
 
   // recording panel UI (rounded with red waveform & controls)
   Widget _recordingPanel(BuildContext context) {
@@ -652,339 +1234,82 @@ class _InputBarState extends State<_InputBar>
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        child: LayoutBuilder(builder: (context, constraints) {
-          final narrow = constraints.maxWidth < 520;
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxHeight: 260, // ✅ hard cap for input bar
+          ),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: LayoutBuilder(builder: (context, constraints) {
+              final narrow = constraints.maxWidth < 520;
 
-          // small chip row shown when there are attached files
-          Widget attachedFilesView() {
-            if (_attachedFiles.isEmpty) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 6,
-                children: _attachedFiles.map((f) {
-                  return Chip(
-                    label: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.insert_drive_file, size: 16),
-                        const SizedBox(width: 6),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 160),
-                          child: Text('${f.name} • ${_formatSize(f.size)}',
-                              overflow: TextOverflow.ellipsis),
-                        ),
-                      ],
-                    ),
-                    deleteIcon: const Icon(Icons.close, size: 18),
-                    onDeleted: () {
-                      setState(() => _attachedFiles.remove(f));
-                    },
-                    backgroundColor: theme.colorScheme.surface,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                  );
-                }).toList(),
-              ),
-            );
-          }
-
-          // Replace the narrow-layout response_level Container with a more compact variant
-          if (narrow) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    Text('response_level'.tr(),
-                        style: theme.textTheme.bodySmall),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        // smaller padding & radius
-                        padding: EdgeInsets.symmetric(
-                            horizontal: isSmallPhone ? 6 : 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                              color: theme.dividerColor.withOpacity(0.12)),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: Align(
-                            alignment: Alignment.center,
-                            child: SizedBox(
-                              height: 34, // reduced height
-                              child: DropdownButton<String>(
-                                value: responseLevel,
-                                isExpanded: true,
-                                items: [
-                                  DropdownMenuItem(
-                                      value: 'grades_6_8',
-                                      child: Text('grades_6_8'.tr(),
-                                          textAlign: TextAlign.center)),
-                                  DropdownMenuItem(
-                                      value: 'grades_9_11',
-                                      child: Text('grades_9_11'.tr(),
-                                          textAlign: TextAlign.center)),
-                                  DropdownMenuItem(
-                                      value: 'grades_12_plus',
-                                      child: Text('grades_12_plus'.tr(),
-                                          textAlign: TextAlign.center)),
-                                ],
-                                onChanged: (v) => v != null
-                                    ? widget.onResponseLevelChanged(v)
-                                    : null,
-                                selectedItemBuilder: (context) => [
-                                  Center(
-                                      child: Text('grades_6_8'.tr(),
-                                          textAlign: TextAlign.center)),
-                                  Center(
-                                      child: Text('grades_9_11'.tr(),
-                                          textAlign: TextAlign.center)),
-                                  Center(
-                                      child: Text('grades_12_plus'.tr(),
-                                          textAlign: TextAlign.center)),
-                                ],
-                                dropdownColor: theme.colorScheme.surface,
-                                style: theme.textTheme.bodyMedium,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // show attached files as chips
-                attachedFilesView(),
-
-                // show recording panel if active
-                if (_isRecording) _recordingPanel(context),
-
-                // Input row with pill input + send button
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surface, // was Colors.white
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: theme.dividerColor.withOpacity(0.12)),
-                        ),
-                        child: Row(
+              // small chip row shown when there are attached files
+              Widget attachedFilesView() {
+                if (_attachedFiles.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: _attachedFiles.map((f) {
+                      return Chip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: TextField(
-                                controller: controller,
-                                minLines: 1,
-                                maxLines: 4,
-                                decoration: InputDecoration(
-                                  hintText: 'ask_question_hint'.tr(),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: isSmallPhone ? 88 : 120,
-                              child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    IconButton(
-                                        onPressed: _pickAndAttachFile,
-                                        icon: const Icon(Icons.attach_file)),
-                                    IconButton(
-                                      onPressed: _isRecording
-                                          ? _stopRecording
-                                          : _startRecording,
-                                      icon: Icon(_isRecording
-                                          ? Icons.mic
-                                          : Icons.mic_none),
-                                    ),
-                                  ]),
+                            const Icon(Icons.insert_drive_file, size: 16),
+                            const SizedBox(width: 6),
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 160),
+                              child: Text('${f.name} • ${_formatSize(f.size)}',
+                                  overflow: TextOverflow.ellipsis),
                             ),
                           ],
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    SizedBox(
-                      height: 52,
-                      width: 52,
-                      child: ElevatedButton(
-                        onPressed: _send,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E63FF),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
-                          padding: EdgeInsets.zero,
-                        ),
-                        child:
-                            const Icon(Icons.send_rounded, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            );
-          }
-
-          // Wide layout (smaller/narrower response card)
-          return Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 6), // tighter padding
-                    margin: const EdgeInsets.only(right: 10),
-                    constraints: const BoxConstraints(
-                        minWidth: 110, maxWidth: 160), // narrower card
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: theme.dividerColor.withOpacity(0.12)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-
-                        Text('response_level'.tr(),
-                            style: theme.textTheme.bodySmall),
-                        const SizedBox(height: 4),
-                        SizedBox(
-                          height: 32, // reduced height
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: responseLevel,
-                              underline: const SizedBox.shrink(),
-                              isExpanded: true,
-                              items: [
-
-                                DropdownMenuItem(
-                                    value: 'grades_6_8',
-                                    child:
-                                        Center(child: Text('grades_6_8'.tr()))),
-                                DropdownMenuItem(
-                                    value: 'grades_9_11',
-                                    child: Center(
-                                        child: Text('grades_9_11'.tr()))),
-                                DropdownMenuItem(
-                                    value: 'grades_12_plus',
-                                    child: Center(
-                                        child: Text('grades_12_plus'.tr()))),
-                              ],
-                              onChanged: (v) {
-                                if (v != null) widget.onResponseLevelChanged(v);
-                              },
-                              selectedItemBuilder: (context) => [
-
-                                Center(
-                                    child: Text('grades_6_8'.tr(),
-                                        textAlign: TextAlign.center)),
-                                Center(
-                                    child: Text('grades_9_11'.tr(),
-                                        textAlign: TextAlign.center)),
-                                Center(
-                                    child: Text('grades_12_plus'.tr(),
-                                        textAlign: TextAlign.center)),
-                              ],
-                              dropdownColor: theme.colorScheme.surface,
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  Expanded(
-                      child: Container()), // keep rest balanced horizontally
-                ],
-              ),
-
-              // attached files row
-              attachedFilesView(),
-
-              // show recording panel if active
-              if (_isRecording) _recordingPanel(context),
-
-              // main input row
-              Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(20),
-
-                        border: Border.all(
-                            color: theme.dividerColor.withOpacity(0.12)),
-                        boxShadow: [
-                          if (theme.brightness == Brightness.light)
-                            BoxShadow(
-                                color: Colors.black.withOpacity(0.01),
-                                blurRadius: 6)
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: TextField(
-                              controller: controller,
-                              minLines: 1,
-                              maxLines: 4,
-                              decoration: InputDecoration(
-                                hintText: 'ask_question_hint'.tr(),
-                                border: InputBorder.none,
-                                isDense: true,
-                              ),
-                            ),
-                          ),
-
-                          IconButton(
-                              onPressed: _pickAndAttachFile,
-                              icon: const Icon(Icons.attach_file)),
-                          IconButton(
-                            onPressed:
-                                _isRecording ? _stopRecording : _startRecording,
-                            icon:
-                                Icon(_isRecording ? Icons.mic : Icons.mic_none),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  SizedBox(
-                    height: 52,
-                    width: 52,
-                    child: ElevatedButton(
-                      onPressed: _send,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1E63FF),
-
+                        deleteIcon: const Icon(Icons.close, size: 18),
+                        onDeleted: () {
+                          setState(() => _attachedFiles.remove(f));
+                        },
+                        backgroundColor: theme.colorScheme.surface,
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                        padding: EdgeInsets.zero,
-                      ),
-                      child:
-                          const Icon(Icons.send_rounded, color: Colors.white),
-                    ),
+                            borderRadius: BorderRadius.circular(8)),
+                      );
+                    }).toList(),
                   ),
+                );
+              }
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildResponseLevel(
+                    theme: theme,
+                    isSmallPhone: isSmallPhone,
+                    narrow: narrow,
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  attachedFilesView(),
+
+                  if (_isRecording) _recordingPanel(context),
+
+                  const SizedBox(height: 6),
+
+                  // Show only send button when voice exists
+                  if (pendingVoice != null && !_isRecording)
+                    _buildAudioPlaybackBar(theme)
+                  else
+                    _buildInputRow(
+                      theme: theme,
+                      isSmallPhone: isSmallPhone,
+                      addShadow: !narrow,
+                    ),
                 ],
-              ),
-            ],
-          );
-        }),
+              );
+
+            }),
+          ),
+        ),
       ),
     );
   }
@@ -995,7 +1320,6 @@ Future<void> _savePickedFile(BuildContext context, PlatformFile file) async {
   try {
     final bytes = file.bytes;
     if (bytes == null) {
-
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Unable to read file bytes')));
       return;
@@ -1027,7 +1351,6 @@ Future<void> _savePickedFile(BuildContext context, PlatformFile file) async {
       'timestamp': DateTime.now().toIso8601String(),
     });
     await prefs.setString(manifestKey, jsonEncode(manifest));
-
 
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text('Saved ${file.name} locally')));
