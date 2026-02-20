@@ -24,7 +24,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
   Map<String, dynamic> _allocatedMarks = {};
   bool _showAllocateMarksPopup = false;
   int _currentQuestionIndex = 0;
-  List<TextEditingController> _subQuestionMarkControllers = [];
+  final List<TextEditingController> _subQuestionMarkControllers = [];
 
   static const Color primaryBlue = Color(0xFF2196F3);
   static const String _storageKey = 'evaluation_data';
@@ -419,7 +419,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                   if (_isDataSaved)
                                     IconButton(
                                       onPressed: _removeData,
-                                      icon: Icon(
+                                      icon: const Icon(
                                         Icons.delete,
                                         color: Colors.red,
                                       ),
@@ -585,7 +585,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                       vertical: 16),
-                                              side: BorderSide(
+                                              side: const BorderSide(
                                                   color: primaryBlue),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
@@ -593,7 +593,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                               ),
                                             ),
                                             child: Text('common.cancel'.tr(),
-                                                style: TextStyle(
+                                                style: const TextStyle(
                                                     color: primaryBlue)),
                                           ),
                                         ),
@@ -637,14 +637,14 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                                       style: OutlinedButton.styleFrom(
                                         padding: const EdgeInsets.symmetric(
                                             horizontal: 32, vertical: 16),
-                                        side: BorderSide(color: primaryBlue),
+                                        side: const BorderSide(color: primaryBlue),
                                         shape: RoundedRectangleBorder(
                                           borderRadius:
                                               BorderRadius.circular(12),
                                         ),
                                       ),
                                       child: Text('common.cancel'.tr(),
-                                          style: TextStyle(color: primaryBlue)),
+                                          style: const TextStyle(color: primaryBlue)),
                                     ),
                                     const SizedBox(width: 16),
                                     ElevatedButton(
@@ -808,7 +808,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
                         : Colors.grey.shade300)),
             focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide(color: primaryBlue, width: 2)),
+                borderSide: const BorderSide(color: primaryBlue, width: 2)),
             filled: true,
             fillColor: isDarkMode ? Colors.grey[800] : Colors.grey[50],
           ),
@@ -820,7 +820,7 @@ class _EvaluationTextPageState extends State<EvaluationInputPage> {
 
 class AllocateMarksPopup extends StatefulWidget {
   const AllocateMarksPopup({
-    Key? key,
+    super.key,
     required this.theme,
     required this.currentQuestionIndex,
     required this.mainQuestionsCount,
@@ -833,7 +833,7 @@ class AllocateMarksPopup extends StatefulWidget {
     required this.onClose,
     required this.isDarkMode,
     required this.isMobile,
-  }) : super(key: key);
+  });
 
   final ThemeData theme;
   final int currentQuestionIndex;
@@ -949,7 +949,7 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                                         : Colors.grey.shade300)),
                             focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: BorderSide(
+                                borderSide: const BorderSide(
                                     color: Color(0xFF2196F3), width: 2)),
                             prefixIcon: const Icon(Icons.arrow_right,
                                 color: Color(0xFF2196F3)),
@@ -968,13 +968,13 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: Color(0xFF2196F3),
+                              color: const Color(0xFF2196F3),
                               width: 2,
                             ),
                           ),
                           child: IconButton(
                             onPressed: widget.onAddSubQuestion,
-                            icon: Icon(Icons.add, color: Color(0xFF2196F3)),
+                            icon: const Icon(Icons.add, color: Color(0xFF2196F3)),
                             iconSize: widget.isMobile ? 20 : 24,
                             tooltip: 'evaluation.addSubQuestion'.tr(),
                             padding: EdgeInsets.all(widget.isMobile ? 8 : 12),
@@ -1013,7 +1013,7 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                       label: Text('common.next'.tr(),
                           style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF2196F3),
+                          backgroundColor: const Color(0xFF2196F3),
                           minimumSize: const Size.fromHeight(50),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12))),
@@ -1025,7 +1025,7 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                       label: Text('common.done'.tr(),
                           style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF2196F3),
+                          backgroundColor: const Color(0xFF2196F3),
                           minimumSize: const Size.fromHeight(50),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12))),
@@ -1059,7 +1059,7 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                       label: Text('common.next'.tr(),
                           style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF2196F3),
+                          backgroundColor: const Color(0xFF2196F3),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12))),
                     )
@@ -1070,7 +1070,7 @@ class _AllocateMarksPopupState extends State<AllocateMarksPopup> {
                       label: Text('common.done'.tr(),
                           style: const TextStyle(color: Colors.white)),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF2196F3),
+                          backgroundColor: const Color(0xFF2196F3),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12))),
                     ),

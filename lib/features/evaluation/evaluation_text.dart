@@ -1,27 +1,39 @@
 // lib/features/evaluation/evaluation_text.dart
 
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:easy_localization/easy_localization.dart';
-import 'learning_mode.dart';
+import '../learning/learning_mode.dart';
 import '../../widgets/teachers_main_app_bar.dart';
 import '../recent_chat/recent_chats_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
+import '../../core/utils/blocking_progress_dialog.dart';
 import '../../core/utils/json_cast.dart';
+import '../../models/chat_session_details.dart';
 import 'evaluation_process_page.dart';
+import 'evaluation_response.dart';
 import 'evaluation_doc_tokens.dart';
+import '../../services/chat_service.dart';
+import '../../services/resource_service.dart';
+import '../../services/evaluation_service.dart';
 
 // NEW PAGE
 import 'paper_config_review_page.dart';
 
 class EvaluationTextPage extends StatefulWidget {
   final String chatSessionId;
+  final bool initialShowProcessing;
 
   const EvaluationTextPage({
     super.key,
     required this.chatSessionId,
+    this.initialShowProcessing = false,
   });
 
   @override
@@ -37,10 +49,24 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
 
   static const String _attachmentKey = 'evaluation_attachment';
   static const String _evaluationStorageKey = 'evaluation_data';
-  static const String _rubricKey = 'hasRubric';
+  static const String _rubricKeyPrefix = 'hasRubric:';
   static const String _paperConfigConfirmedKey = 'paper_config_confirmed';
-  static const String _questionPaperKey = 'question_paper_file';
-  static const String _syllabusKey = 'syllabus_items';
+
+  // Question paper + syllabus are persisted per chat session.
+  static const String _questionPaperKeyPrefix = 'question_paper_file:';
+  static const String _syllabusKeyPrefix = 'syllabus_items:';
+  static const String _answerSheetIdsKeyPrefix = 'answer_sheet_ids:';
+  static const String _answerSheetClearedKeyPrefix =
+      'active_answer_sheet_cleared:';
+
+  String get _questionPaperKey =>
+      '$_questionPaperKeyPrefix${widget.chatSessionId}';
+  String get _syllabusKey => '$_syllabusKeyPrefix${widget.chatSessionId}';
+  String get _answerSheetIdsKey =>
+      '$_answerSheetIdsKeyPrefix${widget.chatSessionId}';
+  String get _answerSheetClearedKey =>
+      '$_answerSheetClearedKeyPrefix${widget.chatSessionId}';
+  String get _rubricKey => '$_rubricKeyPrefix${widget.chatSessionId}';
 
   bool _hasRubrics = false;
   bool _hasMarks = false;
@@ -50,19 +76,20 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
 
   bool _showProcessing = false;
   bool _isProcessing = false;
-  bool _hasProcessedDocuments = false;
+  bool _needsReprocess = false;
+
+  List<_UploadedDoc> _answerSheetDocs = const <_UploadedDoc>[];
 
   final Map<_DocStep, _DocStepState> _docSteps = {
     _DocStep.answerSheets: const _DocStepState(),
     _DocStep.questionPaper: const _DocStepState(),
     _DocStep.syllabus: const _DocStepState(),
-    _DocStep.rubric: const _DocStepState(),
-    _DocStep.paperConfig: const _DocStepState(),
   };
 
   @override
   void initState() {
     super.initState();
+    _showProcessing = widget.initialShowProcessing;
     _loadAllData();
   }
 
@@ -79,10 +106,173 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   Future<void> _loadAllData() async {
     final prefs = await SharedPreferences.getInstance();
 
-    _attachedFileName = prefs.getString(_attachmentKey);
-    _hasAttachment = _attachedFileName != null;
+    final clearedByUser = prefs.getBool(_answerSheetClearedKey) ?? false;
+    final storedIds =
+        prefs.getStringList(_answerSheetIdsKey) ?? const <String>[];
+    final storedLatestId = storedIds.where((e) => e.isNotEmpty).isNotEmpty
+        ? storedIds.where((e) => e.isNotEmpty).last
+        : '';
 
-    _hasRubrics = prefs.getBool(_rubricKey) ?? false;
+    _attachedFileName = prefs.getString(_attachmentKey);
+    _hasAttachment = storedLatestId.isNotEmpty || _attachedFileName != null;
+
+    // Prefer backend truth (per chat session) so it survives logout/relogin.
+    try {
+      final details =
+          await ChatService.getChatSessionDetails(widget.chatSessionId);
+      _hasQuestionPaper = details.questionPaper != null;
+      _hasSyllabus = details.syllabus != null;
+      final attachedInBackend =
+          (details.rubricId != null && details.rubricId!.isNotEmpty);
+      final attachedInPrefs = (prefs.getBool(_rubricKey) ?? false) ||
+          (prefs.getBool('hasRubric') ?? false);
+      _hasRubrics = attachedInBackend || attachedInPrefs;
+
+      // Answer sheets: allow many to exist in backend, but for evaluation we
+      // always use the latest uploaded one.
+      final answerSheets = details.answerSheets
+          .where((e) => e.resourceId.isNotEmpty)
+          .toList(growable: false);
+      // IMPORTANT: backend may have many answer sheets historically.
+      // We only treat an answer sheet as "attached" if the user has an active
+      // selection locally, OR we auto-pick it (when not explicitly cleared).
+      _hasAttachment = storedLatestId.isNotEmpty || _attachedFileName != null;
+
+      SessionResource? activeAnswer;
+      if (storedLatestId.isNotEmpty) {
+        for (final a in answerSheets) {
+          if (a.resourceId == storedLatestId) {
+            activeAnswer = a;
+            break;
+          }
+        }
+      }
+
+      SessionResource? latestAnswer;
+      if (!clearedByUser && activeAnswer == null && answerSheets.isNotEmpty) {
+        // Prefer backend timestamps when available.
+        try {
+          final sessionResources =
+              await ResourceService.fetchChatSessionResources(
+                  widget.chatSessionId);
+          final createdAtById = <String, DateTime>{};
+          for (final item in sessionResources) {
+            final id = (item['id'] ?? item['resource_id'])?.toString() ?? '';
+            final createdRaw = item['created_at']?.toString() ?? '';
+            if (id.isEmpty || createdRaw.isEmpty) continue;
+            final dt = DateTime.tryParse(createdRaw);
+            if (dt != null) createdAtById[id] = dt.toUtc();
+          }
+
+          if (createdAtById.isNotEmpty) {
+            answerSheets.sort((a, b) {
+              final da = createdAtById[a.resourceId] ??
+                  DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+              final db = createdAtById[b.resourceId] ??
+                  DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+              return da.compareTo(db);
+            });
+          }
+        } catch (_) {
+          // ignore - fallback to backend order
+        }
+
+        // Fallback assumption: backend list order is chronological.
+        latestAnswer = answerSheets.isNotEmpty ? answerSheets.last : null;
+      }
+
+      final chosen = activeAnswer ?? latestAnswer;
+      if (chosen != null) {
+        final name = chosen.filename.isNotEmpty
+            ? chosen.filename
+            : 'Resource ${chosen.resourceId}';
+        _answerSheetDocs = <_UploadedDoc>[
+          _UploadedDoc(
+            id: chosen.resourceId,
+            name: name,
+            sizeBytes: chosen.sizeBytes,
+            mimeType: chosen.mimeType,
+          ),
+        ];
+        _attachedFileName = name;
+
+        _hasAttachment = true;
+
+        // Persist only the chosen active ID locally for downstream processing.
+        await prefs
+            .setStringList(_answerSheetIdsKey, <String>[chosen.resourceId]);
+        await prefs.setBool(_answerSheetClearedKey, false);
+      } else {
+        _answerSheetDocs = const <_UploadedDoc>[];
+        _attachedFileName = null;
+        _hasAttachment = false;
+      }
+
+      // Some backends may not include answer sheets in session resources yet.
+      // If we have locally cached answer sheet IDs for this chat, treat them
+      // as attached so processing can proceed.
+      if (!_hasAttachment) {
+        final ids = prefs.getStringList(_answerSheetIdsKey);
+        if (ids != null && ids.isNotEmpty) {
+          _hasAttachment = true;
+
+          final latestId = ids.where((e) => e.isNotEmpty).isNotEmpty
+              ? ids.where((e) => e.isNotEmpty).last
+              : '';
+          if (latestId.isNotEmpty) {
+            // Show placeholder when we only have the ID locally.
+            _answerSheetDocs = <_UploadedDoc>[
+              _UploadedDoc(
+                id: latestId,
+                name: 'Resource $latestId',
+                sizeBytes: 0,
+                mimeType: '',
+              ),
+            ];
+            _attachedFileName ??= 'Resource $latestId';
+          }
+        }
+      }
+    } catch (_) {
+      // Fallback to legacy local state if backend fetch fails.
+      _hasRubrics = (prefs.getBool(_rubricKey) ?? false) ||
+          (prefs.getBool('hasRubric') ?? false);
+
+      final ids = prefs.getStringList(_answerSheetIdsKey);
+      final localLatestId =
+          (ids ?? const <String>[]).where((e) => e.isNotEmpty).isNotEmpty
+              ? (ids ?? const <String>[]).where((e) => e.isNotEmpty).last
+              : '';
+
+      if (clearedByUser && localLatestId.isEmpty) {
+        _hasAttachment = false;
+        _attachedFileName = null;
+        _answerSheetDocs = const <_UploadedDoc>[];
+      } else {
+        _hasAttachment = localLatestId.isNotEmpty || _hasAttachment;
+      }
+
+      final filtered =
+          (ids ?? const <String>[]).where((e) => e.isNotEmpty).toList();
+      final latestId = filtered.isNotEmpty ? filtered.last : '';
+      _answerSheetDocs = latestId.isNotEmpty
+          ? <_UploadedDoc>[
+              _UploadedDoc(
+                id: latestId,
+                name: 'Resource $latestId',
+                sizeBytes: 0,
+                mimeType: '',
+              ),
+            ]
+          : const <_UploadedDoc>[];
+
+      final questionPaperRaw = prefs.getString(_questionPaperKey);
+      _hasQuestionPaper =
+          questionPaperRaw != null && questionPaperRaw.isNotEmpty;
+
+      final syllabusItems = prefs.getStringList(_syllabusKey);
+      _hasSyllabus = syllabusItems != null && syllabusItems.isNotEmpty;
+    }
 
     final legacyMarks = prefs.getString(_evaluationStorageKey);
     final paperConfirmed = prefs.getBool(_paperConfigConfirmedKey) ?? false;
@@ -90,19 +280,20 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     _hasMarks =
         (legacyMarks != null && legacyMarks.isNotEmpty) || paperConfirmed;
 
-    final questionPaperRaw = prefs.getString(_questionPaperKey);
-    _hasQuestionPaper = questionPaperRaw != null && questionPaperRaw.isNotEmpty;
+    // NOTE: question paper + syllabus are set above (backend preferred).
 
-    final syllabusItems = prefs.getStringList(_syllabusKey);
-    _hasSyllabus = syllabusItems != null && syllabusItems.isNotEmpty;
-
-    // Documents are considered processed only if the current token snapshot
-    // matches the last processed snapshot.
-    final currentTokens = EvalDocTokens.buildCurrent(prefs);
-    final processedTokens = EvalDocTokens.loadProcessed(prefs);
-    _hasProcessedDocuments = _allDocumentsAvailable() &&
-        processedTokens != null &&
-        EvalDocTokens.equals(currentTokens, processedTokens);
+    // Determine if uploaded docs changed since last successful processing.
+    final currentTokens =
+        EvalDocTokens.buildCurrent(prefs, chatSessionId: widget.chatSessionId);
+    final processedTokens =
+        EvalDocTokens.loadProcessed(prefs, chatSessionId: widget.chatSessionId);
+    final canProcess = _canProcessDocuments();
+    _needsReprocess = canProcess &&
+        (processedTokens == null ||
+            !EvalDocTokens.equals(
+              currentTokens,
+              processedTokens,
+            ));
 
     if (mounted) setState(() {});
   }
@@ -121,21 +312,6 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         _hasMarks;
   }
 
-  bool _isStepAvailable(_DocStep step) {
-    switch (step) {
-      case _DocStep.answerSheets:
-        return _hasAttachment;
-      case _DocStep.questionPaper:
-        return _hasQuestionPaper;
-      case _DocStep.syllabus:
-        return _hasSyllabus;
-      case _DocStep.rubric:
-        return _hasRubrics;
-      case _DocStep.paperConfig:
-        return _hasMarks;
-    }
-  }
-
   String _stepTitle(_DocStep step) {
     switch (step) {
       case _DocStep.answerSheets:
@@ -144,20 +320,34 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         return 'evaluation.docStepQuestionPaperProcessing'.tr();
       case _DocStep.syllabus:
         return 'evaluation.docStepSyllabusProcessing'.tr();
-      case _DocStep.rubric:
-        return 'evaluation.docStepRubricSet'.tr();
-      case _DocStep.paperConfig:
-        return 'evaluation.docStepPaperConfigSet'.tr();
     }
+  }
+
+  bool _canProcessDocuments() {
+    // Only these docs are processed: Answer sheets + Question paper + Syllabus.
+    return _hasAttachment && _hasQuestionPaper && _hasSyllabus;
+  }
+
+  bool _canStartDocumentProcessing() {
+    // UX gate: require rubric + required documents before processing.
+    return _hasRubrics && _canProcessDocuments();
+  }
+
+  bool _documentsProcessedUpToDate() {
+    // After processing completes and there are no pending changes.
+    return _canProcessDocuments() && !_needsReprocess;
   }
 
   Future<void> _processDocuments() async {
     if (_isProcessing) return;
 
+    // ignore: avoid_print
+    print(
+        'ProcessDocuments clicked for chatSessionId: ${widget.chatSessionId}');
+
     setState(() {
       _showProcessing = true;
       _isProcessing = true;
-      _hasProcessedDocuments = false;
       for (final step in _docSteps.keys) {
         _docSteps[step] = const _DocStepState(status: _DocStepStatus.pending);
       }
@@ -166,49 +356,82 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     // Refresh current availability before starting.
     await _loadAllData();
 
-    final List<_DocStep> orderedSteps = [
-      _DocStep.answerSheets,
-      _DocStep.questionPaper,
-      _DocStep.syllabus,
-      _DocStep.rubric,
-      _DocStep.paperConfig,
-    ];
+    final prefs = await SharedPreferences.getInstance();
+    final answerIds =
+        prefs.getStringList(_answerSheetIdsKey) ?? const <String>[];
+    final latestAnswerId = answerIds.where((e) => e.isNotEmpty).isNotEmpty
+        ? answerIds.where((e) => e.isNotEmpty).last
+        : '';
 
-    for (final step in orderedSteps) {
-      final wasAvailable = _isStepAvailable(step);
+    // ignore: avoid_print
+    print('ProcessDocuments latest answer_resource_id: $latestAnswerId');
 
+    // Hard gate: we only process when question paper + syllabus + answer sheets exist.
+    if (!_hasQuestionPaper || !_hasSyllabus) {
       setState(() {
-        _docSteps[step] = _DocStepState(
-          status: _DocStepStatus.inProgress,
-          alreadyProcessed: false,
-        );
+        _isProcessing = false;
       });
-
-      // Small delay so the user can see progression.
-      await Future.delayed(const Duration(milliseconds: 450));
-
-      // Re-check availability after the delay.
-      await _loadAllData();
-      final isAvailable = _isStepAvailable(step);
-
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Missing question paper or syllabus upload')),
+        );
+      }
+      return;
+    }
+    if (latestAnswerId.isEmpty) {
       setState(() {
-        _docSteps[step] = _DocStepState(
-          status: isAvailable ? _DocStepStatus.done : _DocStepStatus.pending,
-          alreadyProcessed: wasAvailable && isAvailable,
-        );
+        _isProcessing = false;
       });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Missing answer sheet upload')),
+        );
+      }
+      return;
     }
 
-    final ok = _allDocumentsAvailable();
+    // Show all steps as in-progress while backend processes.
     setState(() {
-      _isProcessing = false;
-      _hasProcessedDocuments = ok;
+      for (final step in _docSteps.keys) {
+        _docSteps[step] =
+            const _DocStepState(status: _DocStepStatus.inProgress);
+      }
     });
 
-    if (ok) {
-      final prefs = await SharedPreferences.getInstance();
+    try {
+      await EvaluationService.processDocumentsStream(
+        chatSessionId: widget.chatSessionId,
+        answerResourceIds: <String>[latestAnswerId],
+      );
+
       await EvalDocTokens.saveProcessed(
-          prefs, EvalDocTokens.buildCurrent(prefs));
+        prefs,
+        EvalDocTokens.buildCurrent(prefs, chatSessionId: widget.chatSessionId),
+        chatSessionId: widget.chatSessionId,
+      );
+
+      if (!mounted) return;
+      setState(() {
+        for (final step in _docSteps.keys) {
+          _docSteps[step] = const _DocStepState(status: _DocStepStatus.done);
+        }
+        _isProcessing = false;
+        _needsReprocess = false;
+      });
+    } catch (e) {
+      // ignore: avoid_print
+      print('Process documents failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _isProcessing = false;
+        for (final step in _docSteps.keys) {
+          _docSteps[step] = const _DocStepState(status: _DocStepStatus.pending);
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to process documents')),
+      );
     }
   }
 
@@ -219,23 +442,113 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
     final result = await FilePicker.platform.pickFiles(allowMultiple: false);
     if (result == null) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_attachmentKey, result.files.first.name);
+    final file = result.files.first;
+    final bytes = file.bytes;
+    // On web, PlatformFile.path throws; use bytes instead.
+    final String? path = kIsWeb ? null : file.path;
 
     setState(() {
-      _attachedFileName = result.files.first.name;
+      _attachedFileName = file.name;
       _hasAttachment = true;
     });
+
+    unawaited(
+      showBlockingProgressDialog(
+        context,
+        message: 'Uploading ${file.name}...',
+      ),
+    );
+
+    try {
+      if (bytes == null && (path == null || path.isEmpty)) {
+        throw StateError('Unable to read file bytes/path');
+      }
+
+      final multipart = bytes != null
+          ? MultipartFile.fromBytes(bytes, filename: file.name)
+          : await MultipartFile.fromFile(path!, filename: file.name);
+
+      final uploads = await ResourceService.uploadAnswerSheets(
+        files: [multipart],
+        chatSessionId: widget.chatSessionId,
+      );
+
+      final latestId = uploads
+              .map((u) => u.resourceId)
+              .where((id) => id.isNotEmpty)
+              .isNotEmpty
+          ? uploads.map((u) => u.resourceId).where((id) => id.isNotEmpty).last
+          : '';
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_attachmentKey, file.name);
+      if (latestId.isNotEmpty) {
+        // Keep only the latest answer sheet per evaluation session.
+        await prefs.setStringList(_answerSheetIdsKey, <String>[latestId]);
+        await prefs.setBool(_answerSheetClearedKey, false);
+        if (mounted) {
+          setState(() {
+            _answerSheetDocs = <_UploadedDoc>[
+              _UploadedDoc(
+                id: latestId,
+                name: file.name,
+                sizeBytes: file.size,
+                mimeType: _guessMimeTypeFromName(file.name),
+              ),
+            ];
+          });
+        }
+      }
+
+      // Docs changed: require re-process.
+      if (mounted) {
+        setState(() {
+          _needsReprocess = _canProcessDocuments();
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('upload_success'.tr(args: [file.name]))),
+        );
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('Failed to upload answer sheet: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('upload_error'.tr())),
+        );
+      }
+    } finally {
+      if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
   }
 
   Future<void> _removeAttachment() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_attachmentKey);
+    await prefs.remove(_answerSheetIdsKey);
+    await prefs.setBool(_answerSheetClearedKey, true);
 
     setState(() {
       _attachedFileName = null;
       _hasAttachment = false;
+      _answerSheetDocs = const <_UploadedDoc>[];
+      _needsReprocess = _canProcessDocuments();
     });
+  }
+
+  String _guessMimeTypeFromName(String filename) {
+    final lower = filename.toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.doc')) return 'application/msword';
+    if (lower.endsWith('.docx')) {
+      return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    }
+    return '';
   }
 
   // ---------------------------------------------------------------------------
@@ -244,7 +557,63 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   Future<void> _sendToChat() async {
     final prefs = await SharedPreferences.getInstance();
 
-    if (!_allDocumentsAvailable() || !_hasProcessedDocuments) return;
+    if (!_allDocumentsAvailable()) return;
+
+    // Require "Process Documents" to be up-to-date before evaluation.
+    final currentTokens =
+        EvalDocTokens.buildCurrent(prefs, chatSessionId: widget.chatSessionId);
+    final processedTokens =
+        EvalDocTokens.loadProcessed(prefs, chatSessionId: widget.chatSessionId);
+    final upToDate = processedTokens != null &&
+        EvalDocTokens.equals(currentTokens, processedTokens);
+    if (!upToDate) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('evaluation.docsChangedBody'.tr())),
+        );
+      }
+      return;
+    }
+
+    final answerIds =
+        prefs.getStringList(_answerSheetIdsKey) ?? const <String>[];
+    final latestAnswerId = answerIds.where((e) => e.isNotEmpty).isNotEmpty
+        ? answerIds.where((e) => e.isNotEmpty).last
+        : '';
+
+    if (latestAnswerId.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Missing answer sheet upload')),
+        );
+      }
+      return;
+    }
+
+    try {
+      final res = await EvaluationService.startEvaluation(
+        chatSessionId: widget.chatSessionId,
+        answerResourceIds: <String>[latestAnswerId],
+      );
+
+      final evalSessionId =
+          (res ?? const <String, dynamic>{})['id']?.toString();
+      if (evalSessionId != null && evalSessionId.isNotEmpty) {
+        await prefs.setString(
+          'evaluation_session_id:${widget.chatSessionId}',
+          evalSessionId,
+        );
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('Failed to start evaluation: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to start evaluation')),
+        );
+      }
+      return;
+    }
 
     final legacyData = prefs.getString(_evaluationStorageKey);
     final decoded = legacyData != null ? jsonDecode(legacyData) : null;
@@ -255,8 +624,20 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       MaterialPageRoute(
         builder: (_) => EvaluationProcessPage(
           chatSessionId: widget.chatSessionId,
+          assumeDocsAvailable: true,
           attachmentName: _attachedFileName,
           evaluationData: evalData,
+        ),
+      ),
+    );
+  }
+
+  void _openResultsHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => EvaluationResponsePage(
+          chatSessionId: widget.chatSessionId,
         ),
       ),
     );
@@ -266,6 +647,10 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final docsReadyForProcessing = _canStartDocumentProcessing();
+    final docsProcessed = _documentsProcessedUpToDate();
+    final marksAvailable = docsProcessed;
+    final sendAvailable = docsProcessed && _hasMarks && _hasRubrics;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -284,6 +669,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         onRightIconPressed: () {},
         onAddPressed: () {},
         onRubricApplied: _loadAllData,
+        chatSessionId: widget.chatSessionId,
       ),
       drawer: const RecentChatsDrawer(),
       body: Column(
@@ -304,25 +690,226 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                         style: theme.textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 14),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: [
-                          _statusChip('Rubric', _hasRubrics),
-                          _statusChip('Marks', _hasMarks),
-                          _statusChip('Attachment', _hasAttachment),
+                      _Roadmap(
+                        steps: [
+                          _RoadmapStep(
+                            icon: Icons.rule,
+                            isActive: _hasRubrics,
+                            label: 'Rubric',
+                            tooltip: 'Select/apply a rubric',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.menu_book_outlined,
+                            isActive: _hasSyllabus,
+                            label: 'Syllabus',
+                            tooltip: 'Upload and select syllabus',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.description_outlined,
+                            isActive: _hasQuestionPaper,
+                            label: 'Question',
+                            tooltip: 'Upload question paper',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.attachment_outlined,
+                            isActive: _hasAttachment,
+                            label: 'Answer',
+                            tooltip: 'Upload answer sheet',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.auto_awesome,
+                            isActive: docsProcessed,
+                            isAvailable: docsReadyForProcessing,
+                            label: 'Process',
+                            tooltip:
+                                'Process documents (required before marks)',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.edit_note,
+                            isActive: docsProcessed && _hasMarks,
+                            isAvailable: marksAvailable,
+                            label: 'Marks',
+                            tooltip: 'Configure marks / paper settings',
+                          ),
+                          _RoadmapStep(
+                            icon: Icons.send,
+                            isActive: false,
+                            isAvailable: sendAvailable,
+                            label: 'Send',
+                            tooltip: 'Send for evaluation',
+                          ),
                         ],
                       ),
                       const SizedBox(height: 22),
+
+                      // Uploaded answer sheets details
+                      Card(
+                        elevation: 0,
+                        color: theme.colorScheme.surface,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(
+                            color: theme.dividerColor.withOpacity(0.35),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Uploaded Answer Sheets',
+                                style: theme.textTheme.titleSmall,
+                              ),
+                              const SizedBox(height: 10),
+                              if (_needsReprocess)
+                                Card(
+                                  elevation: 0,
+                                  color: theme.colorScheme.surface,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                    side: BorderSide(
+                                      color: theme.colorScheme.primary
+                                          .withOpacity(0.35),
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 12, vertical: 10),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Icon(
+                                          Icons.info_outline,
+                                          size: 18,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'evaluation.docsChangedTitle'
+                                                    .tr(),
+                                                style:
+                                                    theme.textTheme.titleSmall,
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Text(
+                                                'evaluation.docsChangedBody'
+                                                    .tr(),
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color: theme
+                                                      .colorScheme.onSurface
+                                                      .withOpacity(0.75),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              if (_answerSheetDocs.isEmpty)
+                                Text(
+                                  'No answer sheets uploaded',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface
+                                        .withOpacity(0.7),
+                                  ),
+                                )
+                              else
+                                ..._answerSheetDocs.map(
+                                  (d) => Padding(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 6),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        _UploadedDocRow(doc: d),
+                                        const SizedBox(height: 6),
+                                        Wrap(
+                                          alignment: WrapAlignment.end,
+                                          spacing: 8,
+                                          runSpacing: 4,
+                                          children: [
+                                            Tooltip(
+                                              message:
+                                                  'evaluation.replaceAttachment'
+                                                      .tr(),
+                                              waitDuration: const Duration(
+                                                  milliseconds: 250),
+                                              child: TextButton.icon(
+                                                onPressed: _isProcessing
+                                                    ? null
+                                                    : _pickAndSaveAttachment,
+                                                icon: const Icon(
+                                                    Icons.swap_horiz),
+                                                label: Text(
+                                                  'evaluation.replaceAttachment'
+                                                      .tr(),
+                                                ),
+                                              ),
+                                            ),
+                                            Tooltip(
+                                              message:
+                                                  'evaluation.removeAttachment'
+                                                      .tr(),
+                                              waitDuration: const Duration(
+                                                  milliseconds: 250),
+                                              child: TextButton.icon(
+                                                onPressed: _isProcessing
+                                                    ? null
+                                                    : _removeAttachment,
+                                                icon: const Icon(Icons.close),
+                                                label: Text(
+                                                  'evaluation.removeAttachment'
+                                                      .tr(),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
                       SizedBox(
                         height: 56,
                         child: FilledButton.icon(
-                          onPressed: _isProcessing ? null : _processDocuments,
+                          onPressed: _isProcessing
+                              ? null
+                              : (docsReadyForProcessing
+                                  ? _processDocuments
+                                  : null),
                           icon: const Icon(Icons.auto_awesome),
                           label: Text('evaluation.processDocuments'.tr()),
                         ),
                       ),
+
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: _openResultsHistory,
+                          icon: const Icon(Icons.history),
+                          label: Text('evaluation.viewResultsHistory'.tr()),
+                        ),
+                      ),
+
                       if (_showProcessing) ...[
                         const SizedBox(height: 18),
                         Card(
@@ -343,8 +930,6 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                                   _DocStep.answerSheets,
                                   _DocStep.questionPaper,
                                   _DocStep.syllabus,
-                                  _DocStep.rubric,
-                                  _DocStep.paperConfig,
                                 ])
                                   _DocStepRow(
                                     title: _stepTitle(step),
@@ -372,31 +957,168 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
             isDark: isDark,
             attachedFileName: _attachedFileName,
             onAttachPressed: _pickAndSaveAttachment,
-            onRemoveAttachment: _removeAttachment,
-            onMarksPressed: () async {
-              await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => PaperConfigReviewPage(
-                    sessionId: widget.chatSessionId,
-                  ),
-                ),
-              );
-              _loadAllData();
-            },
-            onSendPressed: (_hasProcessedDocuments && _allDocumentsAvailable())
-                ? _sendToChat
+            onMarksPressed: marksAvailable
+                ? () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => PaperConfigReviewPage(
+                          sessionId: widget.chatSessionId,
+                        ),
+                      ),
+                    );
+                    _loadAllData();
+                  }
                 : null,
+            onSendPressed:
+                (_allDocumentsAvailable() && !_needsReprocess && docsProcessed)
+                    ? _sendToChat
+                    : null,
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _statusChip(String label, bool ok) {
-    return Chip(
-      label: Text('$label: ${ok ? '✓' : '✗'}'),
-      backgroundColor: ok ? Colors.green.shade100 : Colors.red.shade100,
+class _RoadmapStep {
+  final IconData icon;
+  final bool isActive;
+  final bool isAvailable;
+  final String label;
+  final String tooltip;
+
+  const _RoadmapStep({
+    required this.icon,
+    required this.isActive,
+    required this.label,
+    required this.tooltip,
+    bool? isAvailable,
+  }) : isAvailable = isAvailable ?? true;
+}
+
+class _Roadmap extends StatelessWidget {
+  final List<_RoadmapStep> steps;
+
+  const _Roadmap({required this.steps});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final activeColor = theme.colorScheme.primary;
+    final inactiveColor = theme.colorScheme.onSurface.withOpacity(0.35);
+    final disabledColor = theme.colorScheme.onSurface.withOpacity(0.18);
+
+    const bubbleSize = 36.0;
+
+    return SizedBox(
+      height: 74,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              for (int i = 0; i < steps.length; i++) ...[
+                _RoadmapBubble(
+                  step: steps[i],
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
+                  disabledColor: disabledColor,
+                ),
+                if (i != steps.length - 1)
+                  Expanded(
+                    child: Container(
+                      height: 2,
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      decoration: BoxDecoration(
+                        color: steps[i + 1].isAvailable
+                            ? (steps[i].isActive || steps[i + 1].isActive
+                                ? activeColor.withOpacity(0.65)
+                                : inactiveColor)
+                            : disabledColor,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              for (int i = 0; i < steps.length; i++) ...[
+                SizedBox(
+                  width: bubbleSize,
+                  child: Text(
+                    steps[i].label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: steps[i].isAvailable
+                          ? theme.colorScheme.onSurface.withOpacity(0.75)
+                          : theme.colorScheme.onSurface.withOpacity(0.35),
+                    ),
+                  ),
+                ),
+                if (i != steps.length - 1) const Expanded(child: SizedBox()),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RoadmapBubble extends StatelessWidget {
+  final _RoadmapStep step;
+  final Color activeColor;
+  final Color inactiveColor;
+  final Color disabledColor;
+
+  const _RoadmapBubble({
+    required this.step,
+    required this.activeColor,
+    required this.inactiveColor,
+    required this.disabledColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    final bg = step.isAvailable
+        ? (step.isActive ? activeColor : theme.colorScheme.surface)
+        : theme.colorScheme.surface;
+    final border = step.isAvailable
+        ? (step.isActive ? activeColor : inactiveColor)
+        : disabledColor;
+    final fg = step.isAvailable
+        ? (step.isActive ? theme.colorScheme.onPrimary : inactiveColor)
+        : disabledColor;
+
+    return Tooltip(
+      message: step.tooltip,
+      waitDuration: const Duration(milliseconds: 250),
+      child: Semantics(
+        label: step.label,
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: bg,
+            shape: BoxShape.circle,
+            border: Border.all(color: border, width: 2),
+          ),
+          alignment: Alignment.center,
+          child: Icon(
+            step.isActive ? Icons.check : step.icon,
+            size: 18,
+            color: fg,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -405,8 +1127,97 @@ enum _DocStep {
   answerSheets,
   questionPaper,
   syllabus,
-  rubric,
-  paperConfig,
+}
+
+class _UploadedDoc {
+  final String id;
+  final String name;
+  final int sizeBytes;
+  final String mimeType;
+
+  const _UploadedDoc({
+    required this.id,
+    required this.name,
+    required this.sizeBytes,
+    required this.mimeType,
+  });
+
+  String metaText() {
+    final type = _typeLabel(mimeType, name);
+    final size = _formatBytes(sizeBytes);
+    if (type.isEmpty && size.isEmpty) return '';
+    if (type.isNotEmpty && size.isNotEmpty) return '$type • $size';
+    return type.isNotEmpty ? type : size;
+  }
+}
+
+class _UploadedDocRow extends StatelessWidget {
+  const _UploadedDocRow({required this.doc});
+
+  final _UploadedDoc doc;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final meta = doc.metaText();
+
+    return Row(
+      children: [
+        Icon(
+          Icons.article_outlined,
+          size: 18,
+          color: theme.colorScheme.primary,
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                doc.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium,
+              ),
+              if (meta.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  meta,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withOpacity(0.65),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _typeLabel(String mimeType, String filename) {
+  final mt = mimeType.toLowerCase();
+  if (mt.contains('pdf')) return 'PDF';
+  if (mt.contains('word') || mt.contains('officedocument')) return 'DOC';
+
+  final dot = filename.lastIndexOf('.');
+  if (dot == -1 || dot == filename.length - 1) return '';
+  return filename.substring(dot + 1).toUpperCase();
+}
+
+String _formatBytes(int bytes) {
+  if (bytes <= 0) return '';
+  const unit = 1024;
+  if (bytes < unit) return '$bytes B';
+  if (bytes < unit * unit) {
+    final kb = bytes / unit;
+    return '${kb.toStringAsFixed(kb >= 10 ? 0 : 1)} KB';
+  }
+  final mb = bytes / (unit * unit);
+  return '${mb.toStringAsFixed(mb >= 10 ? 0 : 1)} MB';
 }
 
 enum _DocStepStatus {
@@ -433,6 +1244,17 @@ class _DocStepRow extends StatelessWidget {
 
   final String title;
   final _DocStepState state;
+
+  String _statusLabelKey() {
+    switch (state.status) {
+      case _DocStepStatus.done:
+        return 'evaluation.statusCompleted';
+      case _DocStepStatus.inProgress:
+        return 'evaluation.statusProcessing';
+      case _DocStepStatus.pending:
+        return 'evaluation.statusStarting';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -472,57 +1294,28 @@ class _DocStepRow extends StatelessWidget {
               style: theme.textTheme.bodyMedium,
             ),
           ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: theme.dividerColor),
+            ),
+            child: Text(
+              _statusLabelKey().tr(),
+              style: theme.textTheme.labelMedium,
+            ),
+          ),
+          if (state.alreadyProcessed) const SizedBox(width: 8),
           if (state.alreadyProcessed)
             Chip(
               label: Text('evaluation.alreadyProcessed'.tr()),
               visualDensity: VisualDensity.compact,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 44,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: _DocStepPercentText(status: state.status),
-            ),
-          ),
         ],
       ),
-    );
-  }
-}
-
-class _DocStepPercentText extends StatelessWidget {
-  const _DocStepPercentText({
-    required this.status,
-  });
-
-  final _DocStepStatus status;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    // Pending: show 0%, Done: show 100%, In progress: animate 0% -> 100%.
-    if (status == _DocStepStatus.inProgress) {
-      return TweenAnimationBuilder<double>(
-        key: const ValueKey('inProgressPercent'),
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 450),
-        builder: (context, value, _) {
-          final pct = (value * 100).clamp(0, 100).round();
-          return Text(
-            '$pct%',
-            style: theme.textTheme.bodySmall,
-          );
-        },
-      );
-    }
-
-    final pct = status == _DocStepStatus.done ? 100 : 0;
-    return Text(
-      '$pct%',
-      style: theme.textTheme.bodySmall,
     );
   }
 }
@@ -536,7 +1329,6 @@ class _InputBar extends StatelessWidget {
     required this.isDark,
     required this.onAttachPressed,
     required this.attachedFileName,
-    required this.onRemoveAttachment,
     required this.onMarksPressed,
     required this.onSendPressed,
   });
@@ -545,8 +1337,7 @@ class _InputBar extends StatelessWidget {
   final bool isDark;
   final VoidCallback onAttachPressed;
   final String? attachedFileName;
-  final VoidCallback onRemoveAttachment;
-  final VoidCallback onMarksPressed;
+  final VoidCallback? onMarksPressed;
   final VoidCallback? onSendPressed;
 
   @override
@@ -558,11 +1349,36 @@ class _InputBar extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: ElevatedButton.icon(
-                onPressed: onAttachPressed,
-                icon: const Icon(Icons.attach_file),
-                label: Text('evaluation.attach'.tr()),
-              ),
+              child: attachedFileName == null
+                  ? Tooltip(
+                      message: 'evaluation.attach'.tr(),
+                      waitDuration: const Duration(milliseconds: 250),
+                      child: ElevatedButton.icon(
+                        onPressed: onAttachPressed,
+                        icon: const Icon(Icons.attach_file),
+                        label: Text('evaluation.attach'.tr()),
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: Tooltip(
+                            message: 'evaluation.replaceAttachment'.tr(),
+                            waitDuration: const Duration(milliseconds: 250),
+                            child: ElevatedButton.icon(
+                              // Tapping the file triggers "Replace".
+                              onPressed: onAttachPressed,
+                              icon: const Icon(Icons.attachment_outlined),
+                              label: Text(
+                                attachedFileName!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -570,6 +1386,9 @@ class _InputBar extends StatelessWidget {
                 onPressed: onMarksPressed,
                 icon: const Icon(Icons.add),
                 label: Text('evaluation.marks'.tr()),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: onMarksPressed != null ? null : Colors.grey,
+                ),
               ),
             ),
             const SizedBox(width: 12),

@@ -72,7 +72,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
     final background =
         theme.scaffoldBackgroundColor; // Main Scaffold Background
     final card = theme.cardColor; // Card Background
-    final text = colorScheme.onBackground; // Primary Text Color
+    final text = colorScheme.onSurface; // Primary Text Color
     final subText = colorScheme.secondary; // Secondary Text Color (SubText)
     final languageInputBg =
         colorScheme.surface; // Input Background (from ColorScheme)
@@ -296,7 +296,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
                               Text("settings.dark_mode".tr(),
                                   style: TextStyle(
                                       fontWeight: FontWeight.w500,
-                                      color: Theme.of(context).colorScheme.onBackground)),
+                                      color: Theme.of(context).colorScheme.onSurface)),
                               //  Localization Key
                               Text("settings.enable_dark_mode".tr(),
                                   style: TextStyle(
@@ -655,7 +655,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
   // Bg color parameter now uses the specific inputBg color
   Widget _inputBox(String value, Color bg, Color text, bool isDark) {
     final borderColor = isDark ? text.withOpacity(0.1) : Colors.grey.shade300;
-    final primaryBlue = const Color(0xFF2563EB);
+    const primaryBlue = Color(0xFF2563EB);
 
     return TextField(
       style: TextStyle(color: text),

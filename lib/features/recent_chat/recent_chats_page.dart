@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:sinlearn_mobile/core/network/api_client.dart';
+import 'package:sinlearn_mobile/core/network/token_storage.dart';
 import 'package:sinlearn_mobile/features/auth/auth_page.dart';
+import 'package:sinlearn_mobile/core/utils/app_toast.dart';
+import 'package:sinlearn_mobile/core/utils/error_handler.dart';
 import '../settings/Settings_Teachers.dart';
 import '../../main.dart' show MyApp;
-import '../evaluation/learning_mode.dart';
+import '../learning/learning_mode.dart';
 import '../evaluation/evaluation_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
+import '../../services/chat_service.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 // Model
 class ChatEntry {
@@ -38,7 +43,7 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
   final List<ChatEntry> _all = [];
   String? _activeId;
   final _search = TextEditingController();
-  int _version = 0;
+  final int _version = 0;
 
   @override
   void initState() {
@@ -46,128 +51,94 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
     _loadChats();
   }
 
-  Future<void> _seedInitialChats() async {
-    final now = DateTime.now();
-    setState(() {
-      _all
-        ..clear()
-        ..addAll([
-          ChatEntry(
-              title: 'recent_chats.new_learning'.tr(),
-              type: ChatType.learning,
-              createdAt: now,
-              messageCount: 0),
-          ChatEntry(
-              title: 'recent_chats.new_learning'.tr(),
-              type: ChatType.learning,
-              createdAt: now.subtract(const Duration(minutes: 60)),
-              messageCount: 1),
-          ChatEntry(
-              title: 'recent_chats.new_evaluation'.tr(),
-              type: ChatType.evaluation,
-              createdAt: now.subtract(const Duration(hours: 2)),
-              messageCount: 0),
-        ]);
-      _activeId = _all.first.id;
-      // keep ids monotonic
-      ChatEntry._next = (_all
-          .map((c) => int.tryParse(c.id) ?? 0)
-          .fold<int>(0, (a, b) => a > b ? a : b));
-    });
-    await _saveChats();
-  }
-
   Future<void> _loadChats() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('recent_chats');
-    _version = prefs.getInt('recent_chats_version') ?? 0;
-
-    if (raw == null) {
-      await _seedInitialChats();
-      return;
-    }
-
     try {
-      final data = jsonDecode(raw);
-      if (data is List && data.isNotEmpty) {
+      final sessions = await ChatService.listChatSessions();
+      if (!mounted) return;
+
+      setState(() {
         _all
           ..clear()
-          ..addAll(data.map((e) => ChatEntry(
-                id: e['id'],
-                title: e['title'],
-                type: e['type'] == 'learning'
+          ..addAll(sessions.map((s) => ChatEntry(
+                id: s.id,
+                title: s.title ??
+                    (s.mode == 'learning'
+                        ? 'recent_chats.new_learning'.tr()
+                        : 'recent_chats.new_evaluation'.tr()),
+                type: s.mode == 'learning'
                     ? ChatType.learning
                     : ChatType.evaluation,
-                createdAt: DateTime.parse(e['createdAt']),
-                messageCount: e['messageCount'] ?? 0,
+                createdAt: DateTime.tryParse(s.createdAt) ?? DateTime.now(),
+                messageCount: 0,
               )));
-        ChatEntry._next = (_all
-            .map((c) => int.tryParse(c.id) ?? 0)
-            .fold<int>(0, (a, b) => a > b ? a : b));
-        _activeId = _all.isNotEmpty ? _all.first.id : null;
-        setState(() {});
-      } else {
-        // empty list or wrong shape -> seed defaults
-        await _seedInitialChats();
-      }
-    } catch (_) {
-      // corrupted JSON -> seed defaults
-      await _seedInitialChats();
+
+        // Sort by createdAt desc
+        _all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+        if (_all.isNotEmpty) {
+          _activeId = _all.first.id;
+        }
+      });
+    } catch (e) {
+      print("Error loading chats: $e");
+      // If API fails, maybe show empty or cached?
+      // For now, let's not seed fake data to avoid confusion.
     }
   }
 
   Future<void> _saveChats() async {
-    final prefs = await SharedPreferences.getInstance();
-    final data = _all
-        .map((c) => {
-              'id': c.id,
-              'title': c.title,
-              'type': c.type == ChatType.learning ? 'learning' : 'evaluation',
-              'createdAt': c.createdAt.toIso8601String(),
-              'messageCount': c.messageCount,
-            })
-        .toList();
-    await prefs.setString('recent_chats', jsonEncode(data));
-    // bump version so drawer can detect changes
-    _version = (_version + 1);
-    await prefs.setInt('recent_chats_version', _version);
+    // We might not need to save to local storage if we are fully API driven,
+    // but keeping it for offline support could be useful.
+    // However, syncing is complex. Let's skip saving for now to rely on API.
   }
 
-  void _create(ChatType type) {
-    final entry = ChatEntry(
-      title: type == ChatType.learning
-          ? 'recent_chats.new_learning'.tr()
-          : 'recent_chats.new_evaluation'.tr(),
-      type: type,
-      createdAt: DateTime.now(),
+  Future<void> _create(ChatType type) async {
+    try {
+      final session = await ChatService.createChatSession(
+        mode: type == ChatType.learning ? 'learning' : 'evaluation',
+        title: type == ChatType.learning
+            ? 'recent_chats.new_learning'.tr()
+            : 'recent_chats.new_evaluation'.tr(),
+      );
+
+      final entry = ChatEntry(
+        id: session.id,
+        title: session.title ??
+            (type == ChatType.learning
+                ? 'recent_chats.new_learning'.tr()
+                : 'recent_chats.new_evaluation'.tr()),
+        type: type,
+        createdAt: DateTime.now(),
+      );
+
+      setState(() {
+        _all.insert(0, entry);
+        _activeId = entry.id;
+      });
+      await _saveChats();
+
+      if (!mounted) return;
+      // Close the drawer first, then navigate to the appropriate interface
+      Navigator.of(context).pop();
+      if (type == ChatType.learning) {
+        Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const LearningModePage()));
+      } else {
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
+      }
+    } catch (e) {
+      if (mounted) {
+        AppToast.error(context, ErrorHandler.getErrorMessage(e));
+      }
+    }
+  }
+
+  String _relative(DateTime time, BuildContext context) {
+    return timeago.format(
+      time,
+      locale: context.locale.languageCode,
     );
-
-    setState(() {
-      _all.insert(0, entry);
-      _activeId = entry.id;
-    });
-    _saveChats();
-
-    // Close the drawer first, then navigate to the appropriate interface
-    Navigator.of(context).pop();
-    if (type == ChatType.learning) {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const LearningModePage()));
-    } else {
-      Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
-    }
-  }
-
-  String _relative(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 1) return 'recent_chats.less_minute'.tr();
-    if (diff.inMinutes == 1) return 'recent_chats.minute_ago'.tr();
-    if (diff.inMinutes < 60) {
-      return 'recent_chats.minutes_ago'.tr(args: [diff.inMinutes.toString()]);
-    }
-    if (diff.inHours == 1) return 'recent_chats.hour_ago'.tr();
-    return 'recent_chats.hours_ago'.tr(args: [diff.inHours.toString()]);
   }
 
   List<ChatEntry> get _filtered {
@@ -187,7 +158,6 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
 
   @override
   Widget build(BuildContext context) {
-
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _checkVersionAndReload());
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -265,7 +235,7 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                   return _RecentItem(
                     key: ValueKey(item.id), // stable key
                     entry: item,
-                    timeLabel: _relative(item.createdAt),
+                    timeLabel: _relative(item.createdAt, context),
                     active: active,
                     onTap: () => setState(() => _activeId = item.id),
                     isDark: isDark,
@@ -306,11 +276,14 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                   _FooterButton(
                     icon: Icons.logout,
                     label: 'recent_chats.logout'.tr(),
-                    onTap: () {
-                      Navigator.of(context).pushReplacement(
+                    onTap: () async {
+                      await TokenStorage.clear();
+                      ApiClient.reset();
+                      Navigator.of(context).pushAndRemoveUntil(
                         MaterialPageRoute(
                           builder: (context) => const AuthPage(),
                         ),
+                        (route) => false,
                       );
                     },
                   ),
@@ -408,15 +381,14 @@ class _RecentItem extends StatelessWidget {
       ),
       onTap: () {
         onTap();
-        // navigate to interface for this chat type
+        // navigate to interface for this chat type with session ID
         Navigator.of(context).pop();
         if (entry.type == ChatType.learning) {
-
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LearningModePage()));
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => LearningModePage(chatSessionId: entry.id)));
         } else {
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
         }
       },
       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),

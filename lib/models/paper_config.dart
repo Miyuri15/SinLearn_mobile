@@ -23,14 +23,21 @@ class PaperConfig {
 
   factory PaperConfig.fromJson(Map<String, dynamic> json) {
     return PaperConfig(
-      id: json['id'],
-      paperPart: json['paper_part'],
-      subjectName: json['subject_name'],
-      medium: json['medium'],
-      totalMarks: json['total_marks'],
-      totalMainQuestions: json['total_main_questions'],
-      selectionRules: SelectionRules.fromJson(json['selection_rules']),
-      isConfirmed: json['is_confirmed'],
+      id: (json['id'] ?? '').toString(),
+      paperPart: (json['paper_part'] ?? '').toString(),
+      subjectName: (json['subject_name'] ?? '').toString(),
+      medium: (json['medium'] ?? '').toString(),
+      totalMarks: (json['total_marks'] ?? 0) is num
+          ? (json['total_marks'] as num).toInt()
+          : int.tryParse((json['total_marks'] ?? 0).toString()) ?? 0,
+      totalMainQuestions: (json['total_main_questions'] ?? 0) is num
+          ? (json['total_main_questions'] as num).toInt()
+          : int.tryParse((json['total_main_questions'] ?? 0).toString()) ?? 0,
+      selectionRules: SelectionRules.fromJson(
+        (json['selection_rules'] as Map?)?.cast<String, dynamic>() ??
+            const <String, dynamic>{},
+      ),
+      isConfirmed: json['is_confirmed'] == true,
       questions: (json['questions'] as List? ?? [])
           .map((e) => QuestionStructure.fromJson(e))
           .toList(),
@@ -40,6 +47,8 @@ class PaperConfig {
   Map<String, dynamic> toJson() => {
         'id': id,
         'paper_part': paperPart,
+      'subject_name': subjectName,
+      'medium': medium,
         'total_marks': totalMarks,
         'total_main_questions': totalMainQuestions,
         'selection_rules': selectionRules.toJson(),
@@ -55,8 +64,10 @@ class SelectionRules {
 
   factory SelectionRules.fromJson(Map<String, dynamic> json) {
     return SelectionRules(
-      chooseAny: json['choose_any'],
-      mode: json['mode'],
+      chooseAny: (json['choose_any'] is num)
+          ? (json['choose_any'] as num).toInt()
+          : int.tryParse((json['choose_any'] ?? '').toString()),
+      mode: json['mode']?.toString(),
     );
   }
 

@@ -1,6 +1,5 @@
-import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'learning_mode.dart';
+import '../learning/learning_mode.dart';
 
 class EvaluationVoicePage extends StatefulWidget {
   const EvaluationVoicePage({super.key});

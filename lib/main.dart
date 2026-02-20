@@ -1,21 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'features/auth/auth_page.dart';
+import 'package:sinlearn_mobile/core/auth/auth_gate.dart';
+import 'package:timeago/timeago.dart' as timeago;
+import 'utils/timeago_si.dart';
+import 'package:sinlearn_mobile/core/network/api_client.dart';
+import 'package:sinlearn_mobile/features/auth/services/auth_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
 
+  await dotenv.load(fileName: ".env");
+
+  timeago.setLocaleMessages('si', SiMessages());
+
   // Load the saved theme preference
   final prefs = await SharedPreferences.getInstance();
   final isDark = prefs.getBool('isDark') ?? false;
 
+  ApiClient.onRefresh = () => AuthService().refreshToken();
+
   runApp(
     EasyLocalization(
-      supportedLocales: [Locale('en'), Locale('si')],
+      supportedLocales: const [Locale('en'), Locale('si')],
       path: 'assets/languages',
-      fallbackLocale: Locale('en'),
+      fallbackLocale: const Locale('en'),
       child: MyApp(
         key: MyApp.stateKey, // use global key to access state
         isDark: isDark,
@@ -78,7 +89,7 @@ class _MyAppState extends State<MyApp> {
       localizationsDelegates: context.localizationDelegates,
       supportedLocales: context.supportedLocales,
       locale: context.locale,
-      home: const AuthPage(),
+      home: const AuthGate(),
     );
   }
 }

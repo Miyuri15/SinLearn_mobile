@@ -11,9 +11,9 @@ void main() {
 
     await tester.pumpWidget(
       EasyLocalization(
-        supportedLocales: [Locale('en'), Locale('si')],
+        supportedLocales: const [Locale('en'), Locale('si')],
         path: 'assets/languages',
-        fallbackLocale: Locale('en'),
+        fallbackLocale: const Locale('en'),
         child: const MaterialApp(home: AuthPage()),
       ),
     );
