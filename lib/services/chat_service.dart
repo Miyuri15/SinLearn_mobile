@@ -243,7 +243,7 @@ class ChatService {
   /// POST VOICE QA
   static Future<VoiceQAResponse> postVoiceQA({
     required MultipartFile audio,
-    required String sessionId,
+    String? sessionId,
     List<String> resourceIds = const [],
     int topK = 3,
   }) async {

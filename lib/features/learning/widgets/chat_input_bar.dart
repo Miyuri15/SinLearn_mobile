@@ -25,12 +25,12 @@ class ChatInputBar extends StatefulWidget {
   final String responseLevel;
   final ValueChanged<String> onResponseLevelChanged;
 
-  /// UPDATED: now supports voice
+  /// Supports voice
   final Future<void> Function(
-    String text,
-    List<PlatformFile> attachments,
-    Uint8List? voiceBytes,
-  ) onSend;
+      String text,
+      List<PlatformFile> attachments,
+      Uint8List? voiceBytes,
+      ) onSend;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -67,14 +67,17 @@ class _ChatInputBarState extends State<ChatInputBar>
     _audioPlayer.setReleaseMode(ReleaseMode.stop);
 
     _audioPlayer.onDurationChanged.listen((d) {
+      if (!mounted) return;
       setState(() => _totalDuration = d);
     });
 
     _audioPlayer.onPositionChanged.listen((p) {
+      if (!mounted) return;
       setState(() => _currentPosition = p);
     });
 
     _audioPlayer.onPlayerComplete.listen((_) {
+      if (!mounted) return;
       setState(() {
         _isPlaying = false;
         _currentPosition = Duration.zero;
@@ -108,8 +111,11 @@ class _ChatInputBarState extends State<ChatInputBar>
     if (result == null) return;
 
     final file = result.files.first;
-    _savePickedFile(context, file);
 
+    // ✅ this exists now (added at bottom)
+    await _savePickedFile(context, file);
+
+    if (!mounted) return;
     setState(() => _attachedFiles.add(file));
   }
 
@@ -130,6 +136,7 @@ class _ChatInputBarState extends State<ChatInputBar>
       path: path,
     );
 
+    if (!mounted) return;
     setState(() => _isRecording = true);
     _animController.repeat();
   }
@@ -143,6 +150,7 @@ class _ChatInputBarState extends State<ChatInputBar>
     final file = File(path);
     final bytes = await file.readAsBytes();
 
+    if (!mounted) return;
     setState(() {
       _pendingVoice = bytes;
       _isRecording = false;
@@ -163,6 +171,7 @@ class _ChatInputBarState extends State<ChatInputBar>
 
     if (_isPlaying) {
       await _audioPlayer.pause();
+      if (!mounted) return;
       setState(() => _isPlaying = false);
     } else {
       if (_currentPosition == Duration.zero) {
@@ -170,6 +179,7 @@ class _ChatInputBarState extends State<ChatInputBar>
       } else {
         await _audioPlayer.resume();
       }
+      if (!mounted) return;
       setState(() => _isPlaying = true);
     }
   }
@@ -185,9 +195,7 @@ class _ChatInputBarState extends State<ChatInputBar>
   Future<void> _send() async {
     final text = controller.text.trim();
 
-    if (text.isEmpty &&
-        _attachedFiles.isEmpty &&
-        _pendingVoice == null) return;
+    if (text.isEmpty && _attachedFiles.isEmpty && _pendingVoice == null) return;
 
     await widget.onSend(
       text,
@@ -195,6 +203,7 @@ class _ChatInputBarState extends State<ChatInputBar>
       _pendingVoice,
     );
 
+    if (!mounted) return;
     setState(() {
       controller.clear();
       _attachedFiles.clear();
@@ -313,6 +322,7 @@ class _ChatInputBarState extends State<ChatInputBar>
                       _pendingVoice = null;
                       _currentPosition = Duration.zero;
                       _totalDuration = Duration.zero;
+                      _isPlaying = false;
                     });
                   },
                   icon: const Icon(Icons.close, color: Colors.white),
@@ -342,8 +352,6 @@ class _ChatInputBarState extends State<ChatInputBar>
       ),
     );
   }
-
-  // ================= BUILD =================
 
   @override
   Widget build(BuildContext context) {
@@ -403,5 +411,47 @@ class _ChatInputBarState extends State<ChatInputBar>
         ),
       ),
     );
+  }
+}
+
+/// ✅ Add this at bottom of the same file
+Future<void> _savePickedFile(BuildContext context, PlatformFile file) async {
+  try {
+    final bytes = file.bytes;
+    if (bytes == null) {
+      AppToast.error(context, 'Unable to read file bytes');
+      return;
+    }
+
+    final key = 'uploaded_${file.name}_${DateTime.now().millisecondsSinceEpoch}';
+    final base64Str = base64Encode(bytes);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, base64Str);
+
+    const manifestKey = 'uploaded_files_manifest';
+    final manifestJson = prefs.getString(manifestKey);
+
+    List<Map<String, dynamic>> manifest = [];
+
+    if (manifestJson != null) {
+      try {
+        final List<dynamic> decoded = jsonDecode(manifestJson);
+        manifest = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+      } catch (_) {
+        manifest = [];
+      }
+    }
+
+    manifest.insert(0, {
+      'key': key,
+      'name': file.name,
+      'size': file.size,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+
+    await prefs.setString(manifestKey, jsonEncode(manifest));
+  } catch (e) {
+    AppToast.error(context, 'Error saving file: $e');
   }
 }
