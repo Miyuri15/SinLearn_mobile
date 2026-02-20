@@ -1,10 +1,14 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:dio/dio.dart';
+
 import '../evaluation/evaluation_text.dart';
 import '../../widgets/teachers_main_app_bar.dart';
 import '../recent_chat/recent_chats_page.dart';
 import '../../services/message_service.dart';
 import '../../services/chat_service.dart';
+import '../../services/resource_service.dart';
 import '../../core/utils/app_toast.dart';
 import '../../core/utils/error_handler.dart';
 import '../../models/message.dart';
@@ -12,14 +16,6 @@ import 'widgets/chat_view.dart';
 import 'widgets/chat_input_bar.dart';
 import 'widgets/sidebar.dart';
 
-/// Main page for Learning Mode chat interface.
-///
-/// Features:
-/// - Chat message display with API integration
-/// - Message input with file attachments and audio recording
-/// - Responsive layout (mobile and desktop)
-/// - Grade level selection for response complexity
-/// - Session management
 class LearningModePage extends StatefulWidget {
   const LearningModePage({super.key, this.chatSessionId});
 
@@ -30,10 +26,11 @@ class LearningModePage extends StatefulWidget {
 }
 
 class _LearningModePageState extends State<LearningModePage> {
-  int _selectedSegment = 0; // 0 = Learning, 1 = Evaluation
+  int _selectedSegment = 0;
   String? _activeSessionId;
   bool _isSending = false;
   bool _isLoadingMessages = false;
+
   final List<Message> _messages = [];
   String _responseLevel = 'grade_9_11';
 
@@ -56,19 +53,21 @@ class _LearningModePageState extends State<LearningModePage> {
     super.dispose();
   }
 
-  /// Load messages from API for the current session
+  // ================= LOAD MESSAGES =================
+
   Future<void> _loadMessages() async {
     if (_activeSessionId == null) return;
 
     setState(() => _isLoadingMessages = true);
 
     try {
-      final apiMessages = await ChatService.listChatMessages(_activeSessionId!);
+      final apiMessages =
+          await ChatService.listChatMessages(_activeSessionId!);
+
       if (!mounted) return;
 
       setState(() {
         _messages.clear();
-
         for (final apiMsg in apiMessages) {
           final parsed = DateTime.tryParse(apiMsg.createdAt);
           final localTime = parsed?.toLocal() ?? DateTime.now();
@@ -85,7 +84,6 @@ class _LearningModePageState extends State<LearningModePage> {
         }
       });
     } catch (e) {
-      debugPrint('Error loading messages: $e');
       if (mounted) {
         AppToast.error(context, ErrorHandler.getErrorMessage(e));
       }
@@ -96,17 +94,18 @@ class _LearningModePageState extends State<LearningModePage> {
     }
   }
 
-  /// Send message with attachments to the API
+  // ================= SEND MESSAGE (TEXT + FILE + VOICE) =================
+
   Future<void> _handleSendFromInputBar(
     String text,
     List<PlatformFile> attachments,
+    Uint8List? voiceBytes,
   ) async {
     if (_isSending) return;
 
     setState(() {
       _isSending = true;
 
-      // 1️⃣ Optimistic UI
       _messages.add(
         Message(
           text: text,
@@ -117,33 +116,71 @@ class _LearningModePageState extends State<LearningModePage> {
     });
 
     try {
-      final payload = {
-        "content": text,
-        "modality": "text",
-        "grade_level": _responseLevel,
-      };
+      List<String> uploadedResourceIds = [];
 
-      final resp = await MessageService.postMessage(
-        sessionId: _activeSessionId,
-        payload: payload,
-      );
+      // 1️⃣ Upload files first
+      if (attachments.isNotEmpty) {
+        final files = attachments.map((f) {
+          final bytes = f.bytes ?? Uint8List(0);
+          return MultipartFile.fromBytes(bytes, filename: f.name);
+        }).toList();
 
-      // 2️⃣ Capture session id
-      final newSessionId = resp["session_id"] ??
-          resp["session"]?["id"] ??
-          resp["chat_id"] ??
-          resp["id"];
-
-      final bool isNewSession =
-          _activeSessionId == null && newSessionId != null;
-      if (isNewSession) {
-        _activeSessionId = newSessionId;
+        final uploadResp = await ResourceService.uploadResources(files);
+        uploadedResourceIds =
+            uploadResp.map((r) => r.resourceId).toList();
       }
 
-      // 3️⃣ Reload all messages from API to ensure consistency
-      await _loadMessages();
+      // 2️⃣ VOICE MODE
+      if (voiceBytes != null) {
+        final audioFile =
+            MultipartFile.fromBytes(voiceBytes, filename: 'voice.wav');
+
+        final data = await ChatService.postVoiceQA(
+          audio: audioFile,
+          sessionId: _activeSessionId,
+          resourceIds: uploadedResourceIds,
+          topK: 3,
+        );
+
+        if (_activeSessionId == null && data.sessionId.isNotEmpty) {
+          _activeSessionId = data.sessionId;
+        }
+
+        setState(() {
+          _messages.addAll([
+            Message(text: data.question, fromUser: true),
+            Message(text: data.answer, fromUser: false),
+          ]);
+        });
+      }
+
+      // 3️⃣ TEXT MODE
+      else {
+        final payload = {
+          "content": text,
+          "modality": "text",
+          "grade_level": _responseLevel,
+          if (uploadedResourceIds.isNotEmpty)
+            "resource_ids": uploadedResourceIds,
+        };
+
+        final resp = await MessageService.postMessage(
+          sessionId: _activeSessionId,
+          payload: payload,
+        );
+
+        final newSessionId = resp["session_id"] ??
+            resp["session"]?["id"] ??
+            resp["chat_id"] ??
+            resp["id"];
+
+        if (_activeSessionId == null && newSessionId != null) {
+          _activeSessionId = newSessionId;
+        }
+
+        await _loadMessages();
+      }
     } catch (e) {
-      debugPrint("❌ Send failed: $e");
       if (mounted) {
         AppToast.error(context, ErrorHandler.getErrorMessage(e));
       }
@@ -154,37 +191,42 @@ class _LearningModePageState extends State<LearningModePage> {
     }
   }
 
+  // ================= BUILD =================
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final size = MediaQuery.of(context).size;
     final bool isWide = size.width >= 900;
-    final sidebarWidth = isWide ? (size.width * 0.32).clamp(260.0, 360.0) : 0.0;
+    final sidebarWidth =
+        isWide ? (size.width * 0.32).clamp(260.0, 360.0) : 0.0;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       drawer: _buildDrawer(context),
       appBar: MainAppBar(
         selectedIndex: _selectedSegment,
+        chatSessionId: _activeSessionId,
         onSegmentSelected: (index) async {
           setState(() => _selectedSegment = index);
 
           if (index == 1) {
-            // Create a new session for evaluation
             try {
               final session = await ChatService.createChatSession(
                 mode: 'evaluation',
                 title: 'New Evaluation Chat',
               );
+
               if (!mounted) return;
+
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => EvaluationTextPage(chatSessionId: session.id),
+                  builder: (_) =>
+                      EvaluationTextPage(chatSessionId: session.id),
                 ),
               );
             } catch (e) {
-              debugPrint('Error creating evaluation session: $e');
               if (mounted) {
                 AppToast.error(context, ErrorHandler.getErrorMessage(e));
               }
@@ -194,11 +236,9 @@ class _LearningModePageState extends State<LearningModePage> {
         onMenuPressed: () {},
         onRightIconPressed: () {},
         onAddPressed: () {},
-        chatSessionId: _activeSessionId,
       ),
       body: Row(
         children: [
-          // Sidebar for wide screens
           if (isWide)
             SizedBox(
               width: sidebarWidth,
@@ -208,14 +248,12 @@ class _LearningModePageState extends State<LearningModePage> {
               ),
             ),
 
-          // Main chat area
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const Divider(height: 1),
 
-                // Chat messages
                 Expanded(
                   child: ChatView(
                     messages: _messages,
@@ -225,7 +263,6 @@ class _LearningModePageState extends State<LearningModePage> {
 
                 const Divider(height: 1),
 
-                // Input bar
                 ChatInputBar(
                   controller: _inputController,
                   responseLevel: _responseLevel,
@@ -242,7 +279,6 @@ class _LearningModePageState extends State<LearningModePage> {
     );
   }
 
-  /// Build the drawer for mobile view
   Widget _buildDrawer(BuildContext context) {
     return const RecentChatsDrawer();
   }

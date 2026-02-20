@@ -1,10 +1,16 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sinlearn_mobile/core/utils/app_toast.dart';
+import 'package:record/record.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:path_provider/path_provider.dart';
 
 class ChatInputBar extends StatefulWidget {
   const ChatInputBar({
@@ -18,7 +24,13 @@ class ChatInputBar extends StatefulWidget {
   final TextEditingController controller;
   final String responseLevel;
   final ValueChanged<String> onResponseLevelChanged;
-  final void Function(String text, List<PlatformFile> attachments) onSend;
+
+  /// UPDATED: now supports voice
+  final Future<void> Function(
+    String text,
+    List<PlatformFile> attachments,
+    Uint8List? voiceBytes,
+  ) onSend;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -27,37 +39,65 @@ class ChatInputBar extends StatefulWidget {
 class _ChatInputBarState extends State<ChatInputBar>
     with SingleTickerProviderStateMixin {
   final List<PlatformFile> _attachedFiles = [];
+  Uint8List? _pendingVoice;
+
+  final AudioRecorder _recorder = AudioRecorder();
+  final AudioPlayer _audioPlayer = AudioPlayer();
+
+  bool _isRecording = false;
+  bool _isPlaying = false;
+
+  Duration _currentPosition = Duration.zero;
+  Duration _totalDuration = Duration.zero;
+
+  late final AnimationController _animController;
 
   String get responseLevel => widget.responseLevel;
   TextEditingController get controller => widget.controller;
 
-  // Recording state + animation
-  bool _isRecording = false;
-  late final AnimationController _animController;
-
   @override
   void initState() {
     super.initState();
+
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
+
+    _audioPlayer.setReleaseMode(ReleaseMode.stop);
+
+    _audioPlayer.onDurationChanged.listen((d) {
+      setState(() => _totalDuration = d);
+    });
+
+    _audioPlayer.onPositionChanged.listen((p) {
+      setState(() => _currentPosition = p);
+    });
+
+    _audioPlayer.onPlayerComplete.listen((_) {
+      setState(() {
+        _isPlaying = false;
+        _currentPosition = Duration.zero;
+      });
+    });
   }
 
   @override
   void dispose() {
     _animController.dispose();
+    _audioPlayer.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 
-  /// Format file size for display (B, KB, MB)
+  // ================= FILE HANDLING =================
+
   String _formatSize(int bytes) {
     if (bytes < 1024) return '$bytes B';
     if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
-  /// Open file picker and attach the selected file
   Future<void> _pickAndAttachFile() async {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: false,
@@ -65,80 +105,130 @@ class _ChatInputBarState extends State<ChatInputBar>
       type: FileType.any,
     );
 
-    if (result == null) return; // Silent return on cancel
+    if (result == null) return;
 
     final file = result.files.first;
-    // Note: In a real app, you might want to save async to not block UI
     _savePickedFile(context, file);
 
-    if (!mounted) return;
     setState(() => _attachedFiles.add(file));
   }
 
-  /// Start audio recording
-  void _startRecording() {
+  // ================= VOICE RECORDING =================
+
+  Future<void> _startRecording() async {
+    if (!await _recorder.hasPermission()) {
+      AppToast.error(context, "Microphone permission denied");
+      return;
+    }
+
+    final dir = await getTemporaryDirectory();
+    final path =
+        '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+
+    await _recorder.start(
+      const RecordConfig(encoder: AudioEncoder.wav),
+      path: path,
+    );
+
     setState(() => _isRecording = true);
     _animController.repeat();
   }
 
-  /// Stop audio recording
-  void _stopRecording() {
+  Future<void> _stopRecording() async {
     _animController.stop();
-    setState(() => _isRecording = false);
-    // TODO: Implement actual audio attachment logic here
+
+    final path = await _recorder.stop();
+    if (path == null) return;
+
+    final file = File(path);
+    final bytes = await file.readAsBytes();
+
+    setState(() {
+      _pendingVoice = bytes;
+      _isRecording = false;
+    });
+
+    AppToast.success(context, "Recording ready to send");
   }
 
-  /// Cancel audio recording
   void _cancelRecording() {
     _animController.stop();
     setState(() => _isRecording = false);
   }
 
-  /// Send the message with attached files
-  void _send() {
-    final text = controller.text.trim();
-    if (text.isEmpty && _attachedFiles.isEmpty) return;
+  // ================= PLAYBACK =================
 
-    widget.onSend(
+  Future<void> _togglePlayback() async {
+    if (_pendingVoice == null) return;
+
+    if (_isPlaying) {
+      await _audioPlayer.pause();
+      setState(() => _isPlaying = false);
+    } else {
+      if (_currentPosition == Duration.zero) {
+        await _audioPlayer.play(BytesSource(_pendingVoice!));
+      } else {
+        await _audioPlayer.resume();
+      }
+      setState(() => _isPlaying = true);
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return "$m:$s";
+  }
+
+  // ================= SEND =================
+
+  Future<void> _send() async {
+    final text = controller.text.trim();
+
+    if (text.isEmpty &&
+        _attachedFiles.isEmpty &&
+        _pendingVoice == null) return;
+
+    await widget.onSend(
       text,
       List<PlatformFile>.from(_attachedFiles),
+      _pendingVoice,
     );
 
     setState(() {
       controller.clear();
       _attachedFiles.clear();
+      _pendingVoice = null;
+      _currentPosition = Duration.zero;
+      _totalDuration = Duration.zero;
     });
   }
 
-  /// Animated waveform widget for recording visualization
-  Widget _buildWaveform(BuildContext context) {
-    const barCount = 15; // Increased slightly for fuller look
+  // ================= UI COMPONENTS =================
+
+  Widget _buildWaveform() {
+    const barCount = 15;
     const maxBarHeight = 32.0;
     const minBarHeight = 4.0;
 
     return AnimatedBuilder(
       animation: _animController,
-      builder: (context, child) {
+      builder: (_, __) {
         return Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: List.generate(barCount, (i) {
             final phase = (i / barCount) * math.pi * 2;
             final t = (_animController.value * math.pi * 2) + phase;
-            final v = (math.sin(t) + 1) / 2; // 0..1
+            final v = (math.sin(t) + 1) / 2;
             final h = minBarHeight + (v * (maxBarHeight - minBarHeight));
 
-            // Middle bars are taller, edge bars smaller (Audio wave shape)
-            final bellCurve = math.sin((i / (barCount - 1)) * math.pi);
-            final adjustedHeight = h * (0.5 + (0.5 * bellCurve));
-
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 2.0),
+              padding: const EdgeInsets.symmetric(horizontal: 2),
               child: Container(
                 width: 4,
-                height: adjustedHeight,
+                height: h,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.8),
+                  color: Colors.redAccent,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -149,367 +239,169 @@ class _ChatInputBarState extends State<ChatInputBar>
     );
   }
 
-  /// Modern Recording Panel
-  Widget _buildRecordingPanel(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
+  Widget _buildRecordingPanel() {
     return Container(
       height: 60,
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color:
-            isDark ? Colors.red.shade900.withOpacity(0.2) : Colors.red.shade50,
+        color: Colors.red.shade50,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(
-          color: isDark ? Colors.red.shade800 : Colors.red.shade100,
-        ),
       ),
       child: Row(
         children: [
-          // Pulse Animation Icon
-          TweenAnimationBuilder<double>(
-            tween: Tween(begin: 1.0, end: 0.0),
-            duration: const Duration(seconds: 1),
-            builder: (context, value, child) {
-              return Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1 + (value * 0.2)),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.mic, color: Colors.red, size: 20),
-              );
-            },
-            onEnd: () {}, // Loop could be added here if needed
-          ),
-
+          const Icon(Icons.mic, color: Colors.red),
           const SizedBox(width: 16),
-          Expanded(child: Center(child: _buildWaveform(context))),
-          const SizedBox(width: 16),
-
-          // Actions
+          Expanded(child: Center(child: _buildWaveform())),
           IconButton(
             onPressed: _cancelRecording,
-            icon: const Icon(Icons.delete_outline, size: 22),
-            color: theme.hintColor,
-            tooltip: 'Cancel',
+            icon: const Icon(Icons.delete_outline),
           ),
           IconButton(
             onPressed: _stopRecording,
-            icon: const Icon(Icons.stop_circle_outlined, size: 26),
-            color: Colors.red,
-            tooltip: 'Finish',
+            icon: const Icon(Icons.stop_circle_outlined, color: Colors.red),
           ),
         ],
       ),
     );
   }
 
-  /// Display attached files as chips
-  Widget _buildAttachedFilesView(ThemeData theme) {
-    if (_attachedFiles.isEmpty) return const SizedBox.shrink();
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: _attachedFiles.map((f) {
-          return Container(
-            margin: const EdgeInsets.only(right: 8),
-            padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+  Widget _buildPlaybackBar() {
+    return Row(
+      children: [
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+              color: Colors.black87,
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.description, size: 16, color: theme.primaryColor),
-                const SizedBox(width: 8),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      f.name.length > 20
-                          ? '${f.name.substring(0, 18)}...'
-                          : f.name,
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(fontWeight: FontWeight.w500),
-                    ),
-                    Text(
-                      _formatSize(f.size),
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: theme.hintColor),
-                    ),
-                  ],
+                GestureDetector(
+                  onTap: _togglePlayback,
+                  child: Icon(
+                    _isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(width: 8),
-                InkWell(
-                  onTap: () => setState(() => _attachedFiles.remove(f)),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4.0),
-                    child: Icon(Icons.close, size: 14, color: theme.hintColor),
+                Text(
+                  _formatDuration(_currentPosition),
+                  style: const TextStyle(color: Colors.white),
+                ),
+                Expanded(
+                  child: Slider(
+                    value: _currentPosition.inMilliseconds.toDouble(),
+                    max: _totalDuration.inMilliseconds
+                        .toDouble()
+                        .clamp(1, double.infinity),
+                    onChanged: (v) async {
+                      await _audioPlayer.seek(
+                        Duration(milliseconds: v.toInt()),
+                      );
+                    },
                   ),
+                ),
+                Text(
+                  _formatDuration(_totalDuration),
+                  style: const TextStyle(color: Colors.white),
+                ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _pendingVoice = null;
+                      _currentPosition = Duration.zero;
+                      _totalDuration = Duration.zero;
+                    });
+                  },
+                  icon: const Icon(Icons.close, color: Colors.white),
                 )
               ],
             ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  /// Modern Grade Selector (Pill Shape)
-  Widget _buildGradeLevelSelector(ThemeData theme) {
-    final levels = {
-      'grade_6_8': 'Grades 6–8',
-      'grade_9_11': 'Grades 9–11',
-      'grade_12_13': 'Grades 12–13',
-    };
-
-    return PopupMenuButton<String>(
-      initialValue: responseLevel,
-      onSelected: widget.onResponseLevelChanged,
-      position: PopupMenuPosition.over,
-      offset: const Offset(0, -120), // Pop upwards
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      itemBuilder: (context) => levels.entries.map((entry) {
-        return PopupMenuItem(
-          value: entry.key,
-          child: Row(
-            children: [
-              Icon(
-                entry.key == responseLevel
-                    ? Icons.check_circle
-                    : Icons.circle_outlined,
-                size: 18,
-                color: entry.key == responseLevel
-                    ? theme.primaryColor
-                    : theme.disabledColor,
-              ),
-              const SizedBox(width: 12),
-              Text(entry.value.tr()),
-            ],
           ),
-        );
-      }).toList(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: theme.dividerColor.withOpacity(0.2)),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.school_outlined, size: 16, color: theme.primaryColor),
-            const SizedBox(width: 6),
-            Text(
-              levels[responseLevel]?.tr() ?? '',
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                color: theme.textTheme.bodyMedium?.color,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Icon(Icons.keyboard_arrow_down, size: 16, color: theme.hintColor),
-          ],
-        ),
-      ),
+        const SizedBox(width: 12),
+        _buildSendButton(),
+      ],
     );
   }
 
-  /// Input Field with integrated icons
-  Widget _buildInputField(ThemeData theme) {
+  Widget _buildSendButton() {
     return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color: theme.brightness == Brightness.light
-              ? Colors.grey.shade300
-              : Colors.grey.shade800,
-          width: 1,
-        ),
-        boxShadow: [
-          if (theme.brightness == Brightness.light)
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              offset: const Offset(0, 2),
-              blurRadius: 8,
-            ),
-        ],
+      height: 52,
+      width: 52,
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E63FF),
+        shape: BoxShape.circle,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // File Attach Button
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4, left: 4),
-            child: IconButton(
-              onPressed: _pickAndAttachFile,
-              icon: Icon(Icons.attach_file, color: theme.hintColor),
-              tooltip: 'Attach file',
-            ),
-          ),
-
-          // Text Input
-          Expanded(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 120),
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: null,
-                textCapitalization: TextCapitalization.sentences,
-                style: theme.textTheme.bodyMedium,
-                decoration: InputDecoration(
-                  hintText: 'ask_question_hint'.tr(),
-                  hintStyle: theme.textTheme.bodyMedium
-                      ?.copyWith(color: theme.hintColor),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 14, // Aligns text with buttons
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          // Mic Button
-          Padding(
-            padding: const EdgeInsets.only(bottom: 4, right: 4),
-            child: IconButton(
-              onPressed: _startRecording,
-              icon: const Icon(Icons.mic_none_rounded),
-              color: theme.hintColor,
-              tooltip: 'Record voice',
-            ),
-          ),
-        ],
+      child: InkWell(
+        borderRadius: BorderRadius.circular(26),
+        onTap: _send,
+        child: const Icon(Icons.send_rounded, color: Colors.white),
       ),
     );
   }
+
+  // ================= BUILD =================
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // We use a Column to stack the Grade Selector, File Preview, and Input
     return SafeArea(
       top: false,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Row: Grade Selector (Left Aligned for cleaner look)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildGradeLevelSelector(theme),
-                // You could add a 'Clear Chat' or 'History' button here if needed
-              ],
-            ),
-
-            const SizedBox(height: 12),
-
-            // File Attachments (Horizontal Scroll)
-            _buildAttachedFilesView(theme),
-
-            // Main Input Area
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 200),
-              child: _isRecording
-                  ? _buildRecordingPanel(context)
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Expanded(child: _buildInputField(theme)),
-                        const SizedBox(width: 10),
-
-                        // Send Button
-                        Container(
-                          height: 52,
-                          width: 52,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1E63FF),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF1E63FF).withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
+            if (_isRecording)
+              _buildRecordingPanel()
+            else if (_pendingVoice != null)
+              _buildPlaybackBar()
+            else
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(26),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed: _pickAndAttachFile,
+                            icon: const Icon(Icons.attach_file),
                           ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: _send,
-                              borderRadius: BorderRadius.circular(26),
-                              child: const Icon(Icons.send_rounded,
-                                  color: Colors.white, size: 22),
+                          Expanded(
+                            child: TextField(
+                              controller: controller,
+                              maxLines: null,
+                              decoration: InputDecoration(
+                                hintText: 'ask_question_hint'.tr(),
+                                border: InputBorder.none,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                          IconButton(
+                            onPressed: _startRecording,
+                            icon: const Icon(Icons.mic_none_rounded),
+                          ),
+                        ],
+                      ),
                     ),
-            ),
+                  ),
+                  const SizedBox(width: 10),
+                  _buildSendButton(),
+                ],
+              ),
           ],
         ),
       ),
     );
-  }
-}
-
-/// Helper for local storage (Unchanged logic, kept for functionality)
-Future<void> _savePickedFile(BuildContext context, PlatformFile file) async {
-  try {
-    final bytes = file.bytes;
-    if (bytes == null) {
-      AppToast.error(context, 'Unable to read file bytes');
-      return;
-    }
-
-    final key =
-        'uploaded_${file.name}_${DateTime.now().millisecondsSinceEpoch}';
-    final base64Str = base64Encode(bytes);
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(key, base64Str);
-
-    const manifestKey = 'uploaded_files_manifest';
-    final manifestJson = prefs.getString(manifestKey);
-    List<Map<String, dynamic>> manifest = [];
-
-    if (manifestJson != null) {
-      try {
-        final List<dynamic> decoded = jsonDecode(manifestJson);
-        manifest = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
-      } catch (_) {
-        manifest = [];
-      }
-    }
-
-    manifest.insert(0, {
-      'key': key,
-      'name': file.name,
-      'size': file.size,
-      'timestamp': DateTime.now().toIso8601String(),
-    });
-
-    await prefs.setString(manifestKey, jsonEncode(manifest));
-    // Toast removed to reduce noise, logic kept
-  } catch (e) {
-    AppToast.error(context, 'Error saving file: $e');
   }
 }

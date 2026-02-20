@@ -7,12 +7,12 @@ plugins {
 android {
     namespace "com.example.sinlearn_mobile"
 
-    compileSdk 35
+    compileSdk 36
 
     defaultConfig {
         applicationId "com.example.sinlearn_mobile"
         minSdk flutter.minSdkVersion
-        targetSdk 35
+        targetSdk 36
         versionCode 1
         versionName "1.0"
     }
