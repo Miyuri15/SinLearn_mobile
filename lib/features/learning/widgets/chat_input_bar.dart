@@ -54,7 +54,7 @@ class _ChatInputBarState extends State<ChatInputBar>
 
   String get responseLevel => widget.responseLevel;
   TextEditingController get controller => widget.controller;
-
+  String? _pendingVoicePath;
   @override
   void initState() {
     super.initState();
@@ -119,6 +119,55 @@ class _ChatInputBarState extends State<ChatInputBar>
     setState(() => _attachedFiles.add(file));
   }
 
+  Widget _buildAttachmentsPreview() {
+    if (_attachedFiles.isEmpty) return const SizedBox();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        children: _attachedFiles.map((file) {
+          return Container(
+            margin: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.blue.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue.shade100),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.insert_drive_file,
+                    size: 20, color: Colors.blue),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    file.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _formatSize(file.size),
+                  style: const TextStyle(
+                      fontSize: 11, color: Colors.grey),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 18),
+                  onPressed: () {
+                    setState(() {
+                      _attachedFiles.remove(file);
+                    });
+                  },
+                )
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   // ================= VOICE RECORDING =================
 
   Future<void> _startRecording() async {
@@ -132,11 +181,14 @@ class _ChatInputBarState extends State<ChatInputBar>
         '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.wav';
 
     await _recorder.start(
-      const RecordConfig(encoder: AudioEncoder.wav),
+      const RecordConfig(
+        encoder: AudioEncoder.wav,   // 🔥 CHANGE THIS
+      ),
       path: path,
     );
 
     if (!mounted) return;
+
     setState(() => _isRecording = true);
     _animController.repeat();
   }
@@ -150,8 +202,13 @@ class _ChatInputBarState extends State<ChatInputBar>
     final file = File(path);
     final bytes = await file.readAsBytes();
 
+    debugPrint("Voice saved at: $path");
+    debugPrint("Voice size: ${bytes.length}");
+
     if (!mounted) return;
+
     setState(() {
+      _pendingVoicePath = path;
       _pendingVoice = bytes;
       _isRecording = false;
     });
@@ -167,22 +224,20 @@ class _ChatInputBarState extends State<ChatInputBar>
   // ================= PLAYBACK =================
 
   Future<void> _togglePlayback() async {
-    if (_pendingVoice == null) return;
+    if (_pendingVoicePath == null) return;
 
     if (_isPlaying) {
       await _audioPlayer.pause();
-      if (!mounted) return;
       setState(() => _isPlaying = false);
     } else {
-      if (_currentPosition == Duration.zero) {
-        await _audioPlayer.play(BytesSource(_pendingVoice!));
-      } else {
-        await _audioPlayer.resume();
-      }
-      if (!mounted) return;
+      await _audioPlayer.stop();
+      await Future.delayed(const Duration(milliseconds: 100));
+      await _audioPlayer.play(DeviceFileSource(_pendingVoicePath!));
+
       setState(() => _isPlaying = true);
     }
   }
+
 
   String _formatDuration(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
@@ -320,6 +375,7 @@ class _ChatInputBarState extends State<ChatInputBar>
                   onPressed: () {
                     setState(() {
                       _pendingVoice = null;
+                      _pendingVoicePath = null;
                       _currentPosition = Duration.zero;
                       _totalDuration = Duration.zero;
                       _isPlaying = false;
@@ -364,9 +420,10 @@ class _ChatInputBarState extends State<ChatInputBar>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            _buildAttachmentsPreview(),
             if (_isRecording)
               _buildRecordingPanel()
-            else if (_pendingVoice != null)
+            else if (_pendingVoicePath != null)
               _buildPlaybackBar()
             else
               Row(

@@ -132,26 +132,49 @@ class _LearningModePageState extends State<LearningModePage> {
 
       // 2️⃣ VOICE MODE
       if (voiceBytes != null) {
-        final audioFile =
-            MultipartFile.fromBytes(voiceBytes, filename: 'voice.wav');
-
-        final data = await ChatService.postVoiceQA(
-          audio: audioFile,
-          sessionId: _activeSessionId,
-          resourceIds: uploadedResourceIds,
-          topK: 3,
+        // 1️⃣ Show temporary loader message
+        final tempMessage = Message(
+          text: "🎤 Transcribing your voice...",
+          fromUser: false,
+          time: DateTime.now(),
         );
 
-        if (_activeSessionId == null && data.sessionId.isNotEmpty) {
-          _activeSessionId = data.sessionId;
-        }
-
         setState(() {
-          _messages.addAll([
-            Message(text: data.question, fromUser: true),
-            Message(text: data.answer, fromUser: false),
-          ]);
+          _messages.add(tempMessage);
         });
+
+        try {
+          final audioFile =
+          MultipartFile.fromBytes(voiceBytes, filename: 'voice.wav');
+
+          final data = await ChatService.postVoiceQA(
+            audio: audioFile,
+            sessionId: _activeSessionId,
+            resourceIds: uploadedResourceIds,
+            topK: 3,
+          );
+
+          // Remove temporary loader
+          _messages.remove(tempMessage);
+
+          setState(() {
+            _messages.addAll([
+              Message(
+                text: data.question,
+                fromUser: true,
+                time: DateTime.now(),
+              ),
+              Message(
+                text: data.answer,
+                fromUser: false,
+                time: DateTime.now(),
+              ),
+            ]);
+          });
+        } catch (e) {
+          _messages.remove(tempMessage);
+          rethrow;
+        }
       }
 
       // 3️⃣ TEXT MODE
