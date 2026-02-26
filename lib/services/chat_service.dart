@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show MultipartFile, FormData;
 import 'package:flutter/material.dart';
 
 import '../../core/network/api_client.dart';
@@ -7,6 +8,7 @@ import '../models/voice_models.dart';
 import 'package:dio/dio.dart' show MultipartFile, FormData;
 import '../models/chat_session_details.dart';
 import 'resource_service.dart';
+import 'package:dio/dio.dart';
 
 class ChatService {
   /// CREATE CHAT SESSION
@@ -257,6 +259,10 @@ class ChatService {
       '/api/v1/voice/qa',
       queryParameters: {'top_k': topK},
       data: formData,
+      options: Options(
+        receiveTimeout: const Duration(minutes: 2),
+        sendTimeout: const Duration(minutes: 2),
+      ),
     );
 
     return VoiceQAResponse.fromJson(res.data);

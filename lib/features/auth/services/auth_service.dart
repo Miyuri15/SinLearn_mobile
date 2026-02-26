@@ -32,6 +32,9 @@ class AuthService {
     required String email,
     required String password,
   }) async {
+    debugPrint('BASE URL: ${RawDio.dio.options.baseUrl}');
+    debugPrint('Calling: /api/v1/auth/signin');
+
     final response = await RawDio.dio.post(
       '/api/v1/auth/signin',
       data: {
