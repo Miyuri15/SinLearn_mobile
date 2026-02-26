@@ -97,23 +97,13 @@ class _LearningModePageState extends State<LearningModePage> {
   // ================= SEND MESSAGE (TEXT + FILE + VOICE) =================
 
   Future<void> _handleSendFromInputBar(
-    String text,
-    List<PlatformFile> attachments,
-    Uint8List? voiceBytes,
-  ) async {
+      String text,
+      List<PlatformFile> attachments,
+      Uint8List? voiceBytes,
+      ) async {
     if (_isSending) return;
 
-    setState(() {
-      _isSending = true;
-
-      _messages.add(
-        Message(
-          text: text,
-          fromUser: true,
-          attachments: attachments,
-        ),
-      );
-    });
+    setState(() => _isSending = true);
 
     try {
       List<String> uploadedResourceIds = [];
@@ -130,17 +120,22 @@ class _LearningModePageState extends State<LearningModePage> {
             uploadResp.map((r) => r.resourceId).toList();
       }
 
-      // 2️⃣ VOICE MODE
-      if (voiceBytes != null) {
-        // 1️⃣ Show temporary loader message
-        final tempMessage = Message(
-          text: "🎤 Transcribing your voice...",
-          fromUser: false,
-          time: DateTime.now(),
-        );
 
+      if (voiceBytes != null) {
+        // Declare nullable index
+        int? loaderIndex;
+
+        // Add loader
         setState(() {
-          _messages.add(tempMessage);
+          loaderIndex = _messages.length;
+
+          _messages.add(
+            Message(
+              text: "🎤 Transcribing your voice...",
+              fromUser: false,
+              time: DateTime.now(),
+            ),
+          );
         });
 
         try {
@@ -154,10 +149,16 @@ class _LearningModePageState extends State<LearningModePage> {
             topK: 3,
           );
 
-          // Remove temporary loader
-          _messages.remove(tempMessage);
+          if (!mounted) return;
 
           setState(() {
+            // Remove loader safely
+            if (loaderIndex != null &&
+                loaderIndex! < _messages.length) {
+              _messages.removeAt(loaderIndex!);
+            }
+
+            // Add question + answer
             _messages.addAll([
               Message(
                 text: data.question,
@@ -172,13 +173,31 @@ class _LearningModePageState extends State<LearningModePage> {
             ]);
           });
         } catch (e) {
-          _messages.remove(tempMessage);
+          if (mounted) {
+            setState(() {
+              if (loaderIndex != null &&
+                  loaderIndex! < _messages.length) {
+                _messages.removeAt(loaderIndex!);
+              }
+            });
+          }
           rethrow;
         }
       }
 
       // 3️⃣ TEXT MODE
       else {
+        setState(() {
+          _messages.add(
+            Message(
+              text: text,
+              fromUser: true,
+              attachments: attachments,
+              time: DateTime.now(),
+            ),
+          );
+        });
+
         final payload = {
           "content": text,
           "modality": "text",

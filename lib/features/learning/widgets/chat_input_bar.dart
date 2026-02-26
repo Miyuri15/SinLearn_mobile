@@ -262,9 +262,13 @@ class _ChatInputBarState extends State<ChatInputBar>
     setState(() {
       controller.clear();
       _attachedFiles.clear();
+
       _pendingVoice = null;
+      _pendingVoicePath = null;
+
       _currentPosition = Duration.zero;
       _totalDuration = Duration.zero;
+      _isPlaying = false;
     });
   }
 
