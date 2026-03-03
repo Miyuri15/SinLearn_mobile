@@ -44,6 +44,7 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
   String? _activeId;
   final _search = TextEditingController();
   final int _version = 0;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -53,10 +54,12 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
 
   Future<void> _loadChats() async {
     try {
+      setState(() => _isLoading = true);
       final sessions = await ChatService.listChatSessions();
       if (!mounted) return;
 
       setState(() {
+        _isLoading = false;
         _all
           ..clear()
           ..addAll(sessions.map((s) => ChatEntry(
@@ -80,6 +83,9 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
         }
       });
     } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
       print("Error loading chats: $e");
       // If API fails, maybe show empty or cached?
       // For now, let's not seed fake data to avoid confusion.
@@ -226,22 +232,26 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
             const SizedBox(height: 12),
             // List
             Expanded(
-              child: ListView.builder(
-                itemCount: _filtered.length,
-                padding: const EdgeInsets.only(bottom: 8),
-                itemBuilder: (ctx, i) {
-                  final item = _filtered[i];
-                  final active = item.id == _activeId;
-                  return _RecentItem(
-                    key: ValueKey(item.id), // stable key
-                    entry: item,
-                    timeLabel: _relative(item.createdAt, context),
-                    active: active,
-                    onTap: () => setState(() => _activeId = item.id),
-                    isDark: isDark,
-                  );
-                },
-              ),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  : ListView.builder(
+                      itemCount: _filtered.length,
+                      padding: const EdgeInsets.only(bottom: 8),
+                      itemBuilder: (ctx, i) {
+                        final item = _filtered[i];
+                        final active = item.id == _activeId;
+                        return _RecentItem(
+                          key: ValueKey(item.id), // stable key
+                          entry: item,
+                          timeLabel: _relative(item.createdAt, context),
+                          active: active,
+                          onTap: () => setState(() => _activeId = item.id),
+                          isDark: isDark,
+                        );
+                      },
+                    ),
             ),
             // Footer
             Container(
