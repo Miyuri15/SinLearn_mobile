@@ -16,21 +16,25 @@ class ChatInputBar extends StatefulWidget {
   const ChatInputBar({
     super.key,
     required this.controller,
+    required this.isSending,
+    required this.canSendTextWithoutAttachment,
     required this.responseLevel,
     required this.onResponseLevelChanged,
     required this.onSend,
   });
 
   final TextEditingController controller;
+  final bool isSending;
+  final bool canSendTextWithoutAttachment;
   final String responseLevel;
   final ValueChanged<String> onResponseLevelChanged;
 
   /// Supports voice
   final Future<void> Function(
-      String text,
-      List<PlatformFile> attachments,
-      Uint8List? voiceBytes,
-      ) onSend;
+    String text,
+    List<PlatformFile> attachments,
+    Uint8List? voiceBytes,
+  ) onSend;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -149,8 +153,7 @@ class _ChatInputBarState extends State<ChatInputBar>
                 const SizedBox(width: 6),
                 Text(
                   _formatSize(file.size),
-                  style: const TextStyle(
-                      fontSize: 11, color: Colors.grey),
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, size: 18),
@@ -182,7 +185,7 @@ class _ChatInputBarState extends State<ChatInputBar>
 
     await _recorder.start(
       const RecordConfig(
-        encoder: AudioEncoder.wav,   // 🔥 CHANGE THIS
+        encoder: AudioEncoder.wav, // 🔥 CHANGE THIS
       ),
       path: path,
     );
@@ -238,11 +241,18 @@ class _ChatInputBarState extends State<ChatInputBar>
     }
   }
 
-
   String _formatDuration(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return "$m:$s";
+  }
+
+  bool get _canSend {
+    if (widget.isSending) return false;
+    if (_pendingVoice != null || _attachedFiles.isNotEmpty) return true;
+
+    final hasText = controller.text.trim().isNotEmpty;
+    return widget.canSendTextWithoutAttachment && hasText;
   }
 
   // ================= SEND =================
@@ -401,14 +411,22 @@ class _ChatInputBarState extends State<ChatInputBar>
     return Container(
       height: 52,
       width: 52,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E63FF),
+      decoration: BoxDecoration(
+        color: _canSend ? const Color(0xFF1E63FF) : Colors.grey.shade400,
         shape: BoxShape.circle,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(26),
-        onTap: _send,
-        child: const Icon(Icons.send_rounded, color: Colors.white),
+        onTap: _canSend ? _send : null,
+        child: widget.isSending
+            ? const Padding(
+                padding: EdgeInsets.all(14),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+            : const Icon(Icons.send_rounded, color: Colors.white),
       ),
     );
   }
@@ -443,12 +461,15 @@ class _ChatInputBarState extends State<ChatInputBar>
                       child: Row(
                         children: [
                           IconButton(
-                            onPressed: _pickAndAttachFile,
+                            onPressed:
+                                widget.isSending ? null : _pickAndAttachFile,
                             icon: const Icon(Icons.attach_file),
                           ),
                           Expanded(
                             child: TextField(
                               controller: controller,
+                              onChanged: (_) => setState(() {}),
+                              enabled: !widget.isSending,
                               maxLines: null,
                               decoration: InputDecoration(
                                 hintText: 'ask_question_hint'.tr(),
@@ -457,7 +478,8 @@ class _ChatInputBarState extends State<ChatInputBar>
                             ),
                           ),
                           IconButton(
-                            onPressed: _startRecording,
+                            onPressed:
+                                widget.isSending ? null : _startRecording,
                             icon: const Icon(Icons.mic_none_rounded),
                           ),
                         ],
@@ -484,7 +506,8 @@ Future<void> _savePickedFile(BuildContext context, PlatformFile file) async {
       return;
     }
 
-    final key = 'uploaded_${file.name}_${DateTime.now().millisecondsSinceEpoch}';
+    final key =
+        'uploaded_${file.name}_${DateTime.now().millisecondsSinceEpoch}';
     final base64Str = base64Encode(bytes);
 
     final prefs = await SharedPreferences.getInstance();

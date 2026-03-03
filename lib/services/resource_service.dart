@@ -54,8 +54,7 @@ class ResourceService {
       }
     }
 
-    print(
-        'fetchChatSessionResources endpoint not found: ${last404?.message}');
+    print('fetchChatSessionResources endpoint not found: ${last404?.message}');
     return const <Map<String, dynamic>>[];
   }
 
@@ -100,7 +99,8 @@ class ResourceService {
       }
     }
 
-    print('fetchResourceMetadata not found for $resourceId: ${last404?.message}');
+    print(
+        'fetchResourceMetadata not found for $resourceId: ${last404?.message}');
     return null;
   }
 
@@ -113,6 +113,23 @@ class ResourceService {
 
     final res = await ApiClient.dio.post(
       "/api/v1/resources/upload/batch",
+      data: formData,
+    );
+
+    return (res.data as List)
+        .map((e) => ResourceUploadResponse.fromJson(e))
+        .toList();
+  }
+
+  /// Upload-only batch endpoint
+  static Future<List<ResourceUploadResponse>> uploadResourcesUploadOnly(
+      List<MultipartFile> files) async {
+    final formData = FormData.fromMap({
+      'files': files,
+    });
+
+    final res = await ApiClient.dio.post(
+      '/api/v1/resources/upload-only/batch',
       data: formData,
     );
 
@@ -143,8 +160,7 @@ class ResourceService {
 
   /// Process message attachments
   static Future<void> processMessageAttachments(String messageId) async {
-    await ApiClient.dio
-        .post('/api/v1/messages/$messageId/attachments/process');
+    await ApiClient.dio.post('/api/v1/messages/$messageId/attachments/process');
   }
 
   /// Batch process resources
@@ -155,9 +171,7 @@ class ResourceService {
       data: {'resource_ids': resourceIds},
     );
 
-    return (res.data as List)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
+    return (res.data as List).map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   /// Upload Question Paper

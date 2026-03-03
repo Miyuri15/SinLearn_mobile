@@ -33,4 +33,21 @@ class MessageService {
 
     return messages;
   }
+
+  /// GENERATE ASSISTANT RESPONSE
+  static Future<Map<String, dynamic>> generateMessageResponse(
+      String messageId) async {
+    final res = await ApiClient.dio.post(
+      '/api/v1/messages/$messageId/generate',
+    );
+
+    final message = Map<String, dynamic>.from(res.data as Map);
+
+    return {
+      'role': message['role'],
+      'content': message['content'],
+      'grade_level': message['grade_level'],
+      'message': message,
+    };
+  }
 }

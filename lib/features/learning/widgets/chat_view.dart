@@ -8,10 +8,12 @@ class ChatView extends StatelessWidget {
     super.key,
     required this.messages,
     this.isLoading = false,
+    this.sendProgressText,
   });
 
   final List<Message> messages;
   final bool isLoading;
+  final String? sendProgressText;
 
   /// Show resource viewer in a modern bottom sheet
   void _viewResource(BuildContext context, String resourceId) {
@@ -205,6 +207,34 @@ class ChatView extends StatelessWidget {
                           child: CircularProgressIndicator(strokeWidth: 2)),
                       SizedBox(width: 12),
                       Text("SinLearn is thinking..."),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        if (sendProgressText != null)
+          Positioned(
+            bottom: 20,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Card(
+                elevation: 4,
+                shape: const StadiumBorder(),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(sendProgressText!),
                     ],
                   ),
                 ),
