@@ -20,7 +20,6 @@ class ChatEntry {
     required this.title,
     required this.type,
     required this.createdAt,
-    this.messageCount = 0,
     String? id,
   }) : id = id ?? (++_next).toString(); // monotonic id
 
@@ -28,7 +27,6 @@ class ChatEntry {
   final String title;
   final ChatType type;
   final DateTime createdAt;
-  int messageCount;
 }
 
 enum ChatType { learning, evaluation }
@@ -72,7 +70,6 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                     ? ChatType.learning
                     : ChatType.evaluation,
                 createdAt: DateTime.tryParse(s.createdAt) ?? DateTime.now(),
-                messageCount: 0,
               )));
 
         // Sort by createdAt desc
@@ -369,10 +366,6 @@ class _RecentItem extends StatelessWidget {
     final iconColor =
         entry.type == ChatType.learning ? Colors.blue : Colors.green;
 
-    final msg = entry.messageCount == 0
-        ? 'recent_chats.messages_zero'.tr()
-        : 'recent_chats.messages'.tr(args: [entry.messageCount.toString()]);
-
     final tile = ListTile(
       dense: true,
       leading: Icon(iconData, size: 20, color: iconColor), // only icon colored
@@ -385,7 +378,6 @@ class _RecentItem extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(msg, style: const TextStyle(fontSize: 12)),
           Text(timeLabel, style: const TextStyle(fontSize: 12)),
         ],
       ),
@@ -401,7 +393,7 @@ class _RecentItem extends StatelessWidget {
               builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
         }
       },
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
 

@@ -103,8 +103,6 @@
     "search_hint": "Search chats...",
     "new_learning": "New Learning Chat",
     "new_evaluation": "New Evaluation Chat",
-    "messages_zero": "0 messages",
-    "messages": "{} messages",
     "less_minute": "Less than a minute ago",
     "minute_ago": "1 minute ago",
     "minutes_ago": "{} minutes ago",
