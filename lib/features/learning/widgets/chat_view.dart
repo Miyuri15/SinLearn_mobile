@@ -527,7 +527,7 @@ class _EmptyStateView extends StatelessWidget {
             const SizedBox(height: 40),
 
             // Suggestion Chips (Optional visual flair)
-            Wrap(
+            const Wrap(
               spacing: 8,
               runSpacing: 10,
               alignment: WrapAlignment.center,
