@@ -78,7 +78,9 @@ class AppToast {
     final theme = Theme.of(context);
     final (icon, bgColor, textColor) = _getToastStyle(type, theme);
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+    scaffoldMessenger.showSnackBar(
       SnackBar(
         content: Row(
           children: [
@@ -111,7 +113,7 @@ class AppToast {
           label: 'Dismiss',
           textColor: Colors.white,
           onPressed: () {
-            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            scaffoldMessenger.hideCurrentSnackBar();
             onDismiss?.call();
           },
         ),
