@@ -13,6 +13,7 @@ import '../../core/utils/app_toast.dart';
 import '../../core/utils/error_handler.dart';
 import '../../models/message.dart';
 import '../../models/resource_models.dart';
+import '../../models/xai_models.dart';
 import 'widgets/chat_view.dart';
 import 'widgets/chat_input_bar.dart';
 import 'widgets/sidebar.dart';
@@ -67,6 +68,10 @@ class _LearningModePageState extends State<LearningModePage> {
   String get _attachResourcesHint =>
       'Please attach at least one resource to generate a response.';
 
+  Future<XaiResponse> _fetchMessageXai(String messageId) {
+    return MessageService.getMessageXAIResponse(messageId);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -103,11 +108,13 @@ class _LearningModePageState extends State<LearningModePage> {
 
           _messages.add(
             Message(
+              messageId: apiMsg.id,
               text: apiMsg.content,
               fromUser: apiMsg.role == 'user',
               time: localTime,
               gradeLevel: apiMsg.gradeLevel,
               resourceIds: apiMsg.resourceIds,
+              safetySummary: apiMsg.safetySummary,
             ),
           );
         }
@@ -331,9 +338,16 @@ class _LearningModePageState extends State<LearningModePage> {
               setState(() {
                 _messages.add(
                   Message(
+                    messageId: generated["message"] is Map
+                        ? generated["message"]["id"]?.toString()
+                        : generated["id"]?.toString(),
                     text: generatedContent,
                     fromUser: false,
                     gradeLevel: generated["grade_level"]?.toString(),
+                    safetySummary: generated["safety_summary"] is Map
+                        ? Map<String, dynamic>.from(
+                            generated["safety_summary"] as Map)
+                        : null,
                     time: DateTime.now(),
                   ),
                 );
@@ -451,6 +465,7 @@ class _LearningModePageState extends State<LearningModePage> {
                     messages: _messages,
                     isLoading: _isLoadingMessages,
                     sendProgressText: _sendProgressText,
+                    onExplainMessage: _fetchMessageXai,
                   ),
                 ),
                 const Divider(height: 1),

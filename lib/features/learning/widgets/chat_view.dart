@@ -1,24 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import '../../../models/message.dart';
+import '../../../models/xai_models.dart';
 import 'resource_preview_sheet.dart';
+import 'xai_widgets.dart';
 
 /// Displays the chat message list with modern bubble styling and attachment previews.
-class ChatView extends StatelessWidget {
+class ChatView extends StatefulWidget {
   const ChatView({
     super.key,
     required this.messages,
     this.isLoading = false,
     this.sendProgressText,
+    this.onExplainMessage,
   });
 
   final List<Message> messages;
   final bool isLoading;
   final String? sendProgressText;
+  final Future<XaiResponse> Function(String messageId)? onExplainMessage;
+
+  @override
+  State<ChatView> createState() => _ChatViewState();
+}
+
+class _ChatViewState extends State<ChatView> {
+  String? _loadingXaiId;
+
+  Future<void> _handleExplainTap(Message message) async {
+    if (widget.onExplainMessage == null ||
+        message.messageId == null ||
+        message.messageId!.isEmpty) {
+      return;
+    }
+
+    setState(() => _loadingXaiId = message.messageId);
+
+    try {
+      final response = await widget.onExplainMessage!(message.messageId!);
+      if (!mounted) return;
+
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => XaiExplanationSheet(response: response),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _loadingXaiId = null);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (messages.isEmpty && !isLoading) {
+    if (widget.messages.isEmpty && !widget.isLoading) {
       return const _EmptyStateView();
     }
 
@@ -27,11 +64,11 @@ class ChatView extends StatelessWidget {
         ListView.builder(
           padding: const EdgeInsets.fromLTRB(
               16, 20, 16, 100), // Extra bottom padding for input
-          itemCount: messages.length,
+          itemCount: widget.messages.length,
           itemBuilder: (context, index) {
             final isFirst = index == 0;
-            final prevMessage = isFirst ? null : messages[index - 1];
-            final currentMessage = messages[index];
+            final prevMessage = isFirst ? null : widget.messages[index - 1];
+            final currentMessage = widget.messages[index];
 
             // Check if we should show date separator (e.g., if day changed)
             bool showDateSeparator = false;
@@ -54,12 +91,14 @@ class ChatView extends StatelessWidget {
                 _MessageBubble(
                   message: currentMessage,
                   onViewResource: (id) => showResourcePreviewSheet(context, id),
+                  onExplainTap: () => _handleExplainTap(currentMessage),
+                  isExplainLoading: _loadingXaiId == currentMessage.messageId,
                 ),
               ],
             );
           },
         ),
-        if (isLoading)
+        if (widget.isLoading)
           const Positioned(
             bottom: 20,
             left: 0,
@@ -85,7 +124,7 @@ class ChatView extends StatelessWidget {
               ),
             ),
           ),
-        if (sendProgressText != null)
+        if (widget.sendProgressText != null)
           Positioned(
             bottom: 20,
             left: 0,
@@ -106,7 +145,7 @@ class ChatView extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                       const SizedBox(width: 12),
-                      Text(sendProgressText!),
+                      Text(widget.sendProgressText!),
                     ],
                   ),
                 ),
@@ -152,10 +191,14 @@ class _DateSeparator extends StatelessWidget {
 class _MessageBubble extends StatelessWidget {
   final Message message;
   final Function(String) onViewResource;
+  final VoidCallback? onExplainTap;
+  final bool isExplainLoading;
 
   const _MessageBubble({
     required this.message,
     required this.onViewResource,
+    this.onExplainTap,
+    this.isExplainLoading = false,
   });
 
   String _formatGradeLevel(String gradeLevel) {
@@ -177,6 +220,9 @@ class _MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isUser = message.fromUser;
+    final hasSafetySummary = !isUser &&
+        message.safetySummary != null &&
+        message.safetySummary!.isNotEmpty;
 
     // Design variables
     final bubbleColor = isUser
@@ -292,6 +338,14 @@ class _MessageBubble extends StatelessWidget {
                 ],
               ),
             ),
+
+            // Timestamp
+            if (hasSafetySummary)
+              XaiSafetySummarySection(
+                safetySummary: message.safetySummary!,
+                isExplainLoading: isExplainLoading,
+                onExplainTap: onExplainTap,
+              ),
 
             // Timestamp
             Padding(

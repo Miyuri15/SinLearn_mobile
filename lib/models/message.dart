@@ -5,6 +5,9 @@ import 'package:file_picker/file_picker.dart';
 /// Contains the message content, metadata about sender, timestamps,
 /// and optional attachments (both local files and API resources).
 class Message {
+  /// Message ID from backend API.
+  final String? messageId;
+
   /// The text content of the message
   final String text;
 
@@ -25,31 +28,42 @@ class Message {
   /// Format: /api/v1/resources/{resourceId}/view
   final List<String>? resourceIds;
 
+  /// Optional safety metadata from assistant responses.
+  /// Expected shape (example):
+  /// { overall_severity, confidence_score, reliability }
+  final Map<String, dynamic>? safetySummary;
+
   Message({
+    this.messageId,
     required this.text,
     required this.fromUser,
     this.attachments,
     this.gradeLevel,
     this.resourceIds,
+    this.safetySummary,
     DateTime? time,
   }) : time = time ?? DateTime.now();
 
   /// Creates a copy of this message with optional field updates
   Message copyWith({
+    String? messageId,
     String? text,
     bool? fromUser,
     DateTime? time,
     List<PlatformFile>? attachments,
     String? gradeLevel,
     List<String>? resourceIds,
+    Map<String, dynamic>? safetySummary,
   }) {
     return Message(
+      messageId: messageId ?? this.messageId,
       text: text ?? this.text,
       fromUser: fromUser ?? this.fromUser,
       time: time ?? this.time,
       attachments: attachments ?? this.attachments,
       gradeLevel: gradeLevel ?? this.gradeLevel,
       resourceIds: resourceIds ?? this.resourceIds,
+      safetySummary: safetySummary ?? this.safetySummary,
     );
   }
 }

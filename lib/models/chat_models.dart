@@ -29,22 +29,27 @@ class ChatSession {
 }
 
 class ChatMessage {
+  final String? id;
   final String role;
   final dynamic content;
   final String createdAt;
   final String? gradeLevel;
   final List<String>? resourceIds;
+  final Map<String, dynamic>? safetySummary;
 
   ChatMessage({
+    this.id,
     required this.role,
     required this.content,
     required this.createdAt,
     this.gradeLevel,
     this.resourceIds,
+    this.safetySummary,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(
+      id: json['id']?.toString(),
       role: json['role'],
       content: json['content'],
       createdAt: json['created_at'],
@@ -52,6 +57,9 @@ class ChatMessage {
       resourceIds: (json['resource_ids'] as List<dynamic>?)
           ?.map((e) => e.toString())
           .toList(),
+      safetySummary: json['safety_summary'] is Map
+          ? Map<String, dynamic>.from(json['safety_summary'] as Map)
+          : null,
     );
   }
 }
