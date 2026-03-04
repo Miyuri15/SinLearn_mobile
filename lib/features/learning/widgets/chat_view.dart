@@ -181,13 +181,15 @@ class _ResourcePreviewSheet extends StatefulWidget {
 }
 
 class _ResourcePreviewSheetState extends State<_ResourcePreviewSheet> {
+  static final Map<String, String> _pdfPathCache = {};
+
   late final Future<Uint8List> _resourceFuture;
   Future<String?>? _pdfFilePathFuture;
 
   @override
   void initState() {
     super.initState();
-    _resourceFuture = ResourceService.viewResource(widget.resourceId);
+    _resourceFuture = ResourceService.viewResourceCached(widget.resourceId);
   }
 
   bool _isPdf(Uint8List bytes) {
@@ -222,9 +224,18 @@ class _ResourcePreviewSheetState extends State<_ResourcePreviewSheet> {
 
   Future<String?> _writePdfToTemp(Uint8List bytes) async {
     try {
+      final cachedPath = _pdfPathCache[widget.resourceId];
+      if (cachedPath != null && cachedPath.isNotEmpty) {
+        final cachedFile = File(cachedPath);
+        if (await cachedFile.exists()) {
+          return cachedPath;
+        }
+      }
+
       final dir = await Directory.systemTemp.createTemp('sinlearn_preview_');
       final file = File('${dir.path}/resource_preview.pdf');
       await file.writeAsBytes(bytes, flush: true);
+      _pdfPathCache[widget.resourceId] = file.path;
       return file.path;
     } catch (_) {
       return null;

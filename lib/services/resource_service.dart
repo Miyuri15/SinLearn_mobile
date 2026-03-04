@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -5,6 +6,10 @@ import '../../core/network/api_client.dart';
 import '../models/resource_models.dart';
 
 class ResourceService {
+  static const int _maxPreviewCacheItems = 30;
+  static final LinkedHashMap<String, Uint8List> _previewCache =
+      LinkedHashMap<String, Uint8List>();
+
   /// Fetch resource metadata list for a chat session.
   static Future<List<Map<String, dynamic>>> fetchChatSessionResources(
     String chatSessionId,
@@ -146,6 +151,39 @@ class ResourceService {
     );
 
     return Uint8List.fromList(List<int>.from(res.data ?? []));
+  }
+
+  /// View resource with in-memory cache for faster repeated previews.
+  static Future<Uint8List> viewResourceCached(
+    String resourceId, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = _previewCache.remove(resourceId);
+      if (cached != null) {
+        // Reinsert to keep recent entries at the end (simple LRU behavior)
+        _previewCache[resourceId] = cached;
+        return cached;
+      }
+    }
+
+    final bytes = await viewResource(resourceId);
+    _previewCache[resourceId] = bytes;
+
+    while (_previewCache.length > _maxPreviewCacheItems) {
+      _previewCache.remove(_previewCache.keys.first);
+    }
+
+    return bytes;
+  }
+
+  /// Clear cached preview bytes for one resource, or all if id is omitted.
+  static void clearPreviewCache([String? resourceId]) {
+    if (resourceId == null || resourceId.isEmpty) {
+      _previewCache.clear();
+      return;
+    }
+    _previewCache.remove(resourceId);
   }
 
   /// Download resource
