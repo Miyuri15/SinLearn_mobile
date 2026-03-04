@@ -177,6 +177,37 @@ class ResourceService {
     return bytes;
   }
 
+  /// View resource with cache + progress callback support.
+  static Future<Uint8List> viewResourceCachedWithProgress(
+    String resourceId, {
+    bool forceRefresh = false,
+    void Function(int received, int total)? onProgress,
+  }) async {
+    if (!forceRefresh) {
+      final cached = _previewCache.remove(resourceId);
+      if (cached != null) {
+        _previewCache[resourceId] = cached;
+        onProgress?.call(1, 1);
+        return cached;
+      }
+    }
+
+    final res = await ApiClient.dio.get<List<int>>(
+      '/api/v1/resources/$resourceId/view',
+      options: Options(responseType: ResponseType.bytes),
+      onReceiveProgress: onProgress,
+    );
+
+    final bytes = Uint8List.fromList(List<int>.from(res.data ?? []));
+    _previewCache[resourceId] = bytes;
+
+    while (_previewCache.length > _maxPreviewCacheItems) {
+      _previewCache.remove(_previewCache.keys.first);
+    }
+
+    return bytes;
+  }
+
   /// Clear cached preview bytes for one resource, or all if id is omitted.
   static void clearPreviewCache([String? resourceId]) {
     if (resourceId == null || resourceId.isEmpty) {

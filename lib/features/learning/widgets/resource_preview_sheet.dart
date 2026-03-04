@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -33,23 +34,72 @@ class ResourcePreviewSheet extends StatefulWidget {
 
 class _ResourcePreviewSheetState extends State<ResourcePreviewSheet> {
   static final Map<String, String> _pdfPathCache = {};
+  static const double _minImageScale = 0.8;
+  static const double _maxImageScale = 4.0;
 
   late final Future<Uint8List> _resourceFuture;
   Future<String?>? _pdfFilePathFuture;
+  final TransformationController _imageTransformController =
+      TransformationController();
   int? _pdfPageCount;
   String? _fileSizeLabel;
   String? _imageDimensionsLabel;
   bool _isPdfResource = false;
   bool _isImageResource = false;
+  double _imageScale = 1.0;
+  double? _downloadProgress;
 
   @override
   void initState() {
     super.initState();
-    _resourceFuture = ResourceService.viewResourceCached(widget.resourceId)
-        .then((bytes) async {
+    _resourceFuture = ResourceService.viewResourceCachedWithProgress(
+      widget.resourceId,
+      onProgress: (received, total) {
+        if (!mounted) return;
+        if (total <= 0) {
+          setState(() {
+            _downloadProgress = null;
+          });
+          return;
+        }
+
+        final progress = received / total;
+        setState(() {
+          _downloadProgress = progress.clamp(0.0, 1.0);
+        });
+      },
+    ).then((bytes) async {
       await _prepareMetadata(bytes);
+      if (mounted) {
+        setState(() {
+          _downloadProgress = 1.0;
+        });
+      }
       return bytes;
     });
+  }
+
+  @override
+  void dispose() {
+    _imageTransformController.dispose();
+    super.dispose();
+  }
+
+  void _applyImageScale(double nextScale) {
+    final clamped = nextScale.clamp(_minImageScale, _maxImageScale);
+    _imageTransformController.value = Matrix4.identity()
+      ..scaleByDouble(clamped, clamped, clamped, 1);
+    setState(() {
+      _imageScale = clamped;
+    });
+  }
+
+  void _zoomIn() {
+    _applyImageScale(_imageScale + 0.25);
+  }
+
+  void _zoomOut() {
+    _applyImageScale(_imageScale - 0.25);
   }
 
   String _formatBytes(int bytes) {
@@ -216,7 +266,24 @@ class _ResourcePreviewSheetState extends State<ResourcePreviewSheet> {
             future: _resourceFuture,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
+                final percent = ((_downloadProgress ?? 0) * 100).round();
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 56,
+                        height: 56,
+                        child:
+                            CircularProgressIndicator(value: _downloadProgress),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(_downloadProgress == null
+                          ? 'Loading resource...'
+                          : 'Loading resource... $percent%'),
+                    ],
+                  ),
+                );
               }
 
               if (snapshot.hasError ||
@@ -233,12 +300,54 @@ class _ResourcePreviewSheetState extends State<ResourcePreviewSheet> {
               final bytes = snapshot.data!;
 
               if (_isImage(bytes)) {
-                return InteractiveViewer(
-                  minScale: 0.8,
-                  maxScale: 4,
-                  child: Center(
-                    child: Image.memory(bytes, fit: BoxFit.contain),
-                  ),
+                return Stack(
+                  children: [
+                    InteractiveViewer(
+                      transformationController: _imageTransformController,
+                      minScale: _minImageScale,
+                      maxScale: _maxImageScale,
+                      onInteractionUpdate: (_) {
+                        final currentScale =
+                            _imageTransformController.value.getMaxScaleOnAxis();
+                        if ((currentScale - _imageScale).abs() > 0.01) {
+                          setState(() {
+                            _imageScale = math.max(
+                              _minImageScale,
+                              math.min(_maxImageScale, currentScale),
+                            );
+                          });
+                        }
+                      },
+                      child: Center(
+                        child: Image.memory(bytes, fit: BoxFit.contain),
+                      ),
+                    ),
+                    Positioned(
+                      right: 16,
+                      bottom: 16,
+                      child: Material(
+                        elevation: 2,
+                        borderRadius: BorderRadius.circular(24),
+                        color: Theme.of(context).colorScheme.surface,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              onPressed: _zoomOut,
+                              icon: const Icon(Icons.remove),
+                              tooltip: 'Zoom out',
+                            ),
+                            Text('${_imageScale.toStringAsFixed(1)}x'),
+                            IconButton(
+                              onPressed: _zoomIn,
+                              icon: const Icon(Icons.add),
+                              tooltip: 'Zoom in',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 );
               }
 
