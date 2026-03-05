@@ -5,11 +5,13 @@ import '../../../models/xai_models.dart';
 class XAIPanel extends StatefulWidget {
   final XaiExplanation? explanation;
   final bool isLoading;
+  final String? unavailableMessage;
 
   const XAIPanel({
     super.key,
     this.explanation,
     this.isLoading = false,
+    this.unavailableMessage,
   });
 
   @override
@@ -118,7 +120,42 @@ class _XAIPanelState extends State<XAIPanel> {
       );
     }
 
-    if (widget.explanation == null) return const SizedBox.shrink();
+    if (widget.explanation == null) {
+      if (widget.unavailableMessage == null ||
+          widget.unavailableMessage!.trim().isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.amber.shade50,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.amber.shade200),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              Icons.info_outline,
+              size: 18,
+              color: Colors.amber.shade800,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                widget.unavailableMessage!,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Colors.amber.shade900,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     final explanation = widget.explanation!;
     final quality = _getQualityIndicator(explanation.explanationSummary ?? '');

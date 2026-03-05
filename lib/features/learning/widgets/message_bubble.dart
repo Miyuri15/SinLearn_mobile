@@ -32,6 +32,7 @@ class _MessageBubbleState extends State<MessageBubble> {
   bool _showXAI = false;
   bool _isFetchingXAI = false;
   XaiExplanation? _localXAI;
+  String? _xaiUnavailableMessage;
 
   @override
   void initState() {
@@ -51,10 +52,14 @@ class _MessageBubbleState extends State<MessageBubble> {
   }
 
   Future<void> _handleToggleXAI() async {
-    setState(() => _showXAI = !_showXAI);
+    final next = !_showXAI;
+    setState(() => _showXAI = next);
 
-    if (_showXAI && _localXAI == null && !_isFetchingXAI) {
-      setState(() => _isFetchingXAI = true);
+    if (next && _localXAI == null && !_isFetchingXAI) {
+      setState(() {
+        _isFetchingXAI = true;
+        _xaiUnavailableMessage = null;
+      });
 
       try {
         if (widget.message.messageId == null) {
@@ -63,16 +68,36 @@ class _MessageBubbleState extends State<MessageBubble> {
 
         final response =
             await widget.onExplainMessage!(widget.message.messageId!);
+        final explanation = response.xaiExplanation;
+        final hasSummary =
+            (explanation?.explanationSummary?.trim().isNotEmpty ?? false);
+
         if (mounted) {
           setState(() {
-            _localXAI = response.xaiExplanation;
+            _localXAI = hasSummary ? explanation : null;
+            _xaiUnavailableMessage = hasSummary
+                ? null
+                : 'XAI explanation is not available for this message.';
             _isFetchingXAI = false;
           });
         }
       } catch (e) {
+        final rawMessage = e.toString().toLowerCase();
+        final isNotAvailableError = rawMessage.contains('not available') ||
+            rawMessage.contains('xai explanation');
+
         if (mounted) {
-          setState(() => _isFetchingXAI = false);
-          AppToast.error(context, 'Failed to load explanation');
+          setState(() {
+            _localXAI = null;
+            _xaiUnavailableMessage = isNotAvailableError
+                ? 'XAI explanation is not available for this message.'
+                : 'Unable to load explanation right now. Please try again.';
+            _isFetchingXAI = false;
+          });
+
+          if (!isNotAvailableError) {
+            AppToast.error(context, 'Failed to load explanation');
+          }
         }
       }
     }
@@ -97,9 +122,15 @@ class _MessageBubbleState extends State<MessageBubble> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isUser = widget.message.fromUser;
+    final hasGradeLevel =
+        (widget.message.gradeLevel?.trim().isNotEmpty ?? false);
     final hasSafetySummary = !isUser &&
         widget.message.safetySummary != null &&
         widget.message.safetySummary!.isNotEmpty;
+    final canShowExplain =
+        !isUser && hasSafetySummary && widget.onExplainMessage != null;
+    final hasInfoBarContent =
+        hasGradeLevel || hasSafetySummary || canShowExplain;
 
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -246,7 +277,7 @@ class _MessageBubbleState extends State<MessageBubble> {
             ),
 
             // Info Bar for AI Messages
-            if (!isUser)
+            if (!isUser && hasInfoBarContent)
               Container(
                 margin: const EdgeInsets.only(top: 8),
                 padding: const EdgeInsets.symmetric(
@@ -268,7 +299,7 @@ class _MessageBubbleState extends State<MessageBubble> {
                             spacing: 8,
                             runSpacing: 8,
                             children: [
-                              if (widget.message.gradeLevel != null)
+                              if (hasGradeLevel)
                                 GradeLabel(
                                     gradeLevel: widget.message.gradeLevel!),
                               if (hasSafetySummary)
@@ -280,13 +311,12 @@ class _MessageBubbleState extends State<MessageBubble> {
                       ],
                     ),
 
-                    // Second row: Explain and Regenerate buttons
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        // Explain This Button
-                        if (widget.onExplainMessage != null)
+                    if (canShowExplain) ...[
+                      // Explain button row
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
                           InkWell(
                             onTap: _handleToggleXAI,
                             borderRadius: BorderRadius.circular(8),
@@ -335,24 +365,26 @@ class _MessageBubbleState extends State<MessageBubble> {
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
 
             // XAI Panel
-            if (_showXAI && !isUser)
+            if (_showXAI && canShowExplain)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: XAIPanel(
                   explanation: _localXAI,
                   isLoading: _isFetchingXAI,
+                  unavailableMessage: _xaiUnavailableMessage,
                 ),
               ),
 
             // Hint for first-time users
-            if (!_showXAI && !isUser)
+            if (!_showXAI && canShowExplain)
               Padding(
                 padding: const EdgeInsets.only(top: 4, right: 4),
                 child: Text(
