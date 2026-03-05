@@ -68,8 +68,24 @@ class _LearningModePageState extends State<LearningModePage> {
   String get _attachResourcesHint =>
       'Please attach at least one resource to generate a response.';
 
-  Future<XaiResponse> _fetchMessageXai(String messageId) {
-    return MessageService.getMessageXAIResponse(messageId);
+  // Update the _fetchMessageXai method in learning_mode.dart:
+
+  Future<XaiResponse> _fetchMessageXai(String messageId) async {
+    final response = await MessageService.getMessageXAIResponse(messageId);
+
+    // Cache the explanation in the message
+    if (mounted) {
+      final index = _messages.indexWhere((m) => m.messageId == messageId);
+      if (index != -1) {
+        setState(() {
+          _messages[index] = _messages[index].copyWith(
+            xaiExplanation: response.xaiExplanation?.toJson(),
+          );
+        });
+      }
+    }
+
+    return response;
   }
 
   @override

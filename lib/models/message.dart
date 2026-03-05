@@ -1,37 +1,17 @@
+// lib/models/message.dart
 import 'package:file_picker/file_picker.dart';
 
 /// Represents a chat message in the learning mode interface.
-///
-/// Contains the message content, metadata about sender, timestamps,
-/// and optional attachments (both local files and API resources).
 class Message {
-  /// Message ID from backend API.
   final String? messageId;
-
-  /// The text content of the message
   final String text;
-
-  /// Whether this message was sent by the user (true) or the AI assistant (false)
   final bool fromUser;
-
-  /// When this message was created or received
   final DateTime time;
-
-  /// Local file attachments (picked by the user from their device)
   final List<PlatformFile>? attachments;
-
-  /// Grade level associated with this message (e.g., 'grade_6_8', 'grade_9_11')
-  /// Used to indicate the complexity level of the content
   final String? gradeLevel;
-
-  /// List of resource IDs from the API that can be viewed via the resource endpoint
-  /// Format: /api/v1/resources/{resourceId}/view
   final List<String>? resourceIds;
-
-  /// Optional safety metadata from assistant responses.
-  /// Expected shape (example):
-  /// { overall_severity, confidence_score, reliability }
   final Map<String, dynamic>? safetySummary;
+  final Map<String, dynamic>? xaiExplanation; // Added for caching
 
   Message({
     this.messageId,
@@ -41,10 +21,10 @@ class Message {
     this.gradeLevel,
     this.resourceIds,
     this.safetySummary,
+    this.xaiExplanation,
     DateTime? time,
   }) : time = time ?? DateTime.now();
 
-  /// Creates a copy of this message with optional field updates
   Message copyWith({
     String? messageId,
     String? text,
@@ -54,6 +34,7 @@ class Message {
     String? gradeLevel,
     List<String>? resourceIds,
     Map<String, dynamic>? safetySummary,
+    Map<String, dynamic>? xaiExplanation,
   }) {
     return Message(
       messageId: messageId ?? this.messageId,
@@ -64,6 +45,7 @@ class Message {
       gradeLevel: gradeLevel ?? this.gradeLevel,
       resourceIds: resourceIds ?? this.resourceIds,
       safetySummary: safetySummary ?? this.safetySummary,
+      xaiExplanation: xaiExplanation ?? this.xaiExplanation,
     );
   }
 }

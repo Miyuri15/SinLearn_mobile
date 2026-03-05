@@ -1,3 +1,5 @@
+// lib/models/xai_models.dart
+
 class XaiResponse {
   final XaiExplanation? xaiExplanation;
 
@@ -10,6 +12,12 @@ class XaiResponse {
         : null;
 
     return XaiResponse(xaiExplanation: explanation);
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (xaiExplanation != null) 'xai_explanation': xaiExplanation!.toJson(),
+    };
   }
 }
 
@@ -67,6 +75,19 @@ class XaiExplanation {
           : null,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (conceptTracing != null) 'concept_tracing': conceptTracing!.toJson(),
+      if (retrievalStats != null) 'retrieval_stats': retrievalStats!.toJson(),
+      if (safetyExplanation != null)
+        'safety_explanation': safetyExplanation!.toJson(),
+      'chunk_contributions': chunkContributions.map((c) => c.toJson()).toList(),
+      if (explanationSummary != null) 'explanation_summary': explanationSummary,
+      if (confidenceBreakdown != null)
+        'confidence_breakdown': confidenceBreakdown!.toJson(),
+    };
+  }
 }
 
 class ConceptTracing {
@@ -94,6 +115,14 @@ class ConceptTracing {
       conceptDetails: details,
       conceptsWithSources: _toInt(json['concepts_with_sources']),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'total_concepts': totalConcepts,
+      'concept_details': conceptDetails.map((c) => c.toJson()).toList(),
+      'concepts_with_sources': conceptsWithSources,
+    };
   }
 }
 
@@ -126,6 +155,15 @@ class ConceptDetail {
       foundInSources: json['found_in_sources'] == true,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'concept': concept,
+      'sources': sources.map((s) => s.toJson()).toList(),
+      'source_count': sourceCount,
+      'found_in_sources': foundInSources,
+    };
+  }
 }
 
 class ConceptSource {
@@ -139,6 +177,13 @@ class ConceptSource {
       preview: json['preview']?.toString() ?? '',
       chunkRank: _toInt(json['chunk_rank']),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'preview': preview,
+      'chunk_rank': chunkRank,
+    };
   }
 }
 
@@ -159,6 +204,14 @@ class RetrievalStats {
       finalK: _toInt(json['final_k']),
       usedChunks: _toInt(json['used_chunks']),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'bm25_k': bm25K,
+      'final_k': finalK,
+      'used_chunks': usedChunks,
+    };
   }
 }
 
@@ -194,6 +247,16 @@ class SafetyExplanation {
       missingConceptsCount: _toInt(json['missing_concepts_count']),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'details': details.map((d) => d.toJson()).toList(),
+      'has_issues': hasIssues,
+      'flagged_count': flaggedCount,
+      'extra_concepts_count': extraConceptsCount,
+      'missing_concepts_count': missingConceptsCount,
+    };
+  }
 }
 
 class SafetyDetail {
@@ -227,6 +290,17 @@ class SafetyDetail {
       unseenRatio: _toDouble(json['unseen_ratio']),
       concepts: concepts,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      if (sentence != null) 'sentence': sentence,
+      if (severity != null) 'severity': severity,
+      if (explanation != null) 'explanation': explanation,
+      if (unseenRatio != null) 'unseen_ratio': unseenRatio,
+      'concepts': concepts,
+    };
   }
 }
 
@@ -262,6 +336,17 @@ class ChunkContribution {
       contributionScore: _toDouble(json['contribution_score']) ?? 0,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'rank': rank,
+      'preview': preview,
+      'chunk_id': chunkId,
+      'key_terms': keyTerms,
+      'similarity_score': similarityScore,
+      'contribution_score': contributionScore,
+    };
+  }
 }
 
 class ConfidenceBreakdown {
@@ -289,6 +374,13 @@ class ConfidenceBreakdown {
       components: components,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      if (overall != null) 'overall': overall,
+      'components': components.map((c) => c.toJson()).toList(),
+    };
+  }
 }
 
 class ConfidenceComponent {
@@ -308,6 +400,14 @@ class ConfidenceComponent {
       score: _toDouble(json['score']),
       weight: _toDouble(json['weight']),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      if (score != null) 'score': score,
+      if (weight != null) 'weight': weight,
+    };
   }
 }
 
