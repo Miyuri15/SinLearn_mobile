@@ -150,7 +150,6 @@ class _ChatInputBarState extends State<ChatInputBar>
 
     final file = result.files.first;
 
-    // ✅ this exists now (added at bottom)
     await _savePickedFile(context, file);
 
     if (!mounted) return;
@@ -161,33 +160,54 @@ class _ChatInputBarState extends State<ChatInputBar>
     if (_attachedFiles.isEmpty) return const SizedBox();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Column(
         children: _attachedFiles.map((file) {
           return Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.blue.shade100),
             ),
             child: Row(
               children: [
-                const Icon(Icons.insert_drive_file,
-                    size: 20, color: Colors.blue),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    file.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _getFileIcon(file.extension ?? ''),
+                    size: 20,
+                    color: Colors.blue.shade700,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  _formatSize(file.size),
-                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        file.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatSize(file.size),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, size: 18),
@@ -196,6 +216,7 @@ class _ChatInputBarState extends State<ChatInputBar>
                       _attachedFiles.remove(file);
                     });
                   },
+                  splashRadius: 24,
                 )
               ],
             ),
@@ -203,6 +224,23 @@ class _ChatInputBarState extends State<ChatInputBar>
         }).toList(),
       ),
     );
+  }
+
+  IconData _getFileIcon(String extension) {
+    switch (extension.toLowerCase()) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'doc':
+      case 'docx':
+        return Icons.description;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return Icons.image;
+      default:
+        return Icons.insert_drive_file;
+    }
   }
 
   // ================= VOICE RECORDING =================
@@ -219,7 +257,7 @@ class _ChatInputBarState extends State<ChatInputBar>
 
     await _recorder.start(
       const RecordConfig(
-        encoder: AudioEncoder.wav, // 🔥 CHANGE THIS
+        encoder: AudioEncoder.wav,
       ),
       path: path,
     );
@@ -249,8 +287,6 @@ class _ChatInputBarState extends State<ChatInputBar>
       _pendingVoice = bytes;
       _isRecording = false;
     });
-
-    AppToast.success(context, "Recording ready to send");
   }
 
   void _cancelRecording() {
@@ -354,24 +390,34 @@ class _ChatInputBarState extends State<ChatInputBar>
   Widget _buildRecordingPanel() {
     return Container(
       height: 60,
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: Colors.red.shade50,
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.red.shade100),
       ),
       child: Row(
         children: [
-          const Icon(Icons.mic, color: Colors.red),
-          const SizedBox(width: 16),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.mic, color: Colors.red, size: 20),
+          ),
+          const SizedBox(width: 12),
           Expanded(child: Center(child: _buildWaveform())),
           IconButton(
             onPressed: _cancelRecording,
             icon: const Icon(Icons.delete_outline),
+            splashRadius: 24,
           ),
           IconButton(
             onPressed: _stopRecording,
             icon: const Icon(Icons.stop_circle_outlined, color: Colors.red),
+            splashRadius: 24,
           ),
         ],
       ),
@@ -379,65 +425,75 @@ class _ChatInputBarState extends State<ChatInputBar>
   }
 
   Widget _buildPlaybackBar() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.circular(14),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade900,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: _togglePlayback,
+            icon: Icon(
+              _isPlaying ? Icons.pause : Icons.play_arrow,
+              color: Colors.white,
             ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: _togglePlayback,
-                  child: Icon(
-                    _isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDuration(_currentPosition),
-                  style: const TextStyle(color: Colors.white),
-                ),
-                Expanded(
-                  child: Slider(
-                    value: _currentPosition.inMilliseconds.toDouble(),
-                    max: _totalDuration.inMilliseconds
-                        .toDouble()
-                        .clamp(1, double.infinity),
-                    onChanged: (v) async {
-                      await _audioPlayer.seek(
-                        Duration(milliseconds: v.toInt()),
-                      );
-                    },
-                  ),
-                ),
-                Text(
-                  _formatDuration(_totalDuration),
-                  style: const TextStyle(color: Colors.white),
-                ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _pendingVoice = null;
-                      _pendingVoicePath = null;
-                      _currentPosition = Duration.zero;
-                      _totalDuration = Duration.zero;
-                      _isPlaying = false;
-                    });
-                  },
-                  icon: const Icon(Icons.close, color: Colors.white),
-                )
-              ],
+            splashRadius: 24,
+            constraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 40,
+            ),
+            padding: EdgeInsets.zero,
+          ),
+          Text(
+            _formatDuration(_currentPosition),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+          Expanded(
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 4,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+              ),
+              child: Slider(
+                value: _currentPosition.inMilliseconds.toDouble(),
+                max: _totalDuration.inMilliseconds
+                    .toDouble()
+                    .clamp(1, double.infinity),
+                onChanged: (v) async {
+                  await _audioPlayer.seek(
+                    Duration(milliseconds: v.toInt()),
+                  );
+                },
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        _buildSendButton(),
-      ],
+          Text(
+            _formatDuration(_totalDuration),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+          IconButton(
+            onPressed: () {
+              setState(() {
+                _pendingVoice = null;
+                _pendingVoicePath = null;
+                _currentPosition = Duration.zero;
+                _totalDuration = Duration.zero;
+                _isPlaying = false;
+              });
+            },
+            icon: const Icon(Icons.close, color: Colors.white),
+            splashRadius: 24,
+            constraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 40,
+            ),
+            padding: EdgeInsets.zero,
+          )
+        ],
+      ),
     );
   }
 
@@ -446,132 +502,127 @@ class _ChatInputBarState extends State<ChatInputBar>
       height: 52,
       width: 52,
       decoration: BoxDecoration(
-        color: _canSend ? const Color(0xFF1E63FF) : Colors.grey.shade400,
+        color: _canSend ? const Color(0xFF1E63FF) : Colors.grey.shade300,
         shape: BoxShape.circle,
+        boxShadow: _canSend
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF1E63FF).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                )
+              ]
+            : null,
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(26),
-        onTap: _canSend ? _send : null,
-        child: widget.isSending
-            ? const Padding(
-                padding: EdgeInsets.all(14),
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              )
-            : const Icon(Icons.send_rounded, color: Colors.white),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(26),
+          onTap: _canSend ? _send : null,
+          child: Center(
+            child: widget.isSending
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+          ),
+        ),
       ),
     );
   }
+  // ================= COMPACT GRADE SELECTOR UI =================
 
   Widget _buildGradeSelector() {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      height: _showGradeSelector ? 60 : 0,
-      child: _showGradeSelector
-          ? Container(
-              height: 60,
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: _gradeLevels.map((grade) {
-                    final isSelected = widget.responseLevel == grade['value'];
-                    final color = grade['color'] as Color;
-
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: FilterChip(
-                        selected: isSelected,
-                        label: Text(
-                          grade['label'],
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: isSelected
-                                ? FontWeight.w600
-                                : FontWeight.normal,
-                            color: isSelected ? color : null,
-                          ),
-                        ),
-                        backgroundColor: color.withOpacity(0.1),
-                        selectedColor: color.withOpacity(0.2),
-                        checkmarkColor: color,
-                        side: BorderSide(
-                          color: isSelected ? color : color.withOpacity(0.3),
-                        ),
-                        onSelected: (_) {
-                          widget.onResponseLevelChanged(grade['value']);
-                          setState(() => _showGradeSelector = false);
-                        },
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            )
-          : const SizedBox.shrink(),
-    );
-  }
-
-  Widget _buildGradeButton() {
     final color = _getGradeColor(widget.responseLevel);
 
-    return Tooltip(
-      message: 'Select Grade Level',
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _showGradeSelector = !_showGradeSelector;
-          });
-        },
+    return Container(
+      height: 40, // Fixed height - shorter than input bar
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 8,
-          ),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: color.withOpacity(0.3),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.school,
+              size: 16,
+              color: color,
             ),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.school,
-                size: 16,
-                color: color,
-              ),
-              const SizedBox(width: 4),
-              Text(
-                _getGradeLabel(widget.responseLevel),
+          const SizedBox(width: 8),
+          Text(
+            'Level:',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: widget.responseLevel,
+                icon: Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 18,
+                  color: color,
+                ),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: color,
                 ),
+                dropdownColor: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                isDense: true,
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    widget.onResponseLevelChanged(newValue);
+                  }
+                },
+                items: _gradeLevels.map<DropdownMenuItem<String>>((grade) {
+                  return DropdownMenuItem<String>(
+                    value: grade['value'],
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: grade['color'],
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          grade['label'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
-              const SizedBox(width: 2),
-              Icon(
-                _showGradeSelector
-                    ? Icons.keyboard_arrow_up
-                    : Icons.keyboard_arrow_down,
-                size: 16,
-                color: color,
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -579,98 +630,96 @@ class _ChatInputBarState extends State<ChatInputBar>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bool hasVoice = _pendingVoicePath != null || _isRecording;
 
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Grade Selector (collapsible)
-            _buildGradeSelector(),
+            if (!hasVoice) _buildGradeSelector(),
 
             // Attachments Preview
-            _buildAttachmentsPreview(),
+            if (_attachedFiles.isNotEmpty) _buildAttachmentsPreview(),
 
+            // Recording/Playback UI
             if (_isRecording)
               _buildRecordingPanel()
             else if (_pendingVoicePath != null)
-              _buildPlaybackBar()
-            else
-              Column(
+              Row(
                 children: [
-                  // Input Row with Grade Button
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      // Grade Level Button (always visible)
-                      _buildGradeButton(),
-                      const SizedBox(width: 8),
-
-                      // Text Input Container
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.surface,
-                            borderRadius: BorderRadius.circular(26),
-                            border: Border.all(color: Colors.grey.shade300),
+                  // Playback bar (expanded)
+                  Expanded(
+                    child: _buildPlaybackBar(),
+                  ),
+                  const SizedBox(width: 8),
+                  // Send button for voice
+                  _buildSendButton(),
+                ],
+              )
+            else
+              // Main Input Row (full height)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Text Input Container
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surface,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(color: Colors.grey.shade300),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade100,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
                           ),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                onPressed: widget.isSending
-                                    ? null
-                                    : _pickAndAttachFile,
-                                icon: const Icon(Icons.attach_file),
-                              ),
-                              Expanded(
-                                child: TextField(
-                                  controller: controller,
-                                  onChanged: (_) => setState(() {}),
-                                  enabled: !widget.isSending,
-                                  maxLines: null,
-                                  decoration: InputDecoration(
-                                    hintText: 'ask_question_hint'.tr(),
-                                    border: InputBorder.none,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                  ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            onPressed:
+                                widget.isSending ? null : _pickAndAttachFile,
+                            icon: const Icon(Icons.attach_file),
+                            splashRadius: 24,
+                          ),
+                          Expanded(
+                            child: TextField(
+                              controller: controller,
+                              onChanged: (_) => setState(() {}),
+                              enabled: !widget.isSending,
+                              maxLines: null,
+                              minLines: 1,
+                              decoration: InputDecoration(
+                                hintText: 'Ask a question...',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade400,
+                                  fontSize: 15,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 12,
                                 ),
                               ),
-                              IconButton(
-                                onPressed:
-                                    widget.isSending ? null : _startRecording,
-                                icon: const Icon(Icons.mic_none_rounded),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      _buildSendButton(),
-                    ],
-                  ),
-
-                  // Hint Text
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8, left: 8),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            'Choose grade level for age-appropriate responses',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade500,
-                              fontStyle: FontStyle.italic,
                             ),
                           ),
-                        ),
-                      ],
+                          IconButton(
+                            onPressed:
+                                widget.isSending ? null : _startRecording,
+                            icon: const Icon(Icons.mic_none_rounded),
+                            splashRadius: 24,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  _buildSendButton(),
                 ],
               ),
           ],

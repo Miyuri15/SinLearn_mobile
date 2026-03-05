@@ -212,6 +212,12 @@ class _LearningModePageState extends State<LearningModePage> {
             topK: 3,
           );
 
+          if (data.sessionId != null) {
+            setState(() {
+              _activeSessionId = data.sessionId;
+            });
+          }
+
           if (!mounted) return;
 
           setState(() {
