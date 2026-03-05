@@ -1,3 +1,4 @@
+// lib/features/learning/widgets/chat_input_bar.dart
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -56,9 +57,24 @@ class _ChatInputBarState extends State<ChatInputBar>
 
   late final AnimationController _animController;
 
+  // Grade selector state
+  bool _showGradeSelector = false;
+
+  final List<Map<String, dynamic>> _gradeLevels = const [
+    {'value': 'grade_6_8', 'label': 'Grades 6-8', 'color': Colors.green},
+    {'value': 'grade_9_11', 'label': 'Grades 9-11', 'color': Colors.blue},
+    {'value': 'grade_12_13', 'label': 'Grades 12-13', 'color': Colors.purple},
+    {
+      'value': 'grade_12_plus',
+      'label': 'Grades 12+',
+      'color': Colors.deepPurple
+    },
+  ];
+
   String get responseLevel => widget.responseLevel;
   TextEditingController get controller => widget.controller;
   String? _pendingVoicePath;
+
   @override
   void initState() {
     super.initState();
@@ -95,6 +111,24 @@ class _ChatInputBarState extends State<ChatInputBar>
     _audioPlayer.dispose();
     _recorder.dispose();
     super.dispose();
+  }
+
+  // ================= GRADE SELECTOR HELPERS =================
+
+  String _getGradeLabel(String value) {
+    final grade = _gradeLevels.firstWhere(
+      (g) => g['value'] == value,
+      orElse: () => _gradeLevels[1],
+    );
+    return grade['label'];
+  }
+
+  Color _getGradeColor(String value) {
+    final grade = _gradeLevels.firstWhere(
+      (g) => g['value'] == value,
+      orElse: () => _gradeLevels[1],
+    );
+    return grade['color'];
   }
 
   // ================= FILE HANDLING =================
@@ -431,6 +465,117 @@ class _ChatInputBarState extends State<ChatInputBar>
     );
   }
 
+  Widget _buildGradeSelector() {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      height: _showGradeSelector ? 60 : 0,
+      child: _showGradeSelector
+          ? Container(
+              height: 60,
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: _gradeLevels.map((grade) {
+                    final isSelected = widget.responseLevel == grade['value'];
+                    final color = grade['color'] as Color;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: FilterChip(
+                        selected: isSelected,
+                        label: Text(
+                          grade['label'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: isSelected
+                                ? FontWeight.w600
+                                : FontWeight.normal,
+                            color: isSelected ? color : null,
+                          ),
+                        ),
+                        backgroundColor: color.withOpacity(0.1),
+                        selectedColor: color.withOpacity(0.2),
+                        checkmarkColor: color,
+                        side: BorderSide(
+                          color: isSelected ? color : color.withOpacity(0.3),
+                        ),
+                        onSelected: (_) {
+                          widget.onResponseLevelChanged(grade['value']);
+                          setState(() => _showGradeSelector = false);
+                        },
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildGradeButton() {
+    final color = _getGradeColor(widget.responseLevel);
+
+    return Tooltip(
+      message: 'Select Grade Level',
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _showGradeSelector = !_showGradeSelector;
+          });
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: color.withOpacity(0.3),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.school,
+                size: 16,
+                color: color,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                _getGradeLabel(widget.responseLevel),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 2),
+              Icon(
+                _showGradeSelector
+                    ? Icons.keyboard_arrow_up
+                    : Icons.keyboard_arrow_down,
+                size: 16,
+                color: color,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -442,52 +587,90 @@ class _ChatInputBarState extends State<ChatInputBar>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Grade Selector (collapsible)
+            _buildGradeSelector(),
+
+            // Attachments Preview
             _buildAttachmentsPreview(),
+
             if (_isRecording)
               _buildRecordingPanel()
             else if (_pendingVoicePath != null)
               _buildPlaybackBar()
             else
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
+              Column(
                 children: [
-                  Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(26),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                        children: [
-                          IconButton(
-                            onPressed:
-                                widget.isSending ? null : _pickAndAttachFile,
-                            icon: const Icon(Icons.attach_file),
+                  // Input Row with Grade Button
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      // Grade Level Button (always visible)
+                      _buildGradeButton(),
+                      const SizedBox(width: 8),
+
+                      // Text Input Container
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surface,
+                            borderRadius: BorderRadius.circular(26),
+                            border: Border.all(color: Colors.grey.shade300),
                           ),
-                          Expanded(
-                            child: TextField(
-                              controller: controller,
-                              onChanged: (_) => setState(() {}),
-                              enabled: !widget.isSending,
-                              maxLines: null,
-                              decoration: InputDecoration(
-                                hintText: 'ask_question_hint'.tr(),
-                                border: InputBorder.none,
+                          child: Row(
+                            children: [
+                              IconButton(
+                                onPressed: widget.isSending
+                                    ? null
+                                    : _pickAndAttachFile,
+                                icon: const Icon(Icons.attach_file),
                               ),
+                              Expanded(
+                                child: TextField(
+                                  controller: controller,
+                                  onChanged: (_) => setState(() {}),
+                                  enabled: !widget.isSending,
+                                  maxLines: null,
+                                  decoration: InputDecoration(
+                                    hintText: 'ask_question_hint'.tr(),
+                                    border: InputBorder.none,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                onPressed:
+                                    widget.isSending ? null : _startRecording,
+                                icon: const Icon(Icons.mic_none_rounded),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      _buildSendButton(),
+                    ],
+                  ),
+
+                  // Hint Text
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8, left: 8),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Choose grade level for age-appropriate responses',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade500,
+                              fontStyle: FontStyle.italic,
                             ),
                           ),
-                          IconButton(
-                            onPressed:
-                                widget.isSending ? null : _startRecording,
-                            icon: const Icon(Icons.mic_none_rounded),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  _buildSendButton(),
                 ],
               ),
           ],
