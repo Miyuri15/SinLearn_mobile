@@ -627,6 +627,7 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
           assumeDocsAvailable: true,
           attachmentName: _attachedFileName,
           evaluationData: evalData,
+          evaluationSessionId: evalSessionId,
         ),
       ),
     );
@@ -669,21 +670,29 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         onRightIconPressed: () {},
         onAddPressed: () {},
         onRubricApplied: _loadAllData,
+        onHistoryPressed: _openResultsHistory,
         chatSessionId: widget.chatSessionId,
       ),
       drawer: const RecentChatsDrawer(),
       body: Column(
         children: [
           Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 560),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
                       Text(
                         'evaluation.startNewEvaluation'.tr(),
                         textAlign: TextAlign.center,
@@ -944,10 +953,15 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
                           ),
                         ),
                       ],
-                    ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
 

@@ -35,12 +35,14 @@ class EvaluationProcessPage extends StatefulWidget {
     this.assumeDocsAvailable = false,
     this.attachmentName,
     this.evaluationData,
+    this.evaluationSessionId,
   });
 
   final String chatSessionId;
   final bool assumeDocsAvailable;
   final String? attachmentName;
   final Map<String, dynamic>? evaluationData;
+  final String? evaluationSessionId;
 
   @override
   State<EvaluationProcessPage> createState() => _EvaluationProcessPageState();
@@ -380,6 +382,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
           attachmentName: widget.attachmentName,
           evaluationData: widget.evaluationData,
           evaluationRunId: _currentEvaluationRunId,
+          evaluationSessionId: widget.evaluationSessionId,
         ),
       ),
     );

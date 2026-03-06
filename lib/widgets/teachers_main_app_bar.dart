@@ -11,6 +11,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback onRightIconPressed;
   final VoidCallback onAddPressed;
   final VoidCallback? onRubricApplied;
+  final VoidCallback? onHistoryPressed;
   final String? chatSessionId;
   final bool enableSidebars;
 
@@ -22,6 +23,7 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.onRightIconPressed,
     required this.onAddPressed,
     this.onRubricApplied,
+    this.onHistoryPressed,
     this.chatSessionId,
     this.enableSidebars = true,
   });
@@ -111,6 +113,28 @@ class MainAppBar extends StatelessWidget implements PreferredSizeWidget {
                           onRubricApplied: onRubricApplied,
                           chatSessionId: chatSessionId,
                         ),
+                      ),
+                    ),
+                  ),
+
+                // HISTORY ICON -> Evaluation results history
+                if (selectedIndex == 1 && onHistoryPressed != null)
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest
+                          .withOpacity(0.5),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Tooltip(
+                      message: 'evaluation.viewResultsHistory'.tr(),
+                      waitDuration: const Duration(milliseconds: 250),
+                      child: IconButton(
+                        icon: Icon(Icons.history,
+                            size: 20, color: theme.colorScheme.onSurface),
+                        padding: const EdgeInsets.all(8),
+                        splashRadius: 20,
+                        onPressed: onHistoryPressed,
                       ),
                     ),
                   ),
