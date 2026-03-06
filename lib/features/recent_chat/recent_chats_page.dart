@@ -6,7 +6,6 @@ import '../../main.dart' show MyApp;
 import '../evaluation/learning_mode.dart';
 import '../evaluation/evaluation_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../../services/chat_service.dart';
 
 // Model

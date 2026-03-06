@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/teachers_main_app_bar.dart';
 import 'evaluation_response.dart';
 import 'evaluation_doc_tokens.dart';
-import '../../models/chat_session_details.dart';
 import '../../services/chat_service.dart';
 import '../../services/evaluation_service.dart';
 

@@ -296,7 +296,6 @@ class _ChatListItem extends StatelessWidget {
 // Replace previous _EmptyChatView with _ChatView that shows messages or empty prompt
 class _ChatView extends StatelessWidget {
   const _ChatView({
-    super.key,
     required this.messages,
   });
 

@@ -773,13 +773,13 @@ class _EvaluationReportCard extends StatelessWidget {
           if (hasClarity) _ScoreBar(labelKey: 'clarity', value: clarity),
           if (hasClarity) const SizedBox(height: 10),
           // Question-level marks summary
-          if (marksSummary is Map && (marksSummary as Map).isNotEmpty) ...[
+          if (marksSummary is Map && (marksSummary).isNotEmpty) ...[
             const SizedBox(height: 6),
             Text('evaluation.questionScores'.tr(),
                 style: theme.textTheme.titleSmall
                     ?.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            ...(marksSummary as Map).entries.map((entry) {
+            ...(marksSummary).entries.map((entry) {
               final qLabel = entry.key.toString();
               final subMarks = entry.value;
               if (subMarks is List) {

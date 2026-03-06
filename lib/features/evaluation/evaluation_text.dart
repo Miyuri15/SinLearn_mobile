@@ -1244,7 +1244,6 @@ class _DocStepState {
 
   const _DocStepState({
     this.status = _DocStepStatus.pending,
-    this.alreadyProcessed = false,
   });
 }
 
