@@ -627,7 +627,6 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
           assumeDocsAvailable: true,
           attachmentName: _attachedFileName,
           evaluationData: evalData,
-          evaluationSessionId: evalSessionId,
         ),
       ),
     );
@@ -670,7 +669,6 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
         onRightIconPressed: () {},
         onAddPressed: () {},
         onRubricApplied: _loadAllData,
-        onHistoryPressed: _openResultsHistory,
         chatSessionId: widget.chatSessionId,
       ),
       drawer: const RecentChatsDrawer(),
