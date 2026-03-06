@@ -4,10 +4,10 @@ import 'token_storage.dart';
 class ApiClient {
   static final Dio dio = Dio(
     BaseOptions(
-      baseUrl: 'https://8dfa74f532e2.ngrok-free.app', // ⚠️ change for device
-      connectTimeout: const Duration(seconds: 30),
-      sendTimeout: const Duration(seconds: 60),
-      receiveTimeout: const Duration(seconds: 60),
+      baseUrl: 'https://e223-2402-4000-2330-def-591e-d409-47c8-fe4a.ngrok-free.app', // Local backend (use 10.0.2.2 for Android emulator)
+      connectTimeout: const Duration(minutes: 60),
+      sendTimeout: const Duration(minutes: 60),
+      receiveTimeout: const Duration(minutes: 60),
       // Don't force a global Content-Type.
       // Dio will set it appropriately (e.g. multipart/form-data for FormData).
     ),

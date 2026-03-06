@@ -47,8 +47,14 @@ class EvaluationService {
         // ignore: avoid_print
         print('fetchAnswerResult response status: ${res.statusCode}');
 
-        if (res.data is Map) {
-          return Map<String, dynamic>.from(res.data as Map);
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+        if (data is Map) {
+          return Map<String, dynamic>.from(data);
         }
         return null;
       } on DioException catch (e) {
@@ -106,8 +112,14 @@ class EvaluationService {
         // ignore: avoid_print
         print('startEvaluation response status: ${res.statusCode}');
 
-        if (res.data is Map) {
-          return Map<String, dynamic>.from(res.data as Map);
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+        if (data is Map) {
+          return Map<String, dynamic>.from(data);
         }
         return null;
       } on DioException catch (e) {
@@ -340,8 +352,14 @@ class EvaluationService {
         // ignore: avoid_print
         print(
             'getEvaluationSessionResults response status: ${res.statusCode}');
-        if (res.data is List) {
-          return (res.data as List)
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+        if (data is List) {
+          return (data as List)
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
@@ -378,8 +396,14 @@ class EvaluationService {
         final res = await ApiClient.dio.get(path);
         // ignore: avoid_print
         print('getAnswerDocuments response status: ${res.statusCode}');
-        if (res.data is List) {
-          return (res.data as List)
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+        if (data is List) {
+          return (data as List)
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
@@ -417,8 +441,14 @@ class EvaluationService {
         // ignore: avoid_print
         print(
             'getEvaluationAnswerFeedback response status: ${res.statusCode}');
-        if (res.data is Map) {
-          return Map<String, dynamic>.from(res.data as Map);
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+        if (data is Map) {
+          return Map<String, dynamic>.from(data);
         }
         return null;
       } on DioException catch (e) {

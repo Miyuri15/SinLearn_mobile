@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:dio/dio.dart';
 import '../../core/network/api_client.dart';
 import '../models/resource_models.dart';
@@ -25,7 +27,12 @@ class ResourceService {
         final res = await ApiClient.dio.get(path);
         if (res.statusCode != 200) continue;
 
-        final data = res.data;
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
         if (data is List) {
           return data
               .whereType<Map>()
@@ -84,7 +91,12 @@ class ResourceService {
         final res = await ApiClient.dio.get(path);
         if (res.statusCode != 200) continue;
 
-        final data = res.data;
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
         if (data is Map) {
           final map = Map<String, dynamic>.from(data);
 
@@ -122,7 +134,14 @@ class ResourceService {
       data: formData,
     );
 
-    return (res.data as List)
+    dynamic data = res.data;
+    if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {}
+    }
+    
+    return (data as List)
         .map((e) => ResourceUploadResponse.fromJson(e))
         .toList();
   }
@@ -144,13 +163,18 @@ class ResourceService {
       },
       options: Options(
         // Backend performs extraction/embedding before responding; allow longer.
-        receiveTimeout: const Duration(minutes: 3),
-        sendTimeout: const Duration(minutes: 2),
+        receiveTimeout: const Duration(minutes: 60),
+        sendTimeout: const Duration(minutes: 60),
       ),
       data: formData,
     );
 
-    final data = res.data;
+    dynamic data = res.data;
+    if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {}
+    }
     // Helpful during integration/debugging (especially on web)
     // ignore: avoid_print
     print('uploadQuestionPaper response: $data');
@@ -197,13 +221,18 @@ class ResourceService {
         "chat_session_id": chatSessionId,
       },
       options: Options(
-        receiveTimeout: const Duration(minutes: 3),
-        sendTimeout: const Duration(minutes: 2),
+        receiveTimeout: const Duration(minutes: 60),
+        sendTimeout: const Duration(minutes: 60),
       ),
       data: formData,
     );
 
-    final data = res.data;
+    dynamic data = res.data;
+    if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {}
+    }
     // ignore: avoid_print
     print('uploadSyllabus response: $data');
 
@@ -249,13 +278,18 @@ class ResourceService {
         'chat_session_id': chatSessionId,
       },
       options: Options(
-        receiveTimeout: const Duration(minutes: 3),
-        sendTimeout: const Duration(minutes: 2),
+        receiveTimeout: const Duration(minutes: 60),
+        sendTimeout: const Duration(minutes: 60),
       ),
       data: formData,
     );
 
-    final data = res.data;
+    dynamic data = res.data;
+    if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {}
+    }
     // ignore: avoid_print
     print('uploadAnswerSheets response: $data');
 

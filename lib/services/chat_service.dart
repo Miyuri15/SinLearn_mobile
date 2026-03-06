@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../../core/network/api_client.dart';
 import '../models/chat_models.dart';
 import '../models/chat_session_details.dart';
@@ -38,9 +39,16 @@ class ChatService {
   static Future<ChatSessionDetails> getChatSessionDetails(
       String sessionId) async {
     final res = await ApiClient.dio.get("/api/v1/chat/sessions/$sessionId");
-    if (res.data is Map) {
+    dynamic responseData = res.data;
+    if (responseData is String) {
+      try {
+        responseData = jsonDecode(responseData);
+      } catch (_) {}
+    }
+    
+    if (responseData is Map) {
       final details = ChatSessionDetails.fromJson(
-          Map<String, dynamic>.from(res.data as Map));
+          Map<String, dynamic>.from(responseData as Map));
 
       // If backend does not include filenames in `resources`, hydrate them by
       // fetching resource metadata. This makes attachments persist across
@@ -126,7 +134,7 @@ class ChatService {
       );
     }
     throw StateError(
-        'Unexpected session details response: ${res.data.runtimeType}');
+        'Unexpected session details response: ${responseData.runtimeType} => $responseData');
   }
 
   /// UPDATE CHAT TITLE
