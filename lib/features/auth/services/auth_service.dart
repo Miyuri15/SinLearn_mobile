@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
-import '../../../core/network/api_client.dart';
+import 'package:flutter/foundation.dart';
+import 'package:sinlearn_mobile/core/network/raw_dio.dart';
+import 'package:sinlearn_mobile/core/network/token_storage.dart';
 
 class AuthService {
   Future<Map<String, dynamic>> signUp({
@@ -7,45 +9,77 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    try {
-      final response = await ApiClient.dio.post(
-        '/api/v1/auth/signup',
-        data: {
-          "full_name": fullName,
-          "email": email,
-          "password": password,
-        },
-      );
+    final response = await RawDio.dio.post(
+      '/api/v1/auth/signup',
+      data: {
+        "full_name": fullName,
+        "email": email,
+        "password": password,
+      },
+    );
 
-      return response.data;
-    } on DioException catch (e) {
-      if (e.response != null) {
-        throw Exception(e.response?.data['detail'] ?? 'Signup failed');
-      }
-      throw Exception('Network error');
-    }
+    final data = response.data;
+
+    await TokenStorage.saveTokens(
+      accessToken: data['access_token'],
+      refreshToken: data['refresh_token'],
+    );
+
+    return data;
   }
 
   Future<Map<String, dynamic>> signIn({
     required String email,
     required String password,
   }) async {
-    try {
-      final response = await ApiClient.dio.post(
-        '/api/v1/auth/signin',
-        data: {
-          "email": email,
-          "password": password,
-        },
-      );
+    debugPrint('BASE URL: ${RawDio.dio.options.baseUrl}');
+    debugPrint('Calling: /api/v1/auth/signin');
 
-      return response.data;
-    } on DioException catch (e) {
-      print('AuthService signIn error: $e');
-      if (e.response != null) {
-        throw Exception(e.response?.data['detail'] ?? 'Login failed');
-      }
-      throw Exception('Network error');
-    }
+    final response = await RawDio.dio.post(
+      '/api/v1/auth/signin',
+      data: {
+        "email": email,
+        "password": password,
+      },
+    );
+
+    final data = response.data;
+
+    await TokenStorage.saveTokens(
+      accessToken: data['access_token'],
+      refreshToken: data['refresh_token'],
+    );
+
+    return data;
   }
+
+Future<void> refreshToken() async {
+  final refreshToken = await TokenStorage.getRefreshToken();
+  if (refreshToken == null) {
+    throw Exception('No refresh token available');
+  }
+
+  try {
+    final response = await RawDio.dio.post(
+      '/api/v1/auth/refresh',
+      data: {'refresh_token': refreshToken},
+    );
+
+    final data = response.data as Map<String, dynamic>;
+
+    if (data['access_token'] == null || data['refresh_token'] == null) {
+      throw Exception('Invalid refresh response');
+    }
+
+    await TokenStorage.saveTokens(
+      accessToken: data['access_token'],
+      refreshToken: data['refresh_token'],
+    );
+  } on DioException catch (e) {
+    debugPrint('Refresh token failed');
+    debugPrint('Status: ${e.response?.statusCode}');
+    debugPrint('Data: ${e.response?.data}');
+    throw Exception(e.response?.data['detail'] ?? 'Refresh token failed');
+  }
+}
 }

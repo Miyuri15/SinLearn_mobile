@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'services/auth_service.dart';
-import '../evaluation/learning_mode.dart';
+import '../../core/utils/error_handler.dart';
+import '../../core/utils/app_toast.dart';
+import '../learning/learning_mode.dart';
 
 class SignInForm extends StatefulWidget {
   const SignInForm({super.key});
@@ -19,6 +21,7 @@ class _SignInFormState extends State<SignInForm> {
 
   final AuthService _authService = AuthService();
   bool _loading = false;
+  bool _showPassword = false;
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -73,9 +76,9 @@ class _SignInFormState extends State<SignInForm> {
                     final password = _pwdCtrl.text;
 
                     if (email.isEmpty || password.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Please enter email and password')),
+                      AppToast.warning(
+                        context,
+                        'Please enter email and password',
                       );
                       return;
                     }
@@ -108,8 +111,9 @@ class _SignInFormState extends State<SignInForm> {
                         // You may want to report this to analytics or show a non-blocking message
                       }
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Login successful')),
+                      AppToast.success(
+                        context,
+                        'auth.login_successful'.tr(),
                       );
 
                       Navigator.of(context).pushReplacement(
@@ -117,20 +121,37 @@ class _SignInFormState extends State<SignInForm> {
                             builder: (_) => const LearningModePage()),
                       );
                     } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text(e.toString())),
-                      );
+                      final errorMessage = ErrorHandler.getErrorMessage(e);
+
+                      debugPrint(
+                          'Login error: ${ErrorHandler.getErrorCode(e)} - $e');
+
+                      if (mounted) {
+                        AppToast.error(
+                          context,
+                          errorMessage,
+                        );
+                      }
                     } finally {
                       setState(() => _loading = false);
                     }
                   },
-            child: Text(
-              'sign_in'.tr(),
-              style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: isSmallPhone ? 15 : 16,
-                  color: Colors.white),
-            ),
+            child: _loading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(
+                    'sign_in'.tr(),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: isSmallPhone ? 15 : 16,
+                        color: Colors.white),
+                  ),
           ),
         ),
         // Bottom spacer for animation smoothness
@@ -178,8 +199,13 @@ class _SignInFormState extends State<SignInForm> {
       child: TextFormField(
         controller: ctrl,
         focusNode: focus,
-        obscureText: isPwd,
+        obscureText: isPwd && !_showPassword,
         keyboardType: isPwd ? TextInputType.text : TextInputType.emailAddress,
+        textCapitalization:
+            isPwd ? TextCapitalization.none : TextCapitalization.none,
+        autofillHints: isPwd
+            ? const [AutofillHints.password]
+            : const [AutofillHints.email],
         textInputAction:
             next != null ? TextInputAction.next : TextInputAction.done,
         onEditingComplete: () =>
@@ -189,6 +215,16 @@ class _SignInFormState extends State<SignInForm> {
           hintStyle: TextStyle(color: hintColor, fontSize: isSmall ? 13 : null),
           border: InputBorder.none,
           contentPadding: EdgeInsets.all(isSmall ? 12 : 14),
+          suffixIcon: isPwd
+              ? IconButton(
+                  icon: Icon(
+                    _showPassword ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () {
+                    setState(() => _showPassword = !_showPassword);
+                  },
+                )
+              : null,
         ),
       ),
     );

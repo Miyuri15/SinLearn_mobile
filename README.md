@@ -1,4 +1,4 @@
-# 📱 **SinLearn Mobile – Flutter Frontend**
+#  **SinLearn Mobile – Flutter Frontend**
 
 ### **Sinhala Educational Assistant (Mobile + Web)**
 
@@ -18,16 +18,16 @@ This project is the official frontend foundation used by the SinLearn developmen
 
 ---
 
-# 🚀 **Features**
+#  **Features**
 
-## ✔ Learning Mode
+##  Learning Mode
 
 * Ask questions in Sinhala (text or voice)
 * Upload documents or images for context
 * Receive summaries + explanations + Q&A
 * Age-level response generation (Grade levels)
 
-## ✔ Answer Evaluation Mode
+##  Answer Evaluation Mode
 
 * Upload answer sheets and questions
 * Select or upload marking rubrics
@@ -35,7 +35,7 @@ This project is the official frontend foundation used by the SinLearn developmen
 * Sinhala feedback + scoring
 * Structured evaluation card blocks
 
-## ✔ Core UI Features
+##  Core UI Features
 
 * Chat interface (user/system bubbles)
 * Summary cards
@@ -44,7 +44,7 @@ This project is the official frontend foundation used by the SinLearn developmen
 * Chat history
 * Sharing support
 
-## ✔ Technical Features
+##  Technical Features
 
 * Sinhala + English localization
 * Light & Dark themes
@@ -54,7 +54,7 @@ This project is the official frontend foundation used by the SinLearn developmen
 
 ---
 
-# 📦 **Project Structure**
+#  **Project Structure**
 
 ```
 lib/
@@ -87,7 +87,7 @@ assets/
 
 ---
 
-# 🛠 **Technologies Used**
+#  **Technologies Used**
 
 | Component         | Technology             |
 | ----------------- | -----------------      |
@@ -135,7 +135,7 @@ flutter run -d <ios-device-id>
 
 ---
 
-# 🌐 **Localization Setup (English + Sinhala)**
+#  **Localization Setup (English + Sinhala)**
 
 Localization files are stored in:
 
@@ -152,7 +152,7 @@ Text(tr("send"))
 
 ---
 
-# 🎨 **Themes (Light + Dark)**
+#  **Themes (Light + Dark)**
 
 Theme configuration:
 
@@ -165,7 +165,7 @@ Custom theme files will be added later.
 
 ---
 
-# 📡 **API Integration**
+#  **API Integration**
 
 API calls live inside:
 
@@ -183,7 +183,7 @@ Backend supports:
 
 ---
 
-# 🌩 **Offline Mode**
+#  **Offline Mode**
 
 The app uses **connectivity_plus** to detect online/offline states.
 
@@ -195,7 +195,7 @@ The app uses **connectivity_plus** to detect online/offline states.
 
 ---
 
-# 🤝 **Contribution Workflow**
+#  **Contribution Workflow**
 
 ## **Branch Strategy**
 
@@ -226,7 +226,7 @@ git push origin feature/chat-ui
 
 ---
 
-# 📄 **Coding Standards**
+#  **Coding Standards**
 
 * No hardcoded Sinhala or English text (use localization keys).
 * Follow folder structure strictly.
@@ -236,7 +236,7 @@ git push origin feature/chat-ui
 
 ---
 
-# 📌 **Current Status**
+#  **Current Status**
 
 ✔ Project skeleton completed
 ✔ Localization enabled
@@ -251,13 +251,13 @@ git push origin feature/chat-ui
 
 ---
 
-# 📞 **Contact**
+#  **Contact**
 
 For questions or clarifications, contact the **SinLearn development team lead**.
 
 ---
 
-# ⭐ **Thank You for Contributing to SinLearn!**
+#  **Thank You for Contributing to SinhalaLearn!**
 
 ---
 

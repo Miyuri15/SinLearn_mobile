@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
+import 'package:sinlearn_mobile/core/network/api_client.dart';
+import 'package:sinlearn_mobile/core/network/token_storage.dart';
 import 'package:sinlearn_mobile/features/auth/auth_page.dart';
+import 'package:sinlearn_mobile/core/utils/app_toast.dart';
+import 'package:sinlearn_mobile/core/utils/error_handler.dart';
 import '../settings/Settings_Teachers.dart';
 import '../../main.dart' show MyApp;
-import '../evaluation/learning_mode.dart';
+import '../learning/learning_mode.dart';
 import '../evaluation/evaluation_text.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/chat_service.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 // Model
 class ChatEntry {
@@ -15,7 +20,6 @@ class ChatEntry {
     required this.title,
     required this.type,
     required this.createdAt,
-    this.messageCount = 0,
     String? id,
   }) : id = id ?? (++_next).toString(); // monotonic id
 
@@ -23,7 +27,6 @@ class ChatEntry {
   final String title;
   final ChatType type;
   final DateTime createdAt;
-  int messageCount;
 }
 
 enum ChatType { learning, evaluation }
@@ -39,6 +42,7 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
   String? _activeId;
   final _search = TextEditingController();
   final int _version = 0;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -46,43 +50,48 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
     _loadChats();
   }
 
-  Future<void> _seedInitialChats() async {
-    // No-op: We don't want fake chats anymore.
-  }
-
   Future<void> _loadChats() async {
     try {
+      setState(() => _isLoading = true);
       final sessions = await ChatService.listChatSessions();
       if (!mounted) return;
-      
+
       setState(() {
+        _isLoading = false;
         _all
           ..clear()
           ..addAll(sessions.map((s) => ChatEntry(
-            id: s.id,
-            title: s.title ?? (s.mode == 'learning' ? 'recent_chats.new_learning'.tr() : 'recent_chats.new_evaluation'.tr()),
-            type: s.mode == 'learning' ? ChatType.learning : ChatType.evaluation,
-            createdAt: DateTime.tryParse(s.createdAt) ?? DateTime.now(),
-            messageCount: 0, 
-          )));
-          
-          // Sort by createdAt desc
-          _all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          
-          if (_all.isNotEmpty) {
-             _activeId = _all.first.id;
-          }
+                id: s.id,
+                title: s.title ??
+                    (s.mode == 'learning'
+                        ? 'recent_chats.new_learning'.tr()
+                        : 'recent_chats.new_evaluation'.tr()),
+                type: s.mode == 'learning'
+                    ? ChatType.learning
+                    : ChatType.evaluation,
+                createdAt: DateTime.tryParse(s.createdAt) ?? DateTime.now(),
+              )));
+
+        // Sort by createdAt desc
+        _all.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+        if (_all.isNotEmpty) {
+          _activeId = _all.first.id;
+        }
       });
     } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
       print("Error loading chats: $e");
-      // If API fails, maybe show empty or cached? 
+      // If API fails, maybe show empty or cached?
       // For now, let's not seed fake data to avoid confusion.
     }
   }
 
   Future<void> _saveChats() async {
-    // We might not need to save to local storage if we are fully API driven, 
-    // but keeping it for offline support could be useful. 
+    // We might not need to save to local storage if we are fully API driven,
+    // but keeping it for offline support could be useful.
     // However, syncing is complex. Let's skip saving for now to rely on API.
   }
 
@@ -97,9 +106,10 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
 
       final entry = ChatEntry(
         id: session.id,
-        title: session.title ?? (type == ChatType.learning
-            ? 'recent_chats.new_learning'.tr()
-            : 'recent_chats.new_evaluation'.tr()),
+        title: session.title ??
+            (type == ChatType.learning
+                ? 'recent_chats.new_learning'.tr()
+                : 'recent_chats.new_evaluation'.tr()),
         type: type,
         createdAt: DateTime.now(),
       );
@@ -117,27 +127,21 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
         Navigator.of(context)
             .push(MaterialPageRoute(builder: (_) => const LearningModePage()));
       } else {
-        Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
+        Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to create session: $e')),
-        );
+        AppToast.error(context, ErrorHandler.getErrorMessage(e));
       }
     }
   }
 
-  String _relative(DateTime time) {
-    final diff = DateTime.now().difference(time);
-    if (diff.inMinutes < 1) return 'recent_chats.less_minute'.tr();
-    if (diff.inMinutes == 1) return 'recent_chats.minute_ago'.tr();
-    if (diff.inMinutes < 60) {
-      return 'recent_chats.minutes_ago'.tr(args: [diff.inMinutes.toString()]);
-    }
-    if (diff.inHours == 1) return 'recent_chats.hour_ago'.tr();
-    return 'recent_chats.hours_ago'.tr(args: [diff.inHours.toString()]);
+  String _relative(DateTime time, BuildContext context) {
+    return timeago.format(
+      time,
+      locale: context.locale.languageCode,
+    );
   }
 
   List<ChatEntry> get _filtered {
@@ -157,7 +161,6 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
 
   @override
   Widget build(BuildContext context) {
-
     WidgetsBinding.instance
         .addPostFrameCallback((_) => _checkVersionAndReload());
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -226,22 +229,26 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
             const SizedBox(height: 12),
             // List
             Expanded(
-              child: ListView.builder(
-                itemCount: _filtered.length,
-                padding: const EdgeInsets.only(bottom: 8),
-                itemBuilder: (ctx, i) {
-                  final item = _filtered[i];
-                  final active = item.id == _activeId;
-                  return _RecentItem(
-                    key: ValueKey(item.id), // stable key
-                    entry: item,
-                    timeLabel: _relative(item.createdAt),
-                    active: active,
-                    onTap: () => setState(() => _activeId = item.id),
-                    isDark: isDark,
-                  );
-                },
-              ),
+              child: _isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  : ListView.builder(
+                      itemCount: _filtered.length,
+                      padding: const EdgeInsets.only(bottom: 8),
+                      itemBuilder: (ctx, i) {
+                        final item = _filtered[i];
+                        final active = item.id == _activeId;
+                        return _RecentItem(
+                          key: ValueKey(item.id), // stable key
+                          entry: item,
+                          timeLabel: _relative(item.createdAt, context),
+                          active: active,
+                          onTap: () => setState(() => _activeId = item.id),
+                          isDark: isDark,
+                        );
+                      },
+                    ),
             ),
             // Footer
             Container(
@@ -276,11 +283,14 @@ class _RecentChatsDrawerState extends State<RecentChatsDrawer> {
                   _FooterButton(
                     icon: Icons.logout,
                     label: 'recent_chats.logout'.tr(),
-                    onTap: () {
-                      Navigator.of(context).pushReplacement(
+                    onTap: () async {
+                      await TokenStorage.clear();
+                      ApiClient.reset();
+                      Navigator.of(context).pushAndRemoveUntil(
                         MaterialPageRoute(
                           builder: (context) => const AuthPage(),
                         ),
+                        (route) => false,
                       );
                     },
                   ),
@@ -356,10 +366,6 @@ class _RecentItem extends StatelessWidget {
     final iconColor =
         entry.type == ChatType.learning ? Colors.blue : Colors.green;
 
-    final msg = entry.messageCount == 0
-        ? 'recent_chats.messages_zero'.tr()
-        : 'recent_chats.messages'.tr(args: [entry.messageCount.toString()]);
-
     final tile = ListTile(
       dense: true,
       leading: Icon(iconData, size: 20, color: iconColor), // only icon colored
@@ -372,24 +378,22 @@ class _RecentItem extends StatelessWidget {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(msg, style: const TextStyle(fontSize: 12)),
           Text(timeLabel, style: const TextStyle(fontSize: 12)),
         ],
       ),
       onTap: () {
         onTap();
-        // navigate to interface for this chat type
+        // navigate to interface for this chat type with session ID
         Navigator.of(context).pop();
         if (entry.type == ChatType.learning) {
-
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const LearningModePage()));
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => LearningModePage(chatSessionId: entry.id)));
         } else {
-          Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
+          Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => EvaluationTextPage(chatSessionId: entry.id)));
         }
       },
-      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
 
