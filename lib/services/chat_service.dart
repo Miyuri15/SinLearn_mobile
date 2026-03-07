@@ -1,6 +1,5 @@
-import 'package:dio/dio.dart' show MultipartFile, FormData;
+import 'dart:convert';
 import 'package:flutter/material.dart';
-
 import '../../core/network/api_client.dart';
 import '../models/chat_models.dart';
 import '../models/resource_models.dart';
@@ -8,7 +7,6 @@ import '../models/voice_models.dart';
 import 'package:dio/dio.dart' show MultipartFile, FormData;
 import '../models/chat_session_details.dart';
 import 'resource_service.dart';
-import 'package:dio/dio.dart';
 
 class ChatService {
   /// CREATE CHAT SESSION
@@ -45,9 +43,16 @@ class ChatService {
   static Future<ChatSessionDetails> getChatSessionDetails(
       String sessionId) async {
     final res = await ApiClient.dio.get("/api/v1/chat/sessions/$sessionId");
-    if (res.data is Map) {
+    dynamic responseData = res.data;
+    if (responseData is String) {
+      try {
+        responseData = jsonDecode(responseData);
+      } catch (_) {}
+    }
+    
+    if (responseData is Map) {
       final details = ChatSessionDetails.fromJson(
-          Map<String, dynamic>.from(res.data as Map));
+          Map<String, dynamic>.from(responseData));
 
       // If backend does not include filenames in `resources`, hydrate them by
       // fetching resource metadata. This makes attachments persist across
@@ -133,7 +138,7 @@ class ChatService {
       );
     }
     throw StateError(
-        'Unexpected session details response: ${res.data.runtimeType}');
+        'Unexpected session details response: ${responseData.runtimeType} => $responseData');
   }
 
   /// UPDATE CHAT TITLE

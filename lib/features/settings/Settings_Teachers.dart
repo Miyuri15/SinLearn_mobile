@@ -680,7 +680,7 @@ class _SettingTeachersState extends State<SettingTeachers> {
             borderSide: BorderSide(color: borderColor)),
         focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: primaryBlue, width: 2.0)),
+            borderSide: const BorderSide(color: primaryBlue, width: 2.0)),
       ),
       controller: TextEditingController(text: value),
     );

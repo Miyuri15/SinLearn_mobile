@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
@@ -28,7 +29,13 @@ class ResourceService {
         final res = await ApiClient.dio.get(path);
         if (res.statusCode != 200) continue;
 
-        final data = res.data;
+        dynamic data = res.data;
+
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
 
         if (data is List) {
           return data
@@ -53,6 +60,7 @@ class ResourceService {
           last404 = e;
           continue;
         }
+
         print(
             'fetchChatSessionResources error (${e.response?.statusCode}): ${e.response?.data}');
         rethrow;
@@ -83,7 +91,14 @@ class ResourceService {
         final res = await ApiClient.dio.get(path);
         if (res.statusCode != 200) continue;
 
-        final data = res.data;
+        dynamic data = res.data;
+
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+
         if (data is Map) {
           final map = Map<String, dynamic>.from(data);
           final inner = map['data'] ?? map['resource'] ?? map['result'];
@@ -91,6 +106,7 @@ class ResourceService {
           if (inner is Map) {
             return Map<String, dynamic>.from(inner);
           }
+
           return map;
         }
       } on DioException catch (e) {
@@ -98,6 +114,7 @@ class ResourceService {
           last404 = e;
           continue;
         }
+
         print(
             'fetchResourceMetadata error (${e.response?.statusCode}): ${e.response?.data}');
         rethrow;
@@ -121,7 +138,15 @@ class ResourceService {
       data: formData,
     );
 
-    return (res.data as List)
+    dynamic data = res.data;
+
+    if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {}
+    }
+
+    return (data as List)
         .map((e) => ResourceUploadResponse.fromJson(e))
         .toList();
   }
@@ -259,13 +284,21 @@ class ResourceService {
         "chat_session_id": chatSessionId,
       },
       options: Options(
-        receiveTimeout: const Duration(minutes: 3),
-        sendTimeout: const Duration(minutes: 2),
+        receiveTimeout: const Duration(minutes: 60),
+        sendTimeout: const Duration(minutes: 60),
       ),
       data: formData,
     );
 
-    final data = res.data;
+    dynamic data = res.data;
+
+    if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {}
+    }
+
+    print('uploadQuestionPaper response: $data');
 
     Map<String, dynamic>? candidate;
 
@@ -317,7 +350,7 @@ class ResourceService {
     );
   }
 
-  /// Internal reusable uploader (prevents duplication)
+  /// Internal reusable uploader
   static Future<List<ResourceUploadResponse>> _uploadTypedResources({
     required List<MultipartFile> files,
     required String chatSessionId,
@@ -332,13 +365,21 @@ class ResourceService {
         "chat_session_id": chatSessionId,
       },
       options: Options(
-        receiveTimeout: const Duration(minutes: 3),
-        sendTimeout: const Duration(minutes: 2),
+        receiveTimeout: const Duration(minutes: 60),
+        sendTimeout: const Duration(minutes: 60),
       ),
       data: formData,
     );
 
-    final data = res.data;
+    dynamic data = res.data;
+
+    if (data is String) {
+      try {
+        data = jsonDecode(data);
+      } catch (_) {}
+    }
+
+    print('upload response: $data');
 
     List<dynamic>? list;
 
@@ -354,7 +395,7 @@ class ResourceService {
     }
 
     if (list == null) {
-      throw StateError('Unexpected upload response shape');
+      throw StateError('Unexpected upload response shape: ${data.runtimeType}');
     }
 
     return list

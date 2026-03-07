@@ -16,8 +16,9 @@ class ApiClient {
   static final Dio dio = Dio(
     BaseOptions(
       baseUrl: baseUrl ?? 'http://10.0.2.2:8000',
-      connectTimeout: const Duration(seconds: 100),
-      receiveTimeout: const Duration(seconds: 100),
+      connectTimeout: const Duration(minutes: 60),
+      sendTimeout: const Duration(minutes: 60),
+      receiveTimeout: const Duration(minutes: 60),
       headers: {
         "Content-Type": "application/json",
       },
@@ -31,6 +32,9 @@ class ApiClient {
           if (options.extra['skipAuth'] == true) {
             return handler.next(options);
           }
+
+          // Bypass Ngrok browser warning for API requests
+          options.headers['ngrok-skip-browser-warning'] = '69420';
 
           final accessToken = await TokenStorage.getAccessToken();
           if (accessToken == null) {

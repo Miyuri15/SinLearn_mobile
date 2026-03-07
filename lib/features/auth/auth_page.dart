@@ -310,7 +310,7 @@ class _AuthPageState extends State<AuthPage> {
 }
 
 class _LanguageToggle extends StatelessWidget {
-  const _LanguageToggle({super.key});
+  const _LanguageToggle();
 
   @override
   Widget build(BuildContext context) {

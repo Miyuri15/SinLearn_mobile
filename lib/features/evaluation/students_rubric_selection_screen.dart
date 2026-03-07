@@ -48,7 +48,7 @@ class _RubricSelectionSidebarState extends State<RubricSelectionSidebar> {
         final details = await ChatService.getChatSessionDetails(_sid!);
         backendRubricId = details.rubricId;
         attachedInBackend =
-            backendRubricId != null && backendRubricId!.isNotEmpty;
+            backendRubricId != null && backendRubricId.isNotEmpty;
       } catch (e) {
         // ignore: avoid_print
         print('Failed to load rubric from backend: $e');
