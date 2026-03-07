@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -6,6 +7,10 @@ import '../../core/network/api_client.dart';
 import '../models/resource_models.dart';
 
 class ResourceService {
+  static const int _maxPreviewCacheItems = 30;
+  static final LinkedHashMap<String, Uint8List> _previewCache =
+      LinkedHashMap<String, Uint8List>();
+
   /// Fetch resource metadata list for a chat session.
   static Future<List<Map<String, dynamic>>> fetchChatSessionResources(
     String chatSessionId,
@@ -62,8 +67,7 @@ class ResourceService {
       }
     }
 
-    print(
-        'fetchChatSessionResources endpoint not found: ${last404?.message}');
+    print('fetchChatSessionResources endpoint not found: ${last404?.message}');
     return const <Map<String, dynamic>>[];
   }
 
@@ -117,7 +121,8 @@ class ResourceService {
       }
     }
 
-    print('fetchResourceMetadata not found for $resourceId: ${last404?.message}');
+    print(
+        'fetchResourceMetadata not found for $resourceId: ${last404?.message}');
     return null;
   }
 
@@ -146,6 +151,23 @@ class ResourceService {
         .toList();
   }
 
+  /// Upload-only batch endpoint
+  static Future<List<ResourceUploadResponse>> uploadResourcesUploadOnly(
+      List<MultipartFile> files) async {
+    final formData = FormData.fromMap({
+      'files': files,
+    });
+
+    final res = await ApiClient.dio.post(
+      '/api/v1/resources/upload-only/batch',
+      data: formData,
+    );
+
+    return (res.data as List)
+        .map((e) => ResourceUploadResponse.fromJson(e))
+        .toList();
+  }
+
   /// View resource inline
   static Future<Uint8List> viewResource(String resourceId) async {
     final res = await ApiClient.dio.get<List<int>>(
@@ -154,6 +176,70 @@ class ResourceService {
     );
 
     return Uint8List.fromList(List<int>.from(res.data ?? []));
+  }
+
+  /// View resource with in-memory cache for faster repeated previews.
+  static Future<Uint8List> viewResourceCached(
+    String resourceId, {
+    bool forceRefresh = false,
+  }) async {
+    if (!forceRefresh) {
+      final cached = _previewCache.remove(resourceId);
+      if (cached != null) {
+        // Reinsert to keep recent entries at the end (simple LRU behavior)
+        _previewCache[resourceId] = cached;
+        return cached;
+      }
+    }
+
+    final bytes = await viewResource(resourceId);
+    _previewCache[resourceId] = bytes;
+
+    while (_previewCache.length > _maxPreviewCacheItems) {
+      _previewCache.remove(_previewCache.keys.first);
+    }
+
+    return bytes;
+  }
+
+  /// View resource with cache + progress callback support.
+  static Future<Uint8List> viewResourceCachedWithProgress(
+    String resourceId, {
+    bool forceRefresh = false,
+    void Function(int received, int total)? onProgress,
+  }) async {
+    if (!forceRefresh) {
+      final cached = _previewCache.remove(resourceId);
+      if (cached != null) {
+        _previewCache[resourceId] = cached;
+        onProgress?.call(1, 1);
+        return cached;
+      }
+    }
+
+    final res = await ApiClient.dio.get<List<int>>(
+      '/api/v1/resources/$resourceId/view',
+      options: Options(responseType: ResponseType.bytes),
+      onReceiveProgress: onProgress,
+    );
+
+    final bytes = Uint8List.fromList(List<int>.from(res.data ?? []));
+    _previewCache[resourceId] = bytes;
+
+    while (_previewCache.length > _maxPreviewCacheItems) {
+      _previewCache.remove(_previewCache.keys.first);
+    }
+
+    return bytes;
+  }
+
+  /// Clear cached preview bytes for one resource, or all if id is omitted.
+  static void clearPreviewCache([String? resourceId]) {
+    if (resourceId == null || resourceId.isEmpty) {
+      _previewCache.clear();
+      return;
+    }
+    _previewCache.remove(resourceId);
   }
 
   /// Download resource
@@ -168,8 +254,7 @@ class ResourceService {
 
   /// Process message attachments
   static Future<void> processMessageAttachments(String messageId) async {
-    await ApiClient.dio
-        .post('/api/v1/messages/$messageId/attachments/process');
+    await ApiClient.dio.post('/api/v1/messages/$messageId/attachments/process');
   }
 
   /// Batch process resources
@@ -180,9 +265,7 @@ class ResourceService {
       data: {'resource_ids': resourceIds},
     );
 
-    return (res.data as List)
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
+    return (res.data as List).map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   /// Upload Question Paper

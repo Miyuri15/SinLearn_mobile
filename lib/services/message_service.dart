@@ -1,5 +1,6 @@
 import '../../core/network/api_client.dart';
 import '../models/chat_models.dart';
+import '../models/xai_models.dart';
 
 class MessageService {
   /// POST MESSAGE
@@ -32,5 +33,33 @@ class MessageService {
         DateTime.parse(a.createdAt).compareTo(DateTime.parse(b.createdAt)));
 
     return messages;
+  }
+
+  /// GENERATE ASSISTANT RESPONSE
+  static Future<Map<String, dynamic>> generateMessageResponse(
+      String messageId) async {
+    final res = await ApiClient.dio.post(
+      '/api/v1/messages/$messageId/generate',
+    );
+
+    final message = Map<String, dynamic>.from(res.data as Map);
+
+    return {
+      'role': message['role'],
+      'content': message['content'],
+      'grade_level': message['grade_level'],
+      'safety_summary': message['safety_summary'],
+      'message': message,
+    };
+  }
+
+  // GET MESSAGE XAI RESPONSE
+  static Future<XaiResponse> getMessageXAIResponse(String messageId) async {
+    final res = await ApiClient.dio.get(
+      '/api/v1/messages/$messageId/xai',
+    );
+
+    final xaiData = Map<String, dynamic>.from(res.data as Map);
+    return XaiResponse.fromJson(xaiData);
   }
 }

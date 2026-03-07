@@ -1,3 +1,4 @@
+// lib/features/learning/widgets/chat_input_bar.dart
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -16,21 +17,25 @@ class ChatInputBar extends StatefulWidget {
   const ChatInputBar({
     super.key,
     required this.controller,
+    required this.isSending,
+    required this.canSendTextWithoutAttachment,
     required this.responseLevel,
     required this.onResponseLevelChanged,
     required this.onSend,
   });
 
   final TextEditingController controller;
+  final bool isSending;
+  final bool canSendTextWithoutAttachment;
   final String responseLevel;
   final ValueChanged<String> onResponseLevelChanged;
 
   /// Supports voice
   final Future<void> Function(
-      String text,
-      List<PlatformFile> attachments,
-      Uint8List? voiceBytes,
-      ) onSend;
+    String text,
+    List<PlatformFile> attachments,
+    Uint8List? voiceBytes,
+  ) onSend;
 
   @override
   State<ChatInputBar> createState() => _ChatInputBarState();
@@ -52,9 +57,24 @@ class _ChatInputBarState extends State<ChatInputBar>
 
   late final AnimationController _animController;
 
+  // Grade selector state
+  bool _showGradeSelector = false;
+
+  final List<Map<String, dynamic>> _gradeLevels = const [
+    {'value': 'grade_6_8', 'label': 'Grades 6-8', 'color': Colors.green},
+    {'value': 'grade_9_11', 'label': 'Grades 9-11', 'color': Colors.blue},
+    {'value': 'grade_12_13', 'label': 'Grades 12-13', 'color': Colors.purple},
+    {
+      'value': 'grade_12_plus',
+      'label': 'Grades 12+',
+      'color': Colors.deepPurple
+    },
+  ];
+
   String get responseLevel => widget.responseLevel;
   TextEditingController get controller => widget.controller;
   String? _pendingVoicePath;
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +113,24 @@ class _ChatInputBarState extends State<ChatInputBar>
     super.dispose();
   }
 
+  // ================= GRADE SELECTOR HELPERS =================
+
+  String _getGradeLabel(String value) {
+    final grade = _gradeLevels.firstWhere(
+      (g) => g['value'] == value,
+      orElse: () => _gradeLevels[1],
+    );
+    return grade['label'];
+  }
+
+  Color _getGradeColor(String value) {
+    final grade = _gradeLevels.firstWhere(
+      (g) => g['value'] == value,
+      orElse: () => _gradeLevels[1],
+    );
+    return grade['color'];
+  }
+
   // ================= FILE HANDLING =================
 
   String _formatSize(int bytes) {
@@ -112,7 +150,6 @@ class _ChatInputBarState extends State<ChatInputBar>
 
     final file = result.files.first;
 
-    // ✅ this exists now (added at bottom)
     await _savePickedFile(context, file);
 
     if (!mounted) return;
@@ -123,34 +160,54 @@ class _ChatInputBarState extends State<ChatInputBar>
     if (_attachedFiles.isEmpty) return const SizedBox();
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 12),
       child: Column(
         children: _attachedFiles.map((file) {
           return Container(
-            margin: const EdgeInsets.only(bottom: 6),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: Colors.blue.shade50,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.blue.shade100),
             ),
             child: Row(
               children: [
-                const Icon(Icons.insert_drive_file,
-                    size: 20, color: Colors.blue),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    file.name,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    _getFileIcon(file.extension ?? ''),
+                    size: 20,
+                    color: Colors.blue.shade700,
                   ),
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  _formatSize(file.size),
-                  style: const TextStyle(
-                      fontSize: 11, color: Colors.grey),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        file.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatSize(file.size),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.close, size: 18),
@@ -159,6 +216,7 @@ class _ChatInputBarState extends State<ChatInputBar>
                       _attachedFiles.remove(file);
                     });
                   },
+                  splashRadius: 24,
                 )
               ],
             ),
@@ -166,6 +224,23 @@ class _ChatInputBarState extends State<ChatInputBar>
         }).toList(),
       ),
     );
+  }
+
+  IconData _getFileIcon(String extension) {
+    switch (extension.toLowerCase()) {
+      case 'pdf':
+        return Icons.picture_as_pdf;
+      case 'doc':
+      case 'docx':
+        return Icons.description;
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+        return Icons.image;
+      default:
+        return Icons.insert_drive_file;
+    }
   }
 
   // ================= VOICE RECORDING =================
@@ -182,7 +257,7 @@ class _ChatInputBarState extends State<ChatInputBar>
 
     await _recorder.start(
       const RecordConfig(
-        encoder: AudioEncoder.wav,   // 🔥 CHANGE THIS
+        encoder: AudioEncoder.wav,
       ),
       path: path,
     );
@@ -212,8 +287,6 @@ class _ChatInputBarState extends State<ChatInputBar>
       _pendingVoice = bytes;
       _isRecording = false;
     });
-
-    AppToast.success(context, "Recording ready to send");
   }
 
   void _cancelRecording() {
@@ -238,11 +311,18 @@ class _ChatInputBarState extends State<ChatInputBar>
     }
   }
 
-
   String _formatDuration(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
     return "$m:$s";
+  }
+
+  bool get _canSend {
+    if (widget.isSending) return false;
+    if (_pendingVoice != null || _attachedFiles.isNotEmpty) return true;
+
+    final hasText = controller.text.trim().isNotEmpty;
+    return widget.canSendTextWithoutAttachment && hasText;
   }
 
   // ================= SEND =================
@@ -310,24 +390,34 @@ class _ChatInputBarState extends State<ChatInputBar>
   Widget _buildRecordingPanel() {
     return Container(
       height: 60,
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: Colors.red.shade50,
         borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.red.shade100),
       ),
       child: Row(
         children: [
-          const Icon(Icons.mic, color: Colors.red),
-          const SizedBox(width: 16),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.mic, color: Colors.red, size: 20),
+          ),
+          const SizedBox(width: 12),
           Expanded(child: Center(child: _buildWaveform())),
           IconButton(
             onPressed: _cancelRecording,
             icon: const Icon(Icons.delete_outline),
+            splashRadius: 24,
           ),
           IconButton(
             onPressed: _stopRecording,
             icon: const Icon(Icons.stop_circle_outlined, color: Colors.red),
+            splashRadius: 24,
           ),
         ],
       ),
@@ -335,65 +425,75 @@ class _ChatInputBarState extends State<ChatInputBar>
   }
 
   Widget _buildPlaybackBar() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: BorderRadius.circular(14),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade900,
+        borderRadius: BorderRadius.circular(30),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: _togglePlayback,
+            icon: Icon(
+              _isPlaying ? Icons.pause : Icons.play_arrow,
+              color: Colors.white,
             ),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: _togglePlayback,
-                  child: Icon(
-                    _isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  _formatDuration(_currentPosition),
-                  style: const TextStyle(color: Colors.white),
-                ),
-                Expanded(
-                  child: Slider(
-                    value: _currentPosition.inMilliseconds.toDouble(),
-                    max: _totalDuration.inMilliseconds
-                        .toDouble()
-                        .clamp(1, double.infinity),
-                    onChanged: (v) async {
-                      await _audioPlayer.seek(
-                        Duration(milliseconds: v.toInt()),
-                      );
-                    },
-                  ),
-                ),
-                Text(
-                  _formatDuration(_totalDuration),
-                  style: const TextStyle(color: Colors.white),
-                ),
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _pendingVoice = null;
-                      _pendingVoicePath = null;
-                      _currentPosition = Duration.zero;
-                      _totalDuration = Duration.zero;
-                      _isPlaying = false;
-                    });
-                  },
-                  icon: const Icon(Icons.close, color: Colors.white),
-                )
-              ],
+            splashRadius: 24,
+            constraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 40,
+            ),
+            padding: EdgeInsets.zero,
+          ),
+          Text(
+            _formatDuration(_currentPosition),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+          Expanded(
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 4,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+              ),
+              child: Slider(
+                value: _currentPosition.inMilliseconds.toDouble(),
+                max: _totalDuration.inMilliseconds
+                    .toDouble()
+                    .clamp(1, double.infinity),
+                onChanged: (v) async {
+                  await _audioPlayer.seek(
+                    Duration(milliseconds: v.toInt()),
+                  );
+                },
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-        _buildSendButton(),
-      ],
+          Text(
+            _formatDuration(_totalDuration),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
+          ),
+          IconButton(
+            onPressed: () {
+              setState(() {
+                _pendingVoice = null;
+                _pendingVoicePath = null;
+                _currentPosition = Duration.zero;
+                _totalDuration = Duration.zero;
+                _isPlaying = false;
+              });
+            },
+            icon: const Icon(Icons.close, color: Colors.white),
+            splashRadius: 24,
+            constraints: const BoxConstraints(
+              minWidth: 40,
+              minHeight: 40,
+            ),
+            padding: EdgeInsets.zero,
+          )
+        ],
+      ),
     );
   }
 
@@ -401,14 +501,128 @@ class _ChatInputBarState extends State<ChatInputBar>
     return Container(
       height: 52,
       width: 52,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E63FF),
+      decoration: BoxDecoration(
+        color: _canSend ? const Color(0xFF1E63FF) : Colors.grey.shade300,
         shape: BoxShape.circle,
+        boxShadow: _canSend
+            ? [
+                BoxShadow(
+                  color: const Color(0xFF1E63FF).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                )
+              ]
+            : null,
       ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(26),
-        onTap: _send,
-        child: const Icon(Icons.send_rounded, color: Colors.white),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(26),
+          onTap: _canSend ? _send : null,
+          child: Center(
+            child: widget.isSending
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
+  // ================= COMPACT GRADE SELECTOR UI =================
+
+  Widget _buildGradeSelector() {
+    final color = _getGradeColor(widget.responseLevel);
+
+    return Container(
+      height: 40, // Fixed height - shorter than input bar
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              Icons.school,
+              size: 16,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'Level:',
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: widget.responseLevel,
+                icon: Icon(
+                  Icons.keyboard_arrow_down,
+                  size: 18,
+                  color: color,
+                ),
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: color,
+                ),
+                dropdownColor: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                isDense: true,
+                onChanged: (String? newValue) {
+                  if (newValue != null) {
+                    widget.onResponseLevelChanged(newValue);
+                  }
+                },
+                items: _gradeLevels.map<DropdownMenuItem<String>>((grade) {
+                  return DropdownMenuItem<String>(
+                    value: grade['value'],
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: grade['color'],
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          grade['label'],
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -416,55 +630,95 @@ class _ChatInputBarState extends State<ChatInputBar>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final bool hasVoice = _pendingVoicePath != null || _isRecording;
 
     return SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildAttachmentsPreview(),
+            if (!hasVoice) _buildGradeSelector(),
+
+            // Attachments Preview
+            if (_attachedFiles.isNotEmpty) _buildAttachmentsPreview(),
+
+            // Recording/Playback UI
             if (_isRecording)
               _buildRecordingPanel()
             else if (_pendingVoicePath != null)
-              _buildPlaybackBar()
+              Row(
+                children: [
+                  // Playback bar (expanded)
+                  Expanded(
+                    child: _buildPlaybackBar(),
+                  ),
+                  const SizedBox(width: 8),
+                  // Send button for voice
+                  _buildSendButton(),
+                ],
+              )
             else
+              // Main Input Row (full height)
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // Text Input Container
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
                         color: theme.colorScheme.surface,
-                        borderRadius: BorderRadius.circular(26),
+                        borderRadius: BorderRadius.circular(30),
                         border: Border.all(color: Colors.grey.shade300),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.shade100,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Row(
                         children: [
                           IconButton(
-                            onPressed: _pickAndAttachFile,
+                            onPressed:
+                                widget.isSending ? null : _pickAndAttachFile,
                             icon: const Icon(Icons.attach_file),
+                            splashRadius: 24,
                           ),
                           Expanded(
                             child: TextField(
                               controller: controller,
+                              onChanged: (_) => setState(() {}),
+                              enabled: !widget.isSending,
                               maxLines: null,
+                              minLines: 1,
                               decoration: InputDecoration(
-                                hintText: 'ask_question_hint'.tr(),
+                                hintText: 'Ask a question...',
+                                hintStyle: TextStyle(
+                                  color: Colors.grey.shade400,
+                                  fontSize: 15,
+                                ),
                                 border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                             ),
                           ),
                           IconButton(
-                            onPressed: _startRecording,
+                            onPressed:
+                                widget.isSending ? null : _startRecording,
                             icon: const Icon(Icons.mic_none_rounded),
+                            splashRadius: 24,
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   _buildSendButton(),
                 ],
               ),
@@ -484,7 +738,8 @@ Future<void> _savePickedFile(BuildContext context, PlatformFile file) async {
       return;
     }
 
-    final key = 'uploaded_${file.name}_${DateTime.now().millisecondsSinceEpoch}';
+    final key =
+        'uploaded_${file.name}_${DateTime.now().millisecondsSinceEpoch}';
     final base64Str = base64Encode(bytes);
 
     final prefs = await SharedPreferences.getInstance();

@@ -32,7 +32,7 @@ class ApiClient {
           if (options.extra['skipAuth'] == true) {
             return handler.next(options);
           }
-          
+
           // Bypass Ngrok browser warning for API requests
           options.headers['ngrok-skip-browser-warning'] = '69420';
 
