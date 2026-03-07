@@ -18,6 +18,9 @@ class ApiClient {
           if (token != null) {
             options.headers['Authorization'] = 'Bearer $token';
           }
+          
+          // Bypass Ngrok browser warning for API requests
+          options.headers['ngrok-skip-browser-warning'] = '69420';
 
           // Ensure uploads work: avoid sending application/json for FormData.
           if (options.data is FormData) {

@@ -359,7 +359,7 @@ class EvaluationService {
           } catch (_) {}
         }
         if (data is List) {
-          return (data as List)
+          return (data)
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
@@ -403,7 +403,7 @@ class EvaluationService {
           } catch (_) {}
         }
         if (data is List) {
-          return (data as List)
+          return (data)
               .whereType<Map>()
               .map((e) => Map<String, dynamic>.from(e))
               .toList();

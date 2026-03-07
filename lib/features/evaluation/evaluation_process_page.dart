@@ -463,7 +463,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${'syllabus.header'.tr()}: ${_syllabusCount > 0 ? '${_syllabusCount} file(s)' : '—'}',
+                        '${'syllabus.header'.tr()}: ${_syllabusCount > 0 ? '$_syllabusCount file(s)' : '—'}',
                         style: theme.textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 8),

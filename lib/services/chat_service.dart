@@ -48,7 +48,7 @@ class ChatService {
     
     if (responseData is Map) {
       final details = ChatSessionDetails.fromJson(
-          Map<String, dynamic>.from(responseData as Map));
+          Map<String, dynamic>.from(responseData));
 
       // If backend does not include filenames in `resources`, hydrate them by
       // fetching resource metadata. This makes attachments persist across
