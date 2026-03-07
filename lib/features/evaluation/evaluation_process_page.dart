@@ -8,7 +8,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/teachers_main_app_bar.dart';
 import 'evaluation_response.dart';
 import 'evaluation_doc_tokens.dart';
-import '../../models/chat_session_details.dart';
 import '../../services/chat_service.dart';
 import '../../services/evaluation_service.dart';
 
@@ -35,12 +34,14 @@ class EvaluationProcessPage extends StatefulWidget {
     this.assumeDocsAvailable = false,
     this.attachmentName,
     this.evaluationData,
+    this.evaluationSessionId,
   });
 
   final String chatSessionId;
   final bool assumeDocsAvailable;
   final String? attachmentName;
   final Map<String, dynamic>? evaluationData;
+  final String? evaluationSessionId;
 
   @override
   State<EvaluationProcessPage> createState() => _EvaluationProcessPageState();
@@ -380,6 +381,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
           attachmentName: widget.attachmentName,
           evaluationData: widget.evaluationData,
           evaluationRunId: _currentEvaluationRunId,
+          evaluationSessionId: widget.evaluationSessionId,
         ),
       ),
     );
@@ -461,7 +463,7 @@ class _EvaluationProcessPageState extends State<EvaluationProcessPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${'syllabus.header'.tr()}: ${_syllabusCount > 0 ? '${_syllabusCount} file(s)' : '—'}',
+                        '${'syllabus.header'.tr()}: ${_syllabusCount > 0 ? '$_syllabusCount file(s)' : '—'}',
                         style: theme.textTheme.bodyMedium,
                       ),
                       const SizedBox(height: 8),

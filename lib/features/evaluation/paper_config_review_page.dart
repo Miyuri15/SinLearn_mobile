@@ -55,33 +55,101 @@ class _PaperConfigReviewPageState extends State<PaperConfigReviewPage> {
   void _applyQuestionsFromBackend(List<Map<String, dynamic>> rawQuestions) {
     if (rawQuestions.isEmpty || _configs.isEmpty) return;
 
-    // Ensure deterministic ordering by question_number when possible.
-    final sorted = [...rawQuestions];
-    sorted.sort((a, b) {
-      final an = int.tryParse((a['question_number'] ?? '').toString());
-      final bn = int.tryParse((b['question_number'] ?? '').toString());
-      if (an == null && bn == null) return 0;
-      if (an == null) return 1;
-      if (bn == null) return -1;
-      return an.compareTo(bn);
-    });
+    // Group raw questions by paper_part (case-insensitive, normalized)
+    final questionsByPart = <String, List<Map<String, dynamic>>>{};
+    final unassignedQuestions = <Map<String, dynamic>>[];
 
-    var cursor = 0;
+    for (final q in rawQuestions) {
+      final partName = (q['paper_part'] ?? '').toString().trim().toLowerCase();
+      if (partName.isNotEmpty) {
+        questionsByPart.putIfAbsent(partName, () => []).add(q);
+      } else {
+        unassignedQuestions.add(q);
+      }
+    }
+
+    // Sort each group by question number
+    void sortQuestions(List<Map<String, dynamic>> list) {
+      list.sort((a, b) {
+        final an = int.tryParse((a['question_number'] ?? '').toString());
+        final bn = int.tryParse((b['question_number'] ?? '').toString());
+        if (an == null && bn == null) return 0;
+        if (an == null) return 1;
+        if (bn == null) return -1;
+        return an.compareTo(bn);
+      });
+    }
+
+    questionsByPart.values.forEach(sortQuestions);
+    sortQuestions(unassignedQuestions);
+
+    var globalCursor = 0;
+
     for (final config in _configs) {
       final count = config.totalMainQuestions;
       if (count <= 0) continue;
 
-      // Ensure local question list size matches backend paper-config.
       if (config.questions.length != count) {
         _updateQuestionCount(config, count);
       }
 
+      final configPartNameLower = config.paperPart.trim().toLowerCase().replaceAll('_', ' ');
+      
+      // Try to find a matching group for this config
+      List<Map<String, dynamic>> targetQuestions;
+      
+      // Try first for exact match
+      String? matchedKey = questionsByPart.keys.cast<String?>().firstWhere(
+        (k) {
+          if (k == null) return false;
+          final normalizedK = k.replaceAll('_', ' ').trim();
+          return normalizedK == configPartNameLower;
+        },
+        orElse: () => null,
+      );
+
+      // Fallback: strict token overlap. Target tokens must all be present in the matched key
+      // e.g. ["paper", "i"] is fully in ["main", "paper", "i"] but NOT in ["paper", "ii"]
+      matchedKey ??= questionsByPart.keys.cast<String?>().firstWhere(
+          (k) {
+            if (k == null) return false;
+            final normalizedK = k.replaceAll('_', ' ').trim();
+            final targetTokens = configPartNameLower.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toSet();
+            final keyTokens = normalizedK.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).toSet();
+            
+            return targetTokens.isNotEmpty && keyTokens.containsAll(targetTokens);
+          },
+          orElse: () => null,
+        );
+
+      if (matchedKey != null) {
+        targetQuestions = questionsByPart[matchedKey]!;
+      } else {
+        // Fallback: use unassigned questions or fallback to sequential if no paper_part was given anywhere
+        targetQuestions = unassignedQuestions;
+      }
+
+      int localCursor = 0;
+
       for (var i = 0; i < count; i++) {
-        if (cursor >= sorted.length) return;
+        Map<String, dynamic>? qJson;
 
-        final qJson = sorted[cursor++];
+        // Take from the targeted list if available
+        if (matchedKey != null && localCursor < targetQuestions.length) {
+          qJson = targetQuestions[localCursor++];
+        } 
+        // Or take from global unassigned queue if we have no matched key
+        else if (matchedKey == null && globalCursor < targetQuestions.length) {
+          qJson = targetQuestions[globalCursor++];
+        }
+
+        if (qJson == null) break;
+
         final q = config.questions[i];
-
+        
+        // If config already has valid marks pulled from paper-config endpoint directly, 
+        // we shouldn't necessarily overwrite unless rawQuestions has better data.
+        // Actually, we will just apply the rawQuestion marks here.
         final maxMarks = (qJson['max_marks'] is num)
             ? (qJson['max_marks'] as num).toDouble()
             : double.tryParse((qJson['max_marks'] ?? 0).toString()) ?? 0;

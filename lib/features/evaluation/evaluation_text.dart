@@ -22,6 +22,9 @@ import 'evaluation_doc_tokens.dart';
 import '../../services/chat_service.dart';
 import '../../services/resource_service.dart';
 import '../../services/evaluation_service.dart';
+import 'teachers_rubric_sidebar.dart';
+import '../syllabus/syllabus_page.dart';
+import '../question_paper/question_paper_page.dart';
 
 // NEW PAGE
 import 'paper_config_review_page.dart';
@@ -675,279 +678,348 @@ class _EvaluationTextPageState extends State<EvaluationTextPage> {
       body: Column(
         children: [
           Expanded(
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: IntrinsicHeight(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 560),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
                       Text(
                         'evaluation.startNewEvaluation'.tr(),
                         textAlign: TextAlign.center,
                         style: theme.textTheme.headlineSmall,
                       ),
                       const SizedBox(height: 14),
-                      _Roadmap(
-                        steps: [
-                          _RoadmapStep(
-                            icon: Icons.rule,
-                            isActive: _hasRubrics,
-                            label: 'Rubric',
-                            tooltip: 'Select/apply a rubric',
-                          ),
-                          _RoadmapStep(
-                            icon: Icons.menu_book_outlined,
-                            isActive: _hasSyllabus,
-                            label: 'Syllabus',
-                            tooltip: 'Upload and select syllabus',
-                          ),
-                          _RoadmapStep(
-                            icon: Icons.description_outlined,
-                            isActive: _hasQuestionPaper,
-                            label: 'Question',
-                            tooltip: 'Upload question paper',
-                          ),
-                          _RoadmapStep(
-                            icon: Icons.attachment_outlined,
-                            isActive: _hasAttachment,
-                            label: 'Answer',
-                            tooltip: 'Upload answer sheet',
-                          ),
-                          _RoadmapStep(
-                            icon: Icons.auto_awesome,
-                            isActive: docsProcessed,
-                            isAvailable: docsReadyForProcessing,
-                            label: 'Process',
-                            tooltip:
-                                'Process documents (required before marks)',
-                          ),
-                          _RoadmapStep(
-                            icon: Icons.edit_note,
-                            isActive: docsProcessed && _hasMarks,
-                            isAvailable: marksAvailable,
-                            label: 'Marks',
-                            tooltip: 'Configure marks / paper settings',
-                          ),
-                          _RoadmapStep(
-                            icon: Icons.send,
-                            isActive: false,
-                            isAvailable: sendAvailable,
-                            label: 'Send',
-                            tooltip: 'Send for evaluation',
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 22),
+                      Builder(
+                        builder: (context) {
+                          final isPart1Done = _hasRubrics && _hasSyllabus && _hasQuestionPaper && _hasAttachment;
 
-                      // Uploaded answer sheets details
-                      Card(
-                        elevation: 0,
-                        color: theme.colorScheme.surface,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          side: BorderSide(
-                            color: theme.dividerColor.withOpacity(0.35),
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Uploaded Answer Sheets',
-                                style: theme.textTheme.titleSmall,
+                          final List<_RoadmapStep> allSteps = [
+                            _RoadmapStep(
+                              icon: Icons.rule,
+                              isActive: _hasRubrics,
+                              label: 'Rubric',
+                              tooltip: 'Select/apply a rubric',
+                              onTap: () => showTeachersRubricSidebar(
+                                context,
+                                onRubricApplied: _loadAllData,
+                                chatSessionId: widget.chatSessionId,
                               ),
+                            ),
+                            _RoadmapStep(
+                              icon: Icons.menu_book_outlined,
+                              isActive: _hasSyllabus,
+                              label: 'Syllabus',
+                              tooltip: 'Upload and select syllabus',
+                              onTap: () => showSyllabusSidebar(
+                                context,
+                                chatSessionId: widget.chatSessionId,
+                              ),
+                            ),
+                            _RoadmapStep(
+                              icon: Icons.description_outlined,
+                              isActive: _hasQuestionPaper,
+                              label: 'Question',
+                              tooltip: 'Upload question paper',
+                              onTap: () => showQuestionPaperSidebar(
+                                context,
+                                chatSessionId: widget.chatSessionId,
+                              ),
+                            ),
+                            _RoadmapStep(
+                              icon: Icons.attachment_outlined,
+                              isActive: _hasAttachment,
+                              label: 'Answer',
+                              tooltip: 'Upload answer sheet',
+                              onTap: _isProcessing ? null : _pickAndSaveAttachment,
+                            ),
+                          ];
+
+                          if (isPart1Done) {
+                            allSteps.addAll([
+                              _RoadmapStep(
+                                icon: Icons.auto_awesome,
+                                isActive: docsProcessed,
+                                isAvailable: docsReadyForProcessing,
+                                label: 'Process',
+                                tooltip: 'Process documents (required before marks)',
+                                onTap: _isProcessing
+                                    ? null
+                                    : (docsReadyForProcessing ? _processDocuments : null),
+                              ),
+                              _RoadmapStep(
+                                icon: Icons.edit_note,
+                                isActive: docsProcessed && _hasMarks,
+                                isAvailable: marksAvailable,
+                                label: 'Marks',
+                                tooltip: 'Configure marks / paper settings',
+                                onTap: marksAvailable
+                                    ? () async {
+                                        await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => PaperConfigReviewPage(
+                                              sessionId: widget.chatSessionId,
+                                            ),
+                                          ),
+                                        );
+                                        _loadAllData();
+                                      }
+                                    : null,
+                              ),
+                              _RoadmapStep(
+                                icon: Icons.send,
+                                isActive: false, // Send is the final action, doesn't stay 'active'
+                                isAvailable: sendAvailable,
+                                label: 'Send',
+                                tooltip: 'Send for evaluation',
+                                onTap: (_allDocumentsAvailable() &&
+                                        !_needsReprocess &&
+                                        docsProcessed)
+                                    ? _sendToChat
+                                    : null,
+                              ),
+                            ]);
+                          }
+
+                          // Find the first inactive step to highlight as "next"
+                          for (int i = 0; i < allSteps.length; i++) {
+                            if (allSteps[i].isAvailable && !allSteps[i].isActive) {
+                              allSteps[i] = allSteps[i].copyWith(isNextStep: true);
+                              break;
+                            }
+                          }
+
+                          return Column(
+                            children: [
+                              _Roadmap(steps: allSteps),
+                              const SizedBox(height: 22),
+
+                              // Uploaded answer sheets details
+                              Card(
+                                elevation: 0,
+                                color: theme.colorScheme.surface,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  side: BorderSide(
+                                    color: theme.dividerColor.withOpacity(0.35),
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 10),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Uploaded Answer Sheets',
+                                        style: theme.textTheme.titleSmall,
+                                      ),
+                                      const SizedBox(height: 10),
+                                      if (_needsReprocess)
+                                        Card(
+                                          elevation: 0,
+                                          color: theme.colorScheme.surface,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(14),
+                                            side: BorderSide(
+                                              color: theme.colorScheme.primary
+                                                  .withOpacity(0.35),
+                                            ),
+                                          ),
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 10),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Icon(
+                                                  Icons.info_outline,
+                                                  size: 18,
+                                                  color: theme.colorScheme.primary,
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Column(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment.start,
+                                                    children: [
+                                                      Text(
+                                                        'evaluation.docsChangedTitle'
+                                                            .tr(),
+                                                        style:
+                                                            theme.textTheme.titleSmall,
+                                                      ),
+                                                      const SizedBox(height: 3),
+                                                      Text(
+                                                        'evaluation.docsChangedBody'
+                                                            .tr(),
+                                                        style: theme.textTheme.bodySmall
+                                                            ?.copyWith(
+                                                          color: theme
+                                                              .colorScheme.onSurface
+                                                              .withOpacity(0.75),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      if (_answerSheetDocs.isEmpty)
+                                        Text(
+                                          'No answer sheets uploaded',
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                            color: theme.colorScheme.onSurface
+                                                .withOpacity(0.7),
+                                          ),
+                                        )
+                                      else
+                                        ..._answerSheetDocs.map(
+                                          (d) => Padding(
+                                            padding:
+                                                const EdgeInsets.symmetric(vertical: 6),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.stretch,
+                                              children: [
+                                                _UploadedDocRow(doc: d),
+                                                const SizedBox(height: 6),
+                                                Wrap(
+                                                  alignment: WrapAlignment.end,
+                                                  spacing: 8,
+                                                  runSpacing: 4,
+                                                  children: [
+                                                    Tooltip(
+                                                      message:
+                                                          'evaluation.replaceAttachment'
+                                                              .tr(),
+                                                      waitDuration: const Duration(
+                                                          milliseconds: 250),
+                                                      child: TextButton.icon(
+                                                        onPressed: _isProcessing
+                                                            ? null
+                                                            : _pickAndSaveAttachment,
+                                                        icon: const Icon(
+                                                            Icons.swap_horiz),
+                                                        label: Text(
+                                                          'evaluation.replaceAttachment'
+                                                              .tr(),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Tooltip(
+                                                      message:
+                                                          'evaluation.removeAttachment'
+                                                              .tr(),
+                                                      waitDuration: const Duration(
+                                                          milliseconds: 250),
+                                                      child: TextButton.icon(
+                                                        onPressed: _isProcessing
+                                                            ? null
+                                                            : _removeAttachment,
+                                                        icon: const Icon(Icons.close),
+                                                        label: Text(
+                                                          'evaluation.removeAttachment'
+                                                              .tr(),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 14),
+                              SizedBox(
+                                height: 56,
+                                child: FilledButton.icon(
+                                  onPressed: _isProcessing
+                                      ? null
+                                      : (docsReadyForProcessing
+                                          ? _processDocuments
+                                          : null),
+                                  icon: const Icon(Icons.auto_awesome),
+                                  label: Text('evaluation.processDocuments'.tr()),
+                                ),
+                              ),
+
                               const SizedBox(height: 10),
-                              if (_needsReprocess)
+                              SizedBox(
+                                height: 48,
+                                child: OutlinedButton.icon(
+                                  onPressed: _openResultsHistory,
+                                  icon: const Icon(Icons.history),
+                                  label: Text('evaluation.viewResultsHistory'.tr()),
+                                ),
+                              ),
+
+                              if (_showProcessing) ...[
+                                const SizedBox(height: 18),
                                 Card(
                                   elevation: 0,
                                   color: theme.colorScheme.surface,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(14),
                                     side: BorderSide(
-                                      color: theme.colorScheme.primary
-                                          .withOpacity(0.35),
+                                      color: theme.dividerColor.withOpacity(0.35),
                                     ),
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 12, vertical: 10),
-                                    child: Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Icon(
-                                          Icons.info_outline,
-                                          size: 18,
-                                          color: theme.colorScheme.primary,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                'evaluation.docsChangedTitle'
-                                                    .tr(),
-                                                style:
-                                                    theme.textTheme.titleSmall,
-                                              ),
-                                              const SizedBox(height: 3),
-                                              Text(
-                                                'evaluation.docsChangedBody'
-                                                    .tr(),
-                                                style: theme.textTheme.bodySmall
-                                                    ?.copyWith(
-                                                  color: theme
-                                                      .colorScheme.onSurface
-                                                      .withOpacity(0.75),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              if (_answerSheetDocs.isEmpty)
-                                Text(
-                                  'No answer sheets uploaded',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.onSurface
-                                        .withOpacity(0.7),
-                                  ),
-                                )
-                              else
-                                ..._answerSheetDocs.map(
-                                  (d) => Padding(
-                                    padding:
-                                        const EdgeInsets.symmetric(vertical: 6),
                                     child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.stretch,
                                       children: [
-                                        _UploadedDocRow(doc: d),
+                                        for (final step in [
+                                          _DocStep.answerSheets,
+                                          _DocStep.questionPaper,
+                                          _DocStep.syllabus,
+                                        ])
+                                          _DocStepRow(
+                                            title: _stepTitle(step),
+                                            state: _docSteps[step] ??
+                                                const _DocStepState(),
+                                          ),
                                         const SizedBox(height: 6),
-                                        Wrap(
-                                          alignment: WrapAlignment.end,
-                                          spacing: 8,
-                                          runSpacing: 4,
-                                          children: [
-                                            Tooltip(
-                                              message:
-                                                  'evaluation.replaceAttachment'
-                                                      .tr(),
-                                              waitDuration: const Duration(
-                                                  milliseconds: 250),
-                                              child: TextButton.icon(
-                                                onPressed: _isProcessing
-                                                    ? null
-                                                    : _pickAndSaveAttachment,
-                                                icon: const Icon(
-                                                    Icons.swap_horiz),
-                                                label: Text(
-                                                  'evaluation.replaceAttachment'
-                                                      .tr(),
-                                                ),
-                                              ),
-                                            ),
-                                            Tooltip(
-                                              message:
-                                                  'evaluation.removeAttachment'
-                                                      .tr(),
-                                              waitDuration: const Duration(
-                                                  milliseconds: 250),
-                                              child: TextButton.icon(
-                                                onPressed: _isProcessing
-                                                    ? null
-                                                    : _removeAttachment,
-                                                icon: const Icon(Icons.close),
-                                                label: Text(
-                                                  'evaluation.removeAttachment'
-                                                      .tr(),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                        if (_isProcessing)
+                                          const LinearProgressIndicator(minHeight: 3),
                                       ],
                                     ),
                                   ),
                                 ),
+                              ],
                             ],
-                          ),
-                        ),
+                          );
+                        },
                       ),
-
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        height: 56,
-                        child: FilledButton.icon(
-                          onPressed: _isProcessing
-                              ? null
-                              : (docsReadyForProcessing
-                                  ? _processDocuments
-                                  : null),
-                          icon: const Icon(Icons.auto_awesome),
-                          label: Text('evaluation.processDocuments'.tr()),
-                        ),
-                      ),
-
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 48,
-                        child: OutlinedButton.icon(
-                          onPressed: _openResultsHistory,
-                          icon: const Icon(Icons.history),
-                          label: Text('evaluation.viewResultsHistory'.tr()),
-                        ),
-                      ),
-
-                      if (_showProcessing) ...[
-                        const SizedBox(height: 18),
-                        Card(
-                          elevation: 0,
-                          color: theme.colorScheme.surface,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            side: BorderSide(
-                              color: theme.dividerColor.withOpacity(0.35),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 10),
-                            child: Column(
-                              children: [
-                                for (final step in [
-                                  _DocStep.answerSheets,
-                                  _DocStep.questionPaper,
-                                  _DocStep.syllabus,
-                                ])
-                                  _DocStepRow(
-                                    title: _stepTitle(step),
-                                    state: _docSteps[step] ??
-                                        const _DocStepState(),
-                                  ),
-                                const SizedBox(height: 6),
-                                if (_isProcessing)
-                                  const LinearProgressIndicator(minHeight: 3),
                               ],
                             ),
                           ),
                         ),
-                      ],
-                    ],
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
           ),
 
@@ -987,6 +1059,8 @@ class _RoadmapStep {
   final bool isAvailable;
   final String label;
   final String tooltip;
+  final VoidCallback? onTap;
+  final bool isNextStep;
 
   const _RoadmapStep({
     required this.icon,
@@ -994,7 +1068,21 @@ class _RoadmapStep {
     required this.label,
     required this.tooltip,
     bool? isAvailable,
+    this.onTap,
+    this.isNextStep = false,
   }) : isAvailable = isAvailable ?? true;
+
+  _RoadmapStep copyWith({bool? isNextStep}) {
+    return _RoadmapStep(
+      icon: icon,
+      isActive: isActive,
+      label: label,
+      tooltip: tooltip,
+      isAvailable: isAvailable,
+      onTap: onTap,
+      isNextStep: isNextStep ?? this.isNextStep,
+    );
+  }
 }
 
 class _Roadmap extends StatelessWidget {
@@ -1013,65 +1101,71 @@ class _Roadmap extends StatelessWidget {
 
     return SizedBox(
       height: 74,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              for (int i = 0; i < steps.length; i++) ...[
-                _RoadmapBubble(
-                  step: steps[i],
-                  activeColor: activeColor,
-                  inactiveColor: inactiveColor,
-                  disabledColor: disabledColor,
-                ),
-                if (i != steps.length - 1)
-                  Expanded(
-                    child: Container(
-                      height: 2,
-                      margin: const EdgeInsets.symmetric(horizontal: 6),
-                      decoration: BoxDecoration(
-                        color: steps[i + 1].isAvailable
-                            ? (steps[i].isActive || steps[i + 1].isActive
-                                ? activeColor.withOpacity(0.65)
-                                : inactiveColor)
-                            : disabledColor,
-                        borderRadius: BorderRadius.circular(2),
+              Row(
+                children: [
+                  for (int i = 0; i < steps.length; i++) ...[
+                    _RoadmapBubble(
+                      step: steps[i],
+                      activeColor: activeColor,
+                      inactiveColor: inactiveColor,
+                      disabledColor: disabledColor,
+                    ),
+                    if (i != steps.length - 1)
+                      Container(
+                        width: 24,
+                        height: 2,
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        decoration: BoxDecoration(
+                          color: steps[i + 1].isAvailable
+                              ? (steps[i].isActive || steps[i + 1].isActive
+                                  ? activeColor.withOpacity(0.65)
+                                  : inactiveColor)
+                              : disabledColor,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  for (int i = 0; i < steps.length; i++) ...[
+                    SizedBox(
+                      width: bubbleSize,
+                      child: Text(
+                        steps[i].label,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: steps[i].isAvailable
+                              ? theme.colorScheme.onSurface.withOpacity(0.75)
+                              : theme.colorScheme.onSurface.withOpacity(0.35),
+                          fontWeight: steps[i].isNextStep ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
                     ),
-                  ),
-              ],
+                    if (i != steps.length - 1) const SizedBox(width: 36),
+                  ],
+                ],
+              ),
             ],
           ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              for (int i = 0; i < steps.length; i++) ...[
-                SizedBox(
-                  width: bubbleSize,
-                  child: Text(
-                    steps[i].label,
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: steps[i].isAvailable
-                          ? theme.colorScheme.onSurface.withOpacity(0.75)
-                          : theme.colorScheme.onSurface.withOpacity(0.35),
-                    ),
-                  ),
-                ),
-                if (i != steps.length - 1) const Expanded(child: SizedBox()),
-              ],
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class _RoadmapBubble extends StatelessWidget {
+class _RoadmapBubble extends StatefulWidget {
   final _RoadmapStep step;
   final Color activeColor;
   final Color inactiveColor;
@@ -1085,38 +1179,87 @@ class _RoadmapBubble extends StatelessWidget {
   });
 
   @override
+  State<_RoadmapBubble> createState() => _RoadmapBubbleState();
+}
+
+class _RoadmapBubbleState extends State<_RoadmapBubble>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final step = widget.step;
 
     final bg = step.isAvailable
-        ? (step.isActive ? activeColor : theme.colorScheme.surface)
+        ? (step.isActive ? widget.activeColor : theme.colorScheme.surface)
         : theme.colorScheme.surface;
     final border = step.isAvailable
-        ? (step.isActive ? activeColor : inactiveColor)
-        : disabledColor;
+        ? (step.isActive ? widget.activeColor : widget.inactiveColor)
+        : widget.disabledColor;
     final fg = step.isAvailable
-        ? (step.isActive ? theme.colorScheme.onPrimary : inactiveColor)
-        : disabledColor;
+        ? (step.isActive ? theme.colorScheme.onPrimary : widget.inactiveColor)
+        : widget.disabledColor;
+
+    Widget bubbleContent = Semantics(
+      label: step.label,
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: bg,
+          shape: BoxShape.circle,
+          border: Border.all(color: border, width: 2),
+          boxShadow: step.isNextStep
+              ? [
+                  BoxShadow(
+                    color: widget.activeColor.withOpacity(0.4),
+                    blurRadius: 8,
+                    spreadRadius: 2,
+                  )
+                ]
+              : null,
+        ),
+        alignment: Alignment.center,
+        child: Icon(
+          step.isActive ? Icons.check : step.icon,
+          size: 18,
+          color: fg,
+        ),
+      ),
+    );
+
+    if (step.isNextStep) {
+      bubbleContent = FadeTransition(
+        opacity: Tween<double>(begin: 0.5, end: 1.0).animate(_controller),
+        child: bubbleContent,
+      );
+    }
 
     return Tooltip(
       message: step.tooltip,
       waitDuration: const Duration(milliseconds: 250),
-      child: Semantics(
-        label: step.label,
-        child: Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: bg,
-            shape: BoxShape.circle,
-            border: Border.all(color: border, width: 2),
-          ),
-          alignment: Alignment.center,
-          child: Icon(
-            step.isActive ? Icons.check : step.icon,
-            size: 18,
-            color: fg,
-          ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: step.onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: bubbleContent,
         ),
       ),
     );

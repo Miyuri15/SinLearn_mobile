@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import '../../core/utils/json_cast.dart';
+import '../../services/evaluation_service.dart';
 import 'evaluation_text.dart';
 
 class EvaluationResponsePage extends StatefulWidget {
@@ -15,6 +16,7 @@ class EvaluationResponsePage extends StatefulWidget {
     this.attachmentName,
     this.evaluationData,
     this.evaluationRunId,
+    this.evaluationSessionId,
   });
 
   final String chatSessionId;
@@ -22,6 +24,7 @@ class EvaluationResponsePage extends StatefulWidget {
   final String? attachmentName;
   final Map<String, dynamic>? evaluationData;
   final int? evaluationRunId;
+  final String? evaluationSessionId;
 
   @override
   State<EvaluationResponsePage> createState() => _EvaluationResponsePageState();
@@ -38,6 +41,11 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
   final ScrollController _scrollController = ScrollController();
   List<_EvalChatEntry> _history = <_EvalChatEntry>[];
   bool _historyLoaded = false;
+
+  // Backend result data
+  Map<String, dynamic>? _backendResult;
+  bool _isLoadingResult = false;
+  String? _loadError;
 
   List<_EvalRunSummary> _buildRunSummaries() {
     final summaries = <_EvalRunSummary>[];
@@ -181,6 +189,113 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
         _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
       });
     }
+
+    // Fetch real results from backend
+    await _fetchBackendResults();
+  }
+
+  Future<void> _fetchBackendResults() async {
+    if (!mounted) return;
+    setState(() {
+      _isLoadingResult = true;
+      _loadError = null;
+    });
+
+    try {
+      // Try to get the evaluation session ID
+      final prefs = await SharedPreferences.getInstance();
+      final sessionId = widget.evaluationSessionId ??
+          prefs.getString('evaluation_session_id:${widget.chatSessionId}');
+
+      if (sessionId != null && sessionId.isNotEmpty) {
+        // First try to get answer documents for this session
+        try {
+          final answers =
+              await EvaluationService.getAnswerDocuments(sessionId);
+          if (answers.isNotEmpty) {
+            // Get the latest answer document
+            final latestAnswer = answers.last;
+            final answerDocId = (latestAnswer['id'] ??
+                    latestAnswer['answer_document_id'] ??
+                    '')
+                .toString();
+
+            if (answerDocId.isNotEmpty) {
+              final result = await EvaluationService.fetchAnswerResult(
+                answerDocumentId: answerDocId,
+              );
+              if (result != null && mounted) {
+                setState(() {
+                  _backendResult = result;
+                  _isLoadingResult = false;
+                });
+                return;
+              }
+            }
+          }
+        } catch (e) {
+          // ignore: avoid_print
+          print('Failed to fetch via answer documents: $e');
+        }
+
+        // Fallback: try session results
+        try {
+          final sessionResults =
+              await EvaluationService.getEvaluationSessionResults(sessionId);
+          if (sessionResults.isNotEmpty && mounted) {
+            setState(() {
+              _backendResult = sessionResults.last;
+              _isLoadingResult = false;
+            });
+            return;
+          }
+        } catch (e) {
+          // ignore: avoid_print
+          print('Failed to fetch session results: $e');
+        }
+      }
+
+      // Fallback: try answer sheet IDs from prefs
+      final answerIds =
+          prefs.getStringList('answer_sheet_ids:${widget.chatSessionId}') ??
+              const <String>[];
+      if (answerIds.isNotEmpty) {
+        final latestId = answerIds.last;
+        try {
+          final result = await EvaluationService.fetchAnswerResult(
+            answerDocumentId: latestId,
+          );
+          if (result != null && mounted) {
+            setState(() {
+              _backendResult = result;
+              _isLoadingResult = false;
+            });
+            return;
+          }
+        } catch (e) {
+          // ignore: avoid_print
+          print('Failed to fetch answer result by ID: $e');
+        }
+      }
+
+      // Use evaluationData passed from process page as last fallback
+      if (mounted) {
+        setState(() {
+          _backendResult = widget.evaluationData;
+          _isLoadingResult = false;
+        });
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('_fetchBackendResults failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _isLoadingResult = false;
+        _loadError = e.toString();
+        // Fall back to passed evaluationData
+        _backendResult = widget.evaluationData;
+      });
+    }
   }
 
   Future<void> _startNewAnswerEvaluation() async {
@@ -303,10 +418,33 @@ class _EvaluationResponsePageState extends State<EvaluationResponsePage> {
                                           ),
                                         ),
                                       const SizedBox(height: 10),
-                                      _EvaluationReportCard(
-                                        theme: theme,
-                                        evaluationData: run.evaluationData,
-                                      ),
+                                      if (_isLoadingResult)
+                                        const Padding(
+                                          padding: EdgeInsets.all(24),
+                                          child: Center(
+                                            child:
+                                                CircularProgressIndicator(),
+                                          ),
+                                        )
+                                      else
+                                        _EvaluationReportCard(
+                                          theme: theme,
+                                          evaluationData:
+                                              _backendResult ?? run.evaluationData,
+                                        ),
+                                      if (_loadError != null)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 8),
+                                          child: Text(
+                                            'evaluation.loadErrorFallback'
+                                                .tr(),
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: Colors.orange,
+                                            ),
+                                          ),
+                                        ),
                                       const SizedBox(height: 6),
                                       Text(
                                         time,
@@ -523,21 +661,71 @@ class _EvaluationReportCard extends StatelessWidget {
     }
     return -1;
   }
+  double _numFromData(String key) {
+    if (evaluationData == null) return -1;
+    final val = evaluationData![key];
+    if (val is num) return val.toDouble();
+    if (val is String) {
+      final parsed = double.tryParse(val);
+      if (parsed != null) return parsed;
+    }
+    return -1;
+  }
+
+  String? _stringFromData(String key) {
+    if (evaluationData == null) return null;
+    final val = evaluationData![key];
+    if (val == null) return null;
+    return val.toString();
+  }
+
+  List<String> _listFromData(String key) {
+    if (evaluationData == null) return [];
+    final val = evaluationData![key];
+    if (val is List) {
+      return val.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
+
+  List<Map<String, dynamic>> _listOfMapsFromData(String key) {
+    if (evaluationData == null) return [];
+    final val = evaluationData![key];
+    if (val is List) {
+      return val
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+    return [];
+  }
 
   @override
   Widget build(BuildContext context) {
     final grade = _gradeFromData();
+    final totalScore = _numFromData('total_score');
+    final percentageScore = _numFromData('percentage_score');
+    final overallFeedback = _stringFromData('overall_feedback');
+    final improvementPoints = _listFromData('improvement_points');
+    final questionFeedback = _listOfMapsFromData('question_feedback');
+    final marksSummary = evaluationData?['marks_summary'];
+
     final coverage = _scoreFromData('coverage_score');
     final accuracy = _scoreFromData('accuracy_score');
     final clarity = _scoreFromData('clarity');
 
-    final coverageValue = coverage >= 0 ? coverage : 0.78;
-    final accuracyValue = accuracy >= 0 ? accuracy : 0.85;
-    final clarityValue = clarity >= 0 ? clarity : 0.72;
+    final hasCoverage = coverage >= 0;
+    final hasAccuracy = accuracy >= 0;
+    final hasClarity = clarity >= 0;
+
+    // Extract strengths and weaknesses from backend data
+    final strengths = _listFromData('strengths');
+    final weaknesses = _listFromData('weaknesses');
+    final missingPoints = _listFromData('missing_points');
 
     return Container(
       decoration: BoxDecoration(
-        color: theme.cardColor, // was Colors.white
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: theme.colorScheme.primary.withOpacity(0.4)),
       ),
@@ -555,9 +743,20 @@ class _EvaluationReportCard extends StatelessWidget {
                     Text('evaluation_report'.tr(),
                         style: theme.textTheme.titleMedium),
                     const SizedBox(height: 2),
-                    Text('detailed_feedback'.tr(),
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: theme.hintColor)),
+                    if (totalScore >= 0 || percentageScore >= 0)
+                      Text(
+                        percentageScore >= 0
+                            ? '${percentageScore.toStringAsFixed(1)}%'
+                            : '${totalScore.toStringAsFixed(1)} marks',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    else
+                      Text('detailed_feedback'.tr(),
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.hintColor)),
                   ],
                 ),
               ),
@@ -565,62 +764,183 @@ class _EvaluationReportCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
-          _ScoreBar(labelKey: 'coverage_score', value: coverageValue),
-          const SizedBox(height: 10),
-          _ScoreBar(labelKey: 'accuracy_score', value: accuracyValue),
-          const SizedBox(height: 10),
-          _ScoreBar(labelKey: 'clarity', value: clarityValue),
-          const SizedBox(height: 16),
-          _BulletSection(
-            icon: Icons.check_circle_outline,
-            iconColor: Colors.green,
-            title: 'strengths'.tr(),
-            items: const [
-              'ප්‍රධාන කරුණු සපළිව පිළිබඳ ඉතා ඉක්මනින්',
-              'දත්ත හා උදාහරණ හරහා ප්‍රමාණවත් පදනම',
-              'වගන්තිවල නිවැරදි භාවිත',
-            ],
-          ),
-          const SizedBox(height: 10),
-          _BulletSection(
-            icon: Icons.error_outline,
-            iconColor: Colors.red,
-            title: 'weaknesses'.tr(),
-            items: const [
-              'සමහර ස්ථලවල උපුටා දැක්වීම් නොමැත',
-              'ගැළපෙන භාෂාව සමහරවිට නොපාවිච්චි විය',
-              'උපායමාර්ගික අදහස් වඩාත් පැහැදිලි කළ යුතුය',
-            ],
-          ),
-          const SizedBox(height: 10),
-          _BulletSection(
-            icon: Icons.priority_high_rounded,
-            iconColor: Colors.orange,
-            title: 'missing_points'.tr(),
-            items: const [
-              'අදාළ නිකුත් කරුණු සලකා බැලීම',
-              'තවදුරටත් සාරාංශය අඩංගු කිරීම',
-              'නිගමන තවදුරටත් ශක්තිමත් කිරීම',
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text('detailed_feedback'.tr(), style: theme.textTheme.titleSmall),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: theme.dividerColor),
+          if (hasCoverage)
+            _ScoreBar(labelKey: 'coverage_score', value: coverage),
+          if (hasCoverage) const SizedBox(height: 10),
+          if (hasAccuracy)
+            _ScoreBar(labelKey: 'accuracy_score', value: accuracy),
+          if (hasAccuracy) const SizedBox(height: 10),
+          if (hasClarity) _ScoreBar(labelKey: 'clarity', value: clarity),
+          if (hasClarity) const SizedBox(height: 10),
+          // Question-level marks summary
+          if (marksSummary is Map && (marksSummary).isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text('evaluation.questionScores'.tr(),
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            ...(marksSummary).entries.map((entry) {
+              final qLabel = entry.key.toString();
+              final subMarks = entry.value;
+              if (subMarks is List) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(qLabel,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    ...subMarks.map((sm) {
+                      if (sm is Map) {
+                        final label =
+                            (sm['label'] ?? '').toString();
+                        final awarded =
+                            (sm['awarded'] as num?)?.toDouble() ?? 0;
+                        final maxVal =
+                            (sm['max'] as num?)?.toDouble() ?? 0;
+                        return Padding(
+                          padding:
+                              const EdgeInsets.only(left: 12, top: 4),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                  child: Text(label,
+                                      style:
+                                          theme.textTheme.bodySmall)),
+                              Text(
+                                '${awarded.toStringAsFixed(1)} / ${maxVal.toStringAsFixed(1)}',
+                                style: theme.textTheme.bodySmall
+                                    ?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: awarded >= maxVal * 0.7
+                                      ? Colors.green
+                                      : awarded >= maxVal * 0.4
+                                          ? Colors.orange
+                                          : Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
+                    const SizedBox(height: 8),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            }),
+            const SizedBox(height: 6),
+          ],
+          if (strengths.isNotEmpty) ...[
+            _BulletSection(
+              icon: Icons.check_circle_outline,
+              iconColor: Colors.green,
+              title: 'strengths'.tr(),
+              items: strengths,
             ),
-            child: Text(
-              'මෙම පිළිතුර සිදුකළ කාර්යයයේ මාතෘකාව, කෙටි සහ සපුරාගත් පරාග්‍රාෆ් තුළ හොඳින් උදාහරණ සහිතව පැහැදිලි කරයි. '
-              'කෙසේ වෙතත්, තවත් මූලාශ්ර උපුටා දැක්වීමෙන් විශ්වාසීයත්වය වැඩි කළ හැක. '
-              'සමහර ඉංග්‍රීසි පද මෘදුකමෙන් සිංහල පද වලින් ප්‍රතිස්ථාපනය කිරීම අවශ්‍යය.',
-              style: theme.textTheme.bodyMedium,
+            const SizedBox(height: 10),
+          ],
+          if (weaknesses.isNotEmpty) ...[
+            _BulletSection(
+              icon: Icons.error_outline,
+              iconColor: Colors.red,
+              title: 'weaknesses'.tr(),
+              items: weaknesses,
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 10),
+          ],
+          if (missingPoints.isNotEmpty) ...[
+            _BulletSection(
+              icon: Icons.priority_high_rounded,
+              iconColor: Colors.orange,
+              title: 'missing_points'.tr(),
+              items: missingPoints,
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (improvementPoints.isNotEmpty) ...[
+            _BulletSection(
+              icon: Icons.lightbulb_outline,
+              iconColor: Colors.amber,
+              title: 'evaluation.improvementPoints'.tr(),
+              items: improvementPoints,
+            ),
+            const SizedBox(height: 10),
+          ],
+          // Question-level feedback
+          if (questionFeedback.isNotEmpty) ...[
+            Text('evaluation.questionFeedback'.tr(),
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            ...questionFeedback.map((qf) {
+              final qNum =
+                  (qf['question_number'] ?? qf['label'] ?? '').toString();
+              final feedback =
+                  (qf['feedback'] ?? qf['comment'] ?? '').toString();
+              final score = (qf['score'] as num?)?.toDouble();
+              final maxScore = (qf['max_score'] as num?)?.toDouble();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: theme.dividerColor),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text('Q$qNum',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.w600)),
+                          if (score != null) ...[
+                            const Spacer(),
+                            Text(
+                              maxScore != null
+                                  ? '${score.toStringAsFixed(1)}/${maxScore.toStringAsFixed(1)}'
+                                  : score.toStringAsFixed(1),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      if (feedback.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(feedback, style: theme.textTheme.bodySmall),
+                      ],
+                    ],
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 6),
+          ],
+          if (overallFeedback != null && overallFeedback.isNotEmpty) ...[
+            Text('detailed_feedback'.tr(),
+                style: theme.textTheme.titleSmall),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: theme.dividerColor),
+              ),
+              child: Text(
+                overallFeedback,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               OutlinedButton.icon(

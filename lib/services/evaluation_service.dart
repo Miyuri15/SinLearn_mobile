@@ -47,8 +47,14 @@ class EvaluationService {
         // ignore: avoid_print
         print('fetchAnswerResult response status: ${res.statusCode}');
 
-        if (res.data is Map) {
-          return Map<String, dynamic>.from(res.data as Map);
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+        if (data is Map) {
+          return Map<String, dynamic>.from(data);
         }
         return null;
       } on DioException catch (e) {
@@ -106,8 +112,14 @@ class EvaluationService {
         // ignore: avoid_print
         print('startEvaluation response status: ${res.statusCode}');
 
-        if (res.data is Map) {
-          return Map<String, dynamic>.from(res.data as Map);
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+        if (data is Map) {
+          return Map<String, dynamic>.from(data);
         }
         return null;
       } on DioException catch (e) {
@@ -318,6 +330,137 @@ class EvaluationService {
 
     throw StateError(
       'process-documents endpoint not found. Last error: ${last404?.message}',
+    );
+  }
+
+  /// Fetch all results for an evaluation session.
+  ///
+  /// Backend: GET {{baseurl}}/evaluation/sessions/{evaluation_session_id}/results
+  static Future<List<Map<String, dynamic>>> getEvaluationSessionResults(
+      String evaluationSessionId) async {
+    final pathsToTry = <String>[
+      '/api/v1/evaluation/sessions/$evaluationSessionId/results',
+      '/evaluation/sessions/$evaluationSessionId/results',
+    ];
+
+    DioException? last404;
+    for (final path in pathsToTry) {
+      try {
+        // ignore: avoid_print
+        print('getEvaluationSessionResults GET $path');
+        final res = await ApiClient.dio.get(path);
+        // ignore: avoid_print
+        print(
+            'getEvaluationSessionResults response status: ${res.statusCode}');
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+        if (data is List) {
+          return (data)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+        return [];
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          last404 = e;
+          continue;
+        }
+        rethrow;
+      }
+    }
+    throw StateError(
+      'evaluation/sessions/{id}/results endpoint not found. Last error: ${last404?.message}',
+    );
+  }
+
+  /// Fetch answer documents for an evaluation session.
+  ///
+  /// Backend: GET {{baseurl}}/evaluation/sessions/{evaluation_session_id}/answers
+  static Future<List<Map<String, dynamic>>> getAnswerDocuments(
+      String evaluationSessionId) async {
+    final pathsToTry = <String>[
+      '/api/v1/evaluation/sessions/$evaluationSessionId/answers',
+      '/evaluation/sessions/$evaluationSessionId/answers',
+    ];
+
+    DioException? last404;
+    for (final path in pathsToTry) {
+      try {
+        // ignore: avoid_print
+        print('getAnswerDocuments GET $path');
+        final res = await ApiClient.dio.get(path);
+        // ignore: avoid_print
+        print('getAnswerDocuments response status: ${res.statusCode}');
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+        if (data is List) {
+          return (data)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+        return [];
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          last404 = e;
+          continue;
+        }
+        rethrow;
+      }
+    }
+    throw StateError(
+      'evaluation/sessions/{id}/answers endpoint not found. Last error: ${last404?.message}',
+    );
+  }
+
+  /// Fetch feedback for a specific answer document.
+  ///
+  /// Backend: GET {{baseurl}}/evaluation/answers/{answer_document_id}/feedback
+  static Future<Map<String, dynamic>?> getEvaluationAnswerFeedback(
+      String answerDocumentId) async {
+    final pathsToTry = <String>[
+      '/api/v1/evaluation/answers/$answerDocumentId/feedback',
+      '/evaluation/answers/$answerDocumentId/feedback',
+    ];
+
+    DioException? last404;
+    for (final path in pathsToTry) {
+      try {
+        // ignore: avoid_print
+        print('getEvaluationAnswerFeedback GET $path');
+        final res = await ApiClient.dio.get(path);
+        // ignore: avoid_print
+        print(
+            'getEvaluationAnswerFeedback response status: ${res.statusCode}');
+        dynamic data = res.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } catch (_) {}
+        }
+        if (data is Map) {
+          return Map<String, dynamic>.from(data);
+        }
+        return null;
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404) {
+          last404 = e;
+          continue;
+        }
+        rethrow;
+      }
+    }
+    throw StateError(
+      'evaluation/answers/{id}/feedback endpoint not found. Last error: ${last404?.message}',
     );
   }
 }
