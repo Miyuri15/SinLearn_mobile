@@ -220,10 +220,29 @@ class _MessageBubbleState extends State<MessageBubble> {
                     ),
 
                   // Message Content
+                  // If this is a transcribed voice message, show a small label
+                  if (isUser && widget.message.modality == 'voice')
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.mic, size: 14, color: Colors.white70),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Transcribed voice',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.white70,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       16,
-                      isUser ? 12 : 8,
+                      isUser ? (widget.message.modality == 'voice' ? 4 : 12) : 8,
                       16,
                       isUser ? 12 : 8,
                     ),

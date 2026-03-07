@@ -36,6 +36,7 @@ class ChatMessage {
   final String? gradeLevel;
   final List<String>? resourceIds;
   final Map<String, dynamic>? safetySummary;
+  final String? modality;
 
   ChatMessage({
     this.id,
@@ -45,6 +46,7 @@ class ChatMessage {
     this.gradeLevel,
     this.resourceIds,
     this.safetySummary,
+    this.modality,
   });
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
@@ -60,6 +62,7 @@ class ChatMessage {
       safetySummary: json['safety_summary'] is Map
           ? Map<String, dynamic>.from(json['safety_summary'] as Map)
           : null,
+      modality: json['modality']?.toString(),
     );
   }
 }

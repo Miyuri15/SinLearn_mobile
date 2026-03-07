@@ -12,6 +12,7 @@ class Message {
   final List<String>? resourceIds;
   final Map<String, dynamic>? safetySummary;
   final Map<String, dynamic>? xaiExplanation; // Added for caching
+  final String? modality; // e.g. 'voice_transcription'
 
   Message({
     this.messageId,
@@ -22,6 +23,7 @@ class Message {
     this.resourceIds,
     this.safetySummary,
     this.xaiExplanation,
+    this.modality,
     DateTime? time,
   }) : time = time ?? DateTime.now();
 
@@ -35,6 +37,7 @@ class Message {
     List<String>? resourceIds,
     Map<String, dynamic>? safetySummary,
     Map<String, dynamic>? xaiExplanation,
+    String? modality,
   }) {
     return Message(
       messageId: messageId ?? this.messageId,
@@ -46,6 +49,7 @@ class Message {
       resourceIds: resourceIds ?? this.resourceIds,
       safetySummary: safetySummary ?? this.safetySummary,
       xaiExplanation: xaiExplanation ?? this.xaiExplanation,
+      modality: modality ?? this.modality,
     );
   }
 }

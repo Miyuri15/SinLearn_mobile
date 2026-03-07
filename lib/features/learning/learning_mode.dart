@@ -125,12 +125,14 @@ class _LearningModePageState extends State<LearningModePage> {
           _messages.add(
             Message(
               messageId: apiMsg.id,
-              text: apiMsg.content,
+              // Prefer server-provided transcript when available for voice messages
+              text : apiMsg.content?.toString() ?? '',
               fromUser: apiMsg.role == 'user',
               time: localTime,
               gradeLevel: apiMsg.gradeLevel,
               resourceIds: apiMsg.resourceIds,
               safetySummary: apiMsg.safetySummary,
+              modality: apiMsg.modality?.toString(),
             ),
           );
         }
@@ -183,6 +185,28 @@ class _LearningModePageState extends State<LearningModePage> {
           final uploadResp =
               await ResourceService.uploadResourcesUploadOnly(files);
           uploadedResourceIds = uploadResp.map((r) => r.resourceId).toList();
+
+          // Process uploaded resources so backend can extract text/embeddings
+          // (voice flow expects resources to be ready for RAG lookups).
+          if (uploadedResourceIds.isNotEmpty) {
+            try {
+              setState(() {
+                _sendProgressText = "Processing uploaded resources...";
+              });
+
+              await ResourceService.processResourcesBatch(uploadedResourceIds);
+            } catch (e) {
+              if (mounted) {
+                AppToast.error(context, ErrorHandler.getErrorMessage(e));
+              }
+            } finally {
+              if (mounted) {
+                setState(() {
+                  _sendProgressText = null;
+                });
+              }
+            }
+          }
         }
 
         // Declare nullable index
@@ -231,6 +255,7 @@ class _LearningModePageState extends State<LearningModePage> {
               Message(
                 text: data.question,
                 fromUser: true,
+                modality: 'voice',
                 time: DateTime.now(),
               ),
               Message(

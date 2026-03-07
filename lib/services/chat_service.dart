@@ -7,6 +7,7 @@ import '../models/voice_models.dart';
 import 'package:dio/dio.dart' show MultipartFile, FormData;
 import '../models/chat_session_details.dart';
 import 'resource_service.dart';
+import 'package:dio/dio.dart';
 
 class ChatService {
   /// CREATE CHAT SESSION
